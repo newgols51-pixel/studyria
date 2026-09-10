@@ -154,8 +154,7 @@
         /* timer expired while away — honest auto-submit */
         setTimeout(function () {
           if (M.active && !M.submitted && TP.active) {
-            alert('Time is up! Your test is being submitted automatically.');
-            M.submit();
+            M.submit(); /* expired while away — honest auto-submit, result page IS the notice (no blocking dialog) */
           }
         }, 800);
       }
@@ -250,8 +249,7 @@
       else if (sv.endAt) {
         setTimeout(function () {
           if (M.active && !M.submitted && TP.active) {
-            alert('Time is up! Your test is being submitted automatically.');
-            M.submit();
+            M.submit(); /* expired while away — honest auto-submit, result page IS the notice (no blocking dialog) */
           }
         }, 800);
       }
