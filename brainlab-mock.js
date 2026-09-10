@@ -109,7 +109,7 @@
       + '<div class="bl-mk-question">' + esc(disp.question) + '</div>'
       + (bl._lang === 'as' && !(q.question_as && q.question_as.length > 2)
           ? (q._trStatus
-              ? '<div class="bl-mk-trsrc">' + (q._trStatus === 'auto' ? 'স্বয়ংকৃিয় অনুবাদ' : 'পৰ্যালোচিত অনুবাদ') + '</div>'
+              ? '<div class="bl-mk-trsrc">' + (q._trStatus === 'auto' ? 'স্বয়ংক্ৰিয় অনুবাদ' : 'পৰ্যালোচিত অনুবাদ') + '</div>'
               : (q._trFail
                   ? '<div class="bl-mk-asnote">অসমীয়া অনুবাদ এই মুহূৰ্তত উপলব্ধ নহয় · ইংৰাজীত দেখুওৱা হৈছে</div>'
                   : '<div class="bl-mk-asnote bl-mk-asload">অনুবাদ লোড হৈ আছে…</div>'))
