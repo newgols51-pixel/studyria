@@ -33,6 +33,17 @@
   };
 
   function esc(s) { var bl = B(); return bl ? bl.escape(s) : String(s); }
+  function mkSeed(str) { var h = 0; for (var i = 0; i < str.length; i++) { h = (h * 31 + str.charCodeAt(i)) >>> 0; } return h || 1; }
+  function mkOrderFor(q, title) {
+    var s = mkSeed('mk:' + title + ':' + (q.id || '') + ':' + (q.question_text || '').slice(0, 40));
+    function rnd() { s = (s * 1103515245 + 12345) >>> 0; return (s >>> 16) / 65536; }
+    var perm = [0, 1, 2, 3];
+    for (var j = perm.length - 1; j > 0; j--) { var k = Math.floor(rnd() * (j + 1)); var t = perm[j]; perm[j] = perm[k]; perm[k] = t; }
+    return perm.map(function (p, i) {
+      var src = 'abcd'[p];
+      return { label: 'ABCD'[i], src: src, original: src === q.correct_answer };
+    });
+  }
   function t(en, as) { var bl = B(); return (bl && bl._lang === 'as') ? as : en; }
 
   function remaining() { return Math.max(0, Math.ceil((M.endAt - Date.now()) / 1000)); }
@@ -45,18 +56,19 @@
   /* MOCK PLAYER UI */
   M.render = function () {
     var bl = B(); if (!bl || !M.active) return;
-    var c = document.getElementById('bl-quiz-player-area'); if (!c) return;
+    var c = document.getElementById('bl-tp-area') || document.getElementById('bl-quiz-player-area'); if (!c) return;
     var idx = bl._currentQIdx, q = bl._currentQuiz.questions[idx];
     if (!q) return;
     var total = bl._currentQuiz.questions.length;
-    var disp = (window.BrainLabTranslate && BrainLabTranslate.getDisplay(q, bl._lang)) || { question: q.question_text, options: q.options };
-    if (!q._shuffled) {
-      var fresh = [{ label: 'A', text: disp.options.A, original: 'a' === q.correct_answer },
-                   { label: 'B', text: disp.options.B, original: 'b' === q.correct_answer },
-                   { label: 'C', text: disp.options.C, original: 'c' === q.correct_answer },
-                   { label: 'D', text: disp.options.D, original: 'd' === q.correct_answer }];
-      q._shuffled = bl.shuffle(fresh);
+    var disp = (window.BrainLabTranslate && BrainLabTranslate.getDisplay(q, bl._lang)) || { question: q.question_text, options: { A: q.option_a, B: q.option_b, C: q.option_c, D: q.option_d } };
+    /* deterministic per-question display order (seeded) — stable across
+       page refresh so a resumed attempt keeps the same option positions;
+       texts re-mapped on every render → live language switching */
+    if (!q._mkOrder) {
+      q._mkOrder = mkOrderFor(q, (bl._currentQuiz && bl._currentQuiz.title) || '');
     }
+    q._mkOrder.forEach(function (o) { o.text = disp.options[o.label]; });
+    var shuffled = q._mkOrder;
     var cur = bl._answers[idx];
     var selIdx = (cur && !cur.skipped) ? cur.selectedIndex : -1;
     var marked = !!M.marked[idx];
@@ -92,10 +104,13 @@
       + '</div>';
 
     /* question */
-    h += '<div class="bl-mk-topic">' + esc(q.topic || q.category || '') + (q.difficulty ? ' \u00B7 ' + esc(q.difficulty) : '') + '</div>'
+    h += '<div class="bl-mk-topic">' + esc(q.topic || q.category || '') + (q.difficulty ? ' · ' + esc(q.difficulty) : '') + '</div>'
       + '<div class="bl-mk-question">' + esc(disp.question) + '</div>'
+      + (bl._lang === 'as' && !(q.question_as && q.question_as.length > 2)
+          ? '<div class="bl-mk-asnote">অসমীয়া সংস্করণ উপলব্ধ নহয় · ইংরাজীত দেখুওষা হৈছে</div>'
+          : '')
       + '<div class="bl-mk-options">';
-    q._shuffled.forEach(function (o, i) {
+    shuffled.forEach(function (o, i) {
       h += '<div class="bl-mk-opt' + (i === selIdx ? ' bl-mk-sel' : '') + '" onclick="BrainLabMock.select(' + i + ')">'
         + '<span class="bl-mk-opt-l">' + o.label + '</span><span class="bl-mk-opt-t">' + esc(o.text) + '</span></div>';
     });
@@ -114,16 +129,18 @@
       + '</div>';
     c.innerHTML = h;
     c.style.display = 'block';
+    if (window.BrainLabTestPage && window.BrainLabTestPage.onRender) window.BrainLabTestPage.onRender();
   };
 
   /* mock controls */
   M.select = function (optIdx) {
     var bl = B(); if (!bl || !M.active || M.submitted) return;
-    var q = bl._currentQuiz.questions[bl._currentQIdx]; if (!q || !q._shuffled) return;
-    var sel = q._shuffled[optIdx];
-    /* identical answer shape to the original selectAnswer — keeps
-       _finishQuiz scoring, review page and mistake saving consistent */
-    bl._answers[bl._currentQIdx] = { selectedAnswer: sel.original, isCorrect: !!sel.original, questionId: q.id, selectedIndex: optIdx };
+    var q = bl._currentQuiz.questions[bl._currentQIdx]; if (!q || !q._mkOrder) return;
+    var sel = q._mkOrder[optIdx];
+    /* same answer shape as the original selectAnswer (isCorrect drives
+       _finishQuiz scoring); selectedAnswer keeps the real option letter
+       so the review page and mistake book show a genuine answer */
+    bl._answers[bl._currentQIdx] = { selectedAnswer: sel.src, isCorrect: !!sel.original, questionId: q.id, selectedIndex: optIdx };
     M.render();
   };
   M.clear = function () { var bl = B(); if (!bl) return; delete bl._answers[bl._currentQIdx]; M.render(); };

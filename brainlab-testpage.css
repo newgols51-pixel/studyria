@@ -1,0 +1,97 @@
+/* ═══ brainlab-testpage.css — dedicated test page (bl-tp- ns, additive) ═══
+   Paper Cream + Royal Maroon + Gold identity — mobile-first. */
+
+/* full-screen dedicated test page — above site header/menu */
+#bl-tp-page {
+  position: fixed;
+  inset: 0;
+  z-index: 99990;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper-cream, #FAF5EC);
+  animation: bl-tp-in 0.22s ease;
+}
+@keyframes bl-tp-in { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+body.bl-tp-open { overflow: hidden; }
+
+/* sticky header — title + language always visible */
+.bl-tp-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  background: var(--royal-maroon, #5C1A1B);
+  color: var(--paper-cream, #FAF5EC);
+  box-shadow: 0 2px 10px rgba(92, 26, 27, 0.35);
+  flex: 0 0 auto;
+}
+.bl-tp-back {
+  flex: 0 0 auto;
+  width: 38px; height: 38px;
+  border: 1px solid rgba(250, 245, 236, 0.4);
+  border-radius: 10px;
+  background: rgba(250, 245, 236, 0.12);
+  color: inherit;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.bl-tp-twrap { flex: 1 1 auto; min-width: 0; }
+.bl-tp-title {
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bl-tp-sub { font-size: 0.66rem; opacity: 0.78; margin-top: 2px; }
+.bl-tp-lang { flex: 0 0 auto; display: flex; gap: 5px; }
+.bl-tp-lbtn {
+  min-width: 40px; height: 34px;
+  padding: 0 9px;
+  border-radius: 9px;
+  border: 1px solid rgba(250, 245, 236, 0.4);
+  background: transparent;
+  color: rgba(250, 245, 236, 0.7);
+  font-weight: 800;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.bl-tp-lbtn.on {
+  background: var(--gold, #C9A227);
+  border-color: var(--gold, #C9A227);
+  color: var(--royal-maroon, #5C1A1B);
+}
+
+/* scrollable test body (mock engine renders here) */
+.bl-tp-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 12px calc(20px + env(safe-area-inset-bottom, 0px));
+  overscroll-behavior: contain;
+}
+/* keep the mock's own header (title + countdown) always visible */
+.bl-tp-body .bl-mk-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--paper-cream, #FAF5EC);
+  padding: 6px 2px 8px;
+}
+/* honest Assamese-unavailable notice */
+.bl-mk-asnote {
+  font-size: 0.68rem;
+  color: #8a6d1d;
+  background: rgba(201, 162, 39, 0.12);
+  border: 1px solid rgba(201, 162, 39, 0.35);
+  border-radius: 8px;
+  padding: 6px 9px;
+  margin: 6px 0 2px;
+  line-height: 1.4;
+}
+@media (min-width: 700px) {
+  .bl-tp-body { max-width: 720px; margin: 0 auto; width: 100%; }
+}
