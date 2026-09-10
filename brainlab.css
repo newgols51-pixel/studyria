@@ -926,7 +926,10 @@
 .bl-qp-opt-label{flex-shrink:0;width:32px;height:32px;border-radius:8px;background:var(--hp-paper-dim,#f1ece3);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--hp-ink,#1c1b1a);font-size:.88rem}
 .bl-qp-option.selected .bl-qp-opt-label{background:var(--hp-red,#930205);color:#fff}
 .bl-qp-opt-text{font-size:.92rem;color:var(--hp-ink,#1c1b1a);flex:1}
-.bl-qp-actions{display:flex;gap:10px;justify-content:space-between;margin-bottom:12px}
+.bl-qp-actions{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.bl-qp-btn{min-height:44px;white-space:normal;word-break:break-word;line-height:1.3}
+.bl-qp-actions .bl-qp-btn{flex:1 1 auto;min-width:110px}
+.bl-qp-actions .bl-qp-next{flex:2 1 150px}
 .bl-qp-btn{padding:11px 20px;border-radius:12px;border:1.5px solid var(--hp-line,rgba(28,27,26,0.15));background:#fff;color:var(--hp-ink,#1c1b1a);font-weight:700;font-size:.85rem;cursor:pointer;transition:all .2s;font-family:var(--font-ui,sans-serif)}
 .bl-qp-btn:hover{border-color:rgba(147,2,5,0.3);background:rgba(147,2,5,0.04)}
 .bl-qp-next{background:linear-gradient(135deg,#930205,#c99a3c);color:#fff;border:none}
@@ -1031,6 +1034,16 @@
 .bl-flashcard-text{font-size:1.1rem;font-weight:600;color:var(--hp-ink,#1c1b1a);line-height:1.5;text-align:center}
 .bl-flashcard-hint{font-size:.72rem;color:rgba(28,27,26,0.4);margin-top:14px}
 .bl-flashcard-exit{padding:10px 30px;border-radius:12px;border:1.5px solid var(--hp-line,rgba(28,27,26,0.15));background:#fff;color:var(--hp-ink,#1c1b1a);font-weight:700;font-size:.85rem;cursor:pointer}
+/* ── dedicated flashcard page (spec §9): progress + full control labels ── */
+.bl-fc-page{max-width:540px;margin:0 auto;text-align:center}
+.bl-fc-progress{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:14px;font-size:.82rem;font-weight:700;color:var(--hp-ink,#1c1b1a)}
+.bl-fc-progress-bar{flex:1;max-width:220px;height:6px;border-radius:6px;background:var(--hp-line,rgba(28,27,26,0.12));overflow:hidden;display:block}
+.bl-fc-progress-bar i{display:block;height:100%;background:linear-gradient(90deg,#930205,#c99a3c)}
+.bl-fc-ctrls{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:16px 0 10px}
+.bl-fc-btn{flex:1 1 110px;min-width:104px;min-height:44px;box-sizing:border-box;padding:11px 14px;border-radius:12px;border:1.5px solid var(--hp-line,rgba(28,27,26,0.15));background:#fff;color:var(--hp-ink,#1c1b1a);font-weight:700;font-size:.85rem;cursor:pointer;font-family:var(--font-ui,sans-serif);white-space:normal;word-break:break-word;line-height:1.3}
+.bl-fc-btn:disabled{opacity:.4;cursor:not-allowed}
+.bl-fc-btn.bl-fc-next{background:linear-gradient(135deg,#930205,#c99a3c);color:#fff;border:none}
+.bl-flashcard-exp{font-size:.8rem;color:rgba(28,27,26,0.65);margin-top:12px;padding:10px 12px;background:var(--hp-paper-dim,#f1ece3);border-radius:10px;line-height:1.45;text-align:left}
 
 /* ═══ NEW: Timer & Modal Content ═══ */
 .bl-timer-display{font-size:3rem;font-weight:900;color:var(--hp-red,#930205);text-align:center;padding:20px;font-variant-numeric:tabular-nums}
