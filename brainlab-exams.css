@@ -55,3 +55,14 @@
 .bl-eu-mini{font-size:.68rem;font-weight:800;opacity:.7;margin:6px 0 4px}
 .bl-eu-done{font-size:.68rem;font-weight:800;color:#2e7d32;background:rgba(46,125,50,.1);border:1px solid rgba(46,125,50,.25);border-radius:999px;padding:5px 10px;white-space:nowrap}
 @media(max-width:360px){.bl-eu-btn{padding:8px 10px;font-size:.64rem}}
+
+/* ═══ Exam Universe v3 — orgs, roadmap, saved-question buttons ═══ */
+.bl-eu-road{display:flex;flex-direction:column;gap:8px}
+.bl-eu-road-st{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;border:1px solid rgba(128,145,180,.18);background:rgba(128,145,180,.04)}
+.bl-eu-road-st.cur{border-color:rgba(166,25,46,.35);background:rgba(166,25,46,.06)}
+.bl-eu-road-st.done{opacity:.75}
+.bl-eu-road-dot{flex-shrink:0;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;background:rgba(128,145,180,.15);border:1px solid rgba(128,145,180,.3)}
+.bl-eu-road-st.done .bl-eu-road-dot{background:rgba(46,125,50,.15);border-color:rgba(46,125,50,.4);color:#2e7d32}
+.bl-eu-road-st.cur .bl-eu-road-dot{background:var(--grad-primary,linear-gradient(135deg,#a6192e,#d43a4e));color:#fff;border-color:transparent}
+.bl-eu-save{align-self:flex-start;margin-left:auto;flex-shrink:0;border:1px solid rgba(212,168,102,.5);background:rgba(212,168,102,.12);border-radius:999px;padding:5px 11px;font-size:.66rem;font-weight:800;cursor:pointer;white-space:nowrap;color:inherit}
+.bl-eu-save.on{background:rgba(212,168,102,.3);border-color:rgba(212,168,102,.8)}

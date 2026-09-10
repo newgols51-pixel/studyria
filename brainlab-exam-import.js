@@ -3,8 +3,9 @@
    ════════════════════════════════════════════════════════════════
    Safe bulk question/PYQ import pipeline for the Exam Universe:
    Upload/Parse → Validate → Duplicate Detection → Preview →
-   Admin Confirm → Insert (bl_exam_questions) → Verification Report.
-   Admin-only: RLS enforces writes server-side (admin_users ↔ JWT).
+   Admin Confirm → Insert (Exam Universe backend: euImport) → Verification Report.
+   Admin-only: writes are gated server-side (Supabase session verified
+   against Studyria admin_users inside euImport/euManage). No migration.
    Imported rows start verified=false ("Needs Review") — only verified
    rows count toward public metrics. Existing engines untouched.
    ════════════════════════════════════════════════════════════════ */
@@ -14,7 +15,22 @@
 
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function normQ(q) { return String(q || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 120); }
-  function exams() { return (window.BrainLabV7 && window.BrainLabV7.EXAM_HUB) ? window.BrainLabV7.EXAM_HUB.map(function (e) { return e.id; }) : ['adre', 'apsc', 'police', 'tet', 'ssc', 'dhs', 'other']; }
+
+  /* ── Exam Universe backend (Base44) — admin-gated euImport/euManage ── */
+  var EU_API = 'https://vesper-501c3886.base44.app/functions/';
+  function adminToken() {
+    var sb = window.supabase || window.supabaseClient;
+    if (!sb || !sb.auth || !sb.auth.getSession) return Promise.resolve(null);
+    return sb.auth.getSession().then(function (r) { return (r && r.data && r.data.session && r.data.session.access_token) || null; }).catch(function () { return null; });
+  }
+  function euApi(fn, body) {
+    return adminToken().then(function (t) {
+      if (!t) throw new Error('Admin session not found — sign in to the Admin Panel first.');
+      return fetch(EU_API + fn, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ adminToken: t }, body || {})) });
+    }).then(function (r) { return r.json(); });
+  }
+  var V3_VARIANTS = ['adre-driver', 'adre4-viii'];
+  function exams() { var base = (window.BrainLabV7 && window.BrainLabV7.EXAM_HUB) ? window.BrainLabV7.EXAM_HUB.map(function (e) { return e.id; }) : ['adre', 'apsc', 'police', 'tet', 'ssc', 'dhs', 'other']; return base.concat(V3_VARIANTS.filter(function (v) { return base.indexOf(v) === -1; })); }
 
   function buildBankHashes() {
     var h = {};
@@ -125,53 +141,49 @@
   /* ── confirm → batch insert → verification report ── */
   A.confirm = async function () {
     if (!A.rows.length) { A.msg('Nothing valid to import.', true); return; }
-    var sb = window.supabase || window.supabaseClient;
-    if (!sb) { A.msg('Supabase client unavailable.', true); return; }
     var btn = document.getElementById('bl-ei-go'); if (btn) { btn.disabled = true; btn.textContent = 'Importing…'; }
-    var imported = 0, failed = 0, failErr = '';
-    for (var i = 0; i < A.rows.length; i += 100) {
-      try {
-        var res = await sb.from('bl_exam_questions').insert(A.rows.slice(i, i + 100));
-        if (res && res.error) { failed += A.rows.slice(i, i + 100).length; failErr = res.error.message; }
-        else imported += A.rows.slice(i, i + 100).length;
-      } catch (e) { failed += A.rows.slice(i, i + 100).length; failErr = e.message; }
-    }
+    var res;
+    try { res = await euApi('euImport', { rows: A.rows }); }
+    catch (e) { A.msg('❌ ' + e.message, true); if (btn) { btn.disabled = false; btn.textContent = 'CONFIRM IMPORT'; } return; }
+    if (btn) { btn.disabled = false; }
+    if (!res || res.ok !== true) { A.msg('❌ Import failed: ' + ((res && res.error) || 'unknown error'), true); return; }
     A.rows = [];
     A.render();
-    A.msg('✅ IMPORTED: ' + imported + ' · FAILED: ' + failed + (failErr ? ' — ' + failErr : '')
-      + ' — rows are saved as NEEDS REVIEW. Verify them below to make them live on Exam Universe.', failed && !imported);
+    A.msg('✅ IMPORTED: ' + res.imported + ' · FAILED: ' + (res.failed || 0) + ((res.errors && res.errors.length) ? ' — ' + res.errors[0] : '')
+      + ' — rows are saved as NEEDS REVIEW. Verify them below to make them live on Exam Universe.', !!res.failed && !res.imported);
     A.loadList();
   };
 
   /* ── existing rows manager ── */
   A.loadList = async function () {
-    var sb = window.supabase || window.supabaseClient; if (!sb) return;
-    var res = await sb.from('bl_exam_questions').select('*').order('created_at', { ascending: false }).limit(200);
-    if (res && res.error) { A.msg('Could not load existing rows: ' + res.error.message, true); return; }
-    A.list = (res && res.data) || [];
+    var res;
+    try { res = await euApi('euManage', { op: 'list' }); } catch (e) { return; }
+    if (!res || res.ok !== true) { A.msg('Could not load existing rows: ' + ((res && res.error) || 'admin session required'), true); return; }
+    A.list = ((res && res.rows) || []).map(function (r) {
+      return { id: r.id, exam_id: r.exam, question_text: r.question, subject: r.subject, is_pyq: r.isPyq, source_year: r.sourceYear, verified: r.verified };
+    });
     A.renderList();
   };
   A.verify = async function (id, val) {
-    var sb = window.supabase || window.supabaseClient; if (!sb || !id) return;
-    var res = await sb.from('bl_exam_questions').update({ verified: !!val }).eq('id', id);
-    if (res && res.error) { A.msg(res.error.message, true); } else A.loadList();
+    if (!id) return;
+    var res;
+    try { res = await euApi('euManage', { op: 'verify', id: id, value: !!val }); } catch (e) { A.msg(e.message, true); return; }
+    if (!res || res.ok !== true) { A.msg((res && res.error) || 'Verify failed', true); } else A.loadList();
   };
   A.verifyAll = async function () {
     var pend = A.list.filter(function (r) { return !r.verified; });
     if (!pend.length) { A.msg('No pending rows.'); return; }
-    var sb = window.supabase || window.supabaseClient; if (!sb) return;
-    var ok = 0;
-    for (var i = 0; i < pend.length; i++) {
-      var res = await sb.from('bl_exam_questions').update({ verified: true }).eq('id', pend[i].id);
-      if (!res.error) ok++;
-    }
-    A.msg('✅ Verified ' + ok + ' rows — they are now live on Exam Universe.');
+    var res;
+    try { res = await euApi('euManage', { op: 'verifyAllPending' }); } catch (e) { A.msg(e.message, true); return; }
+    if (!res || res.ok !== true) { A.msg((res && res.error) || 'Verify failed', true); return; }
+    A.msg('✅ Verified ' + (res.verified || 0) + ' rows — they are now live on Exam Universe.');
     A.loadList();
   };
   A.del = async function (id) {
-    var sb = window.supabase || window.supabaseClient; if (!sb || !id || !confirm('Delete this question permanently?')) return;
-    var res = await sb.from('bl_exam_questions').delete().eq('id', id);
-    if (res && res.error) { A.msg(res.error.message, true); } else A.loadList();
+    if (!id || !confirm('Delete this question permanently?')) return;
+    var res;
+    try { res = await euApi('euManage', { op: 'delete', id: id }); } catch (e) { A.msg(e.message, true); return; }
+    if (!res || res.ok !== true) { A.msg((res && res.error) || 'Delete failed', true); } else A.loadList();
   };
 
   /* ── UI ── */
@@ -181,7 +193,7 @@
     var examOpts = exams().map(function (id) { return '<option value="' + id + '"' + (A.exam === id ? ' selected' : '') + '>' + id + '</option>'; }).join('');
     el.innerHTML = ''
       + '<h3 style="margin:0 0 4px;font-size:1.05rem;font-weight:800">📥 Exam Universe Import</h3>'
-      + '<p style="font-size:.78rem;opacity:.75;margin:0 0 14px">Safe bulk import of verified questions &amp; PYQs. Pipeline: Upload → Parse → Validate → Duplicate Detection → Preview → Confirm → Insert → Report. Imported rows are <b>Needs Review</b> until you verify them — only verified rows go live.</p>'
+      + '<p style="font-size:.78rem;opacity:.75;margin:0 0 14px">Safe bulk import of verified questions &amp; PYQs. Pipeline: Upload → Parse → Validate → Duplicate Detection → Preview → Confirm → Insert → Report. Stored in the Exam Universe backend (server-side admin-gated) — no database migration needed. Imported rows are <b>Needs Review</b> until you verify them — only verified rows go live.</p>'
       + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">'
       + '<label style="font-size:.78rem;font-weight:700">Exam:</label>'
       + '<select id="bl-ei-exam" class="bl-ei-inp" onchange="BrainLabExamAdmin.exam=this.value">' + examOpts + '</select>'

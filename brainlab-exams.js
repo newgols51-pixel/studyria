@@ -1,15 +1,22 @@
 /* ════════════════════════════════════════════════════════════════
-   brainlab-exams.js — STUDYRIA EXAM UNIVERSE v2 (additive layer)
+   brainlab-exams.js — STUDYRIA EXAM UNIVERSE v3 (additive layer)
    ════════════════════════════════════════════════════════════════
-   Complete per-exam preparation system — a discovery/organization
-   layer OVER existing engines. No new engine, no checkout changes.
-   • Mock series: 10 distinct exam-style mocks derived from the REAL
-     question pool (deterministic, non-overlapping allocation).
-   • PYQ: real bank PYQs + admin-imported verified questions
-     (bl_exam_questions, additive table) with year/subject practice.
-   • Papers/Study PDFs → canonical openDetail(id). CA → existing V7.
-   • Progress/Weak areas/Continue → user's OWN bl_sessions only.
-   Every displayed count comes from real records — nothing hardcoded.
+   BrainLab → Exam Universe → Organizations → Exam → Preparation Hub.
+   Data-driven: adding an exam = registry entry, not new code.
+   • Organizations layer (#brainlab/exams + #brainlab/exams/org/<id>)
+     with REAL per-org / per-exam counts from the real question pool.
+   • Exam variants (e.g. ADRE Driver / Grade IV Class VIII) honestly
+     practice from their base exam pool — never fabricate questions.
+   • Imported verified questions/PYQs come from the Studyria Exam
+     Universe backend (euLive public read — Base44, zero migration).
+   • Mock series: distinct seeded non-overlapping blocks from the REAL
+     pool (existing mock engine, timer/auto-submit/palette preserved).
+   • Hub modules: Progress, Continue, Daily, Quick, Mocks, PYQ (year/
+     subject), Previous Year Papers, Subject practice, Mistake Book,
+     Saved Questions (🔖 injected into any review, DOM-additive),
+     Current Affairs, Syllabus, Exam Pattern (honest empty), Roadmap,
+     Weak Areas, Recommendations — all real-data, own-session only.
+   No engine/checkout/auth/DB changes. Existing routes preserved.
    ════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -18,10 +25,46 @@
   var U = window.BrainLabUniverse = { _imp: {}, _impAt: 0 };
 
   function esc(s) { var bl = B(); return bl ? bl.escape(s) : String(s == null ? '' : s); }
-  function examKey(id) { return { adre: 'ADRE', adre4: 'ADRE', apsc: 'APSC', police: 'Assam Police', tet: 'Assam TET', ssc: 'SSC', dhs: 'General', other: 'General' }[id] || 'General'; }
-  function examTerms(id) { return { adre: ['adre'], adre4: ['adre'], apsc: ['apsc'], police: ['assam police', 'police'], tet: ['assam tet', 'tet'], ssc: ['ssc'], dhs: ['dhs'], other: [] }[id] || []; }
+
+  /* ── v3 REGISTRIES (data-driven; adding exams = data, not code) ── */
+  U.VARIANTS = {
+    'adre-driver': { name: 'ADRE Grade III (Driver)', desc: 'Assam Direct Recruitment — Driver posts', base: 'adre' },
+    'adre4-viii':  { name: 'ADRE Grade IV (Class VIII)', desc: 'Assam Direct Recruitment — Class VIII qualification posts', base: 'adre4' }
+  };
+  U.ORGS = [
+    { id: 'adr',    ic: '🏛️', name: 'Assam Direct Recruitment', desc: 'ADRE — Grade III & Grade IV recruitment', exams: ['adre', 'adre-driver', 'adre4', 'adre4-viii'] },
+    { id: 'police', ic: '🚔', name: 'Assam Police', desc: 'SI / Constable recruitment exams', exams: ['police'] },
+    { id: 'apsc',   ic: '🎓', name: 'APSC', desc: 'Assam Public Service Commission exams', exams: ['apsc'] },
+    { id: 'tet',    ic: '🏫', name: 'Assam TET', desc: 'Teacher Eligibility Test', exams: ['tet'] },
+    { id: 'dhs',    ic: '🏥', name: 'DHS Assam', desc: 'Directorate of Health Services recruitment', exams: ['dhs'] },
+    { id: 'ssc',    ic: '📋', name: 'SSC', desc: 'SSC CGL / CHSL and related exams', exams: ['ssc'] },
+    { id: 'other',  ic: '🗂️', name: 'Other Assam Govt. Exams', desc: 'All other Assam government recruitment', exams: ['other'] }
+  ];
+
+  function examKey(id) {
+    var m = { adre: 'ADRE', adre4: 'ADRE', apsc: 'APSC', police: 'Assam Police', tet: 'Assam TET', ssc: 'SSC', dhs: 'General', other: 'General' };
+    if (m[id]) return m[id];
+    var v = U.VARIANTS[id]; return v ? examKey(v.base) : 'General';
+  }
+  function examTerms(id) {
+    var t = { adre: ['adre'], adre4: ['adre'], apsc: ['apsc'], police: ['assam police', 'police'], tet: ['assam tet', 'tet'], ssc: ['ssc'], dhs: ['dhs'], other: [] };
+    if (t[id]) return t[id];
+    var v = U.VARIANTS[id]; return v ? examTerms(v.base) : [];
+  }
   function hub() { return (V7().EXAM_HUB || []); }
-  function findExam(id) { return hub().filter(function (e) { return e.id === id; })[0]; }
+  function findExam(id) {
+    var e = hub().filter(function (x) { return x.id === id; })[0];
+    if (e) return e;
+    var v = U.VARIANTS[id]; if (!v) return null;
+    var b = hub().filter(function (x) { return x.id === v.base; })[0]; if (!b) return null;
+    return { id: id, name: v.name, desc: v.desc, subjects: b.subjects.slice(), _base: v.base, _variant: true };
+  }
+  function allExams() {
+    var out = hub().slice();
+    Object.keys(U.VARIANTS).forEach(function (k) { var e = findExam(k); if (e) out.push(e); });
+    return out;
+  }
+  function orgOf(id) { var o = U.ORGS.filter(function (g) { return g.exams.indexOf(id) !== -1; })[0]; return o || null; }
   function owned(id) { return !!(window._ownedPdfIds && window._ownedPdfIds.has && window._ownedPdfIds.has(String(id))); }
 
   /* deterministic seeded shuffle (mulberry32) — stable mock blocks */
@@ -47,8 +90,7 @@
     return out;
   };
   U.pyqPool = function (e) {
-    var p = U.pool(e).filter(function (q) { return String(q[17] || '').toUpperCase() === 'PYQ'; });
-    return p;
+    return U.pool(e).filter(function (q) { return String(q[17] || '').toUpperCase() === 'PYQ'; });
   };
   function pyqYears(pool) {
     var y = {};
@@ -60,27 +102,32 @@
     pool.forEach(function (q) { if (q[7]) s[q[7]] = 1; });
     return Object.keys(s).sort();
   }
+  function pyqCountIn(pool, year) { return pool.filter(function (q) { return String(q[18] || '').indexOf(year) !== -1; }).length; }
 
-  /* imported verified questions from the additive bl_exam_questions table */
+  /* cheap mock-count (mirrors mockSeries allocation) for card counters */
+  U.mockCount = function (e) { var n = U.pool(e).length; return n < 10 ? 0 : Math.min(10, Math.floor(n / 10)); };
+
+  /* imported verified questions from the Exam Universe backend (public
+     euLive read — Base44 storage, admin-gated writes; zero migration) */
   U.fetchImported = function (cb) {
     var now = Date.now();
     if (U._impAt && now - U._impAt < 600000) { cb && cb(); return; }
-    if (U._impPending) { U._impCbs.push(cb); return; } /* one in-flight fetch, queue callbacks */
-    var sb = window.supabase || window.supabaseClient;
-    if (!sb) { U._impAt = now; cb && cb(); return; }
+    if (U._impPending) { U._impCbs.push(cb); return; }
     U._impPending = true; U._impCbs = [cb];
     function done() { U._impPending = false; U._impAt = Date.now(); (U._impCbs || []).forEach(function (f) { f && f(); }); U._impCbs = []; }
-    sb.from('bl_exam_questions').select('*').eq('verified', true).eq('status', 'active').limit(2000)
+    fetch('https://vesper-501c3886.base44.app/functions/euLive', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
+    }).then(function (r) { return r.json(); })
       .then(function (res) {
         U._imp = {};
-        ((res && res.data) || []).forEach(function (r) {
-          var ex = r.exam_id || 'other';
+        ((((res && res.ok) && res.questions) || [])).forEach(function (r) {
+          var ex = r.exam || 'other';
           if (!U._imp[ex]) U._imp[ex] = { rows: [], meta: [] };
           U._imp[ex].rows.push([
-            r.question_text, r.opt_a, r.opt_b, r.opt_c, r.opt_d, (r.answer || 'a').toLowerCase(),
+            r.question, r.optA, r.optB, r.optC, r.optD, String(r.answer || 'a').toLowerCase(),
             r.explanation || '', r.subject || 'General Knowledge', r.topic || 'General', r.difficulty || 'medium',
-            r.exam_id || '', '', r.opt_a_as || '', r.opt_b_as || '', r.opt_c_as || '', r.opt_d_as || '',
-            '', r.is_pyq ? 'PYQ' : 'MCQ', (r.source_name || '') + (r.source_year ? ' ' + r.source_year : '')
+            r.exam || '', '', r.optAAs || '', r.optBAs || '', r.optCAs || '', r.optDAs || '',
+            '', r.isPyq ? 'PYQ' : 'MCQ', (r.sourceName || '') + (r.sourceYear ? ' ' + r.sourceYear : '')
           ]);
           U._imp[ex].meta.push(r);
         });
@@ -96,11 +143,11 @@
     return pdfs.filter(function (p) { return terms.some(function (t) { return hay(p).indexOf(t) !== -1; }); });
   }
 
-  /* ═══ MOCK SERIES — 10 distinct exam-style mocks from the REAL pool ═══ */
+  /* ═══ MOCK SERIES — distinct exam-style mocks from the REAL pool ═══ */
   U.mockSeries = function (e) {
     var pool = U.pool(e);
-    var blocks = Math.min(10, Math.max(1, Math.floor(pool.length / 10)));
     if (pool.length < 10) return [];
+    var blocks = Math.min(10, Math.max(1, Math.floor(pool.length / 10)));
     var per = Math.min(100, Math.max(10, Math.floor(pool.length / blocks)));
     var shuffled = seedShuffle(pool, 'mockseries:' + e.id);
     var series = [];
@@ -149,59 +196,194 @@
     return rows.sort(function (a, b) { return a.pct - b.pct; });
   };
 
-  /* ═════════ LANDING — #brainlab/exams ═════════ */
+  /* ═══ SAVED QUESTIONS (DOM-additive 🔖 in any review; localStorage store) ═══ */
+  var SKEY = 'bl_eu_saved';
+  U._norm = function (t) { return String(t || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 120); };
+  U._saved = function () { try { return JSON.parse(localStorage.getItem(SKEY) || '[]'); } catch (e) { return []; } };
+  U.saveToggle = function (h, t) {
+    var l = U._saved(), had = l.some(function (x) { return x.h === h; });
+    if (had) l = l.filter(function (x) { return x.h !== h; });
+    else { l.unshift({ h: h, t: String(t || '').slice(0, 160), at: new Date().toISOString() }); if (l.length > 300) l = l.slice(0, 300); }
+    try { localStorage.setItem(SKEY, JSON.stringify(l)); } catch (e) {}
+    return !had;
+  };
+  U.savedList = function (e) {
+    var l = U._saved(); if (!l.length) return { n: 0, pool: [] };
+    var hs = {}; l.forEach(function (x) { hs[x.h] = 1; });
+    var pool = U.pool(e).filter(function (q) { return hs[U._norm(q[0])]; });
+    return { n: pool.length, pool: pool };
+  };
+  U.practiceSaved = function (examId) {
+    var e = findExam(examId), bl = B(); if (!e || !bl) return;
+    var s = U.savedList(e);
+    if (!s.pool.length) { bl.toast('No saved questions from this exam pool yet.'); return; }
+    bl.showCountPicker({ title: e.name + ' — Saved Questions', category: 'All', pool: s.pool, mode: 'quiz' });
+  };
+  /* inject 🔖 into every rendered review item (any engine — core untouched) */
+  var _saveT = null;
+  function _injectSave() {
+    if (_saveT) return; _saveT = setTimeout(function () { _saveT = null;
+      var items = document.querySelectorAll('.bl-review-item');
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].querySelector('.bl-eu-save')) continue;
+        (function (it) {
+          var q = it.querySelector('.bl-review-q'); if (!q) return;
+          var txt = (q.textContent || '').replace(/^\s*\d+\.\s*/, '');
+          var h = U._norm(txt);
+          var on = U._saved().some(function (x) { return x.h === h; });
+          var b = document.createElement('button');
+          b.type = 'button'; b.className = 'bl-eu-save' + (on ? ' on' : '');
+          b.setAttribute('aria-label', 'Save question for revision');
+          b.textContent = on ? '🔖 Saved' : '🔖 Save';
+          b.onclick = function (ev) { ev.stopPropagation(); var now = U.saveToggle(h, txt); b.textContent = now ? '🔖 Saved' : '🔖 Save'; b.className = 'bl-eu-save' + (now ? ' on' : ''); };
+          it.appendChild(b);
+        })(items[i]);
+      }
+    }, 300);
+  }
+  if (typeof MutationObserver !== 'undefined') {
+    var _mo = new MutationObserver(function () { _injectSave(); });
+    var _bootObs = function () { if (document.body) _mo.observe(document.body, { childList: true, subtree: true }); };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _bootObs); else _bootObs();
+  }
+
+  /* ═══ ROADMAP — registry-driven stages, completion from real activity ═══ */
+  U.ROADMAP = [
+    { t: 'Foundation',        d: 'Start subject basics — quick practice & learn mode',        f: function (c) { return c.sessions >= 1; } },
+    { t: 'Subject Practice',  d: 'Practice across 3+ different subjects of this exam',       f: function (c) { return c.subjectsTouched >= 3; } },
+    { t: 'PYQ Practice',      d: 'Solve previous year questions year-by-year',               f: function (c) { return c.pyqSessions >= 1; } },
+    { t: 'Mock Tests',        d: 'Attempt 2+ full-length timed mocks',                        f: function (c) { return c.mockSessions >= 2; } },
+    { t: 'Revision',          d: 'Clear your Mistake Book & practice saved questions',       f: function (c) { return c.sessions >= 5; } },
+    { t: 'Final Preparation', d: '5+ mocks with average accuracy ≥ 75%',                      f: function (c) { return c.mockSessions >= 5 && c.avg >= 75; } }
+  ];
+  U.roadmap = function (e, sess) {
+    var ctx = { sessions: sess.length, subjectsTouched: 0, pyqSessions: 0, mockSessions: 0, avg: 0 };
+    var sub = {};
+    sess.forEach(function (s) {
+      if (s.category && s.category !== 'All') sub[s.category] = 1;
+      var m = String(s.mode || '') + ' ' + String(s.title || '');
+      if (/pyq/i.test(m)) ctx.pyqSessions++;
+      if (/mock/i.test(m)) ctx.mockSessions++;
+    });
+    ctx.subjectsTouched = Object.keys(sub).length;
+    ctx.avg = sess.length ? Math.round(sess.reduce(function (a, s) { return a + (s.score || 0); }, 0) / sess.length) : 0;
+    var cur = false;
+    return U.ROADMAP.map(function (st) {
+      var done = !!st.f(ctx); var isCur = !done && !cur; if (isCur) cur = true;
+      return { t: st.t, d: st.d, done: done, current: isCur };
+    });
+  };
+
+  /* ═══ LANDING — #brainlab/exams → ORGANIZATIONS (real counts) ═══ */
   U.renderLanding = function () {
     var c = document.getElementById('bl-sec-exams-body'); if (!c) return;
-    var QB = window.STUDYRIA_QB || [];
-    var pyqAll = 0, seen = {};
-    QB.forEach(function (q) { var k = String(String(q[0]).slice(0, 60) + q[5]); if (!seen[k]) { seen[k] = 1; if (String(q[17]).toUpperCase() === 'PYQ') pyqAll++; } });
-    var impPyq = 0; Object.keys(U._imp).forEach(function (k) { impPyq += (U._imp[k].rows || []).filter(function (r) { return r[17] === 'PYQ'; }).length; });
+    var seen = {}, qn = 0, pyqAll = 0;
+    (window.STUDYRIA_QB || []).forEach(function (q) { var k = String(String(q[0]).slice(0, 60) + q[5]); if (!seen[k]) { seen[k] = 1; qn++; if (String(q[17]).toUpperCase() === 'PYQ') pyqAll++; } });
+    Object.keys(U._imp).forEach(function (k) { (U._imp[k].rows || []).forEach(function (r) { var kk = String(String(r[0]).slice(0, 60) + r[5]); if (!seen[kk]) { seen[kk] = 1; qn++; if (r[17] === 'PYQ') pyqAll++; } }); });
     var stats = [
-      ['🎯', 'Exams', hub().length],
-      ['📝', 'Mock Tests', (window.SM || []).length],
-      ['🧩', 'Questions', Object.keys(seen).length + Object.keys(U._imp).reduce(function (a, k) { return a + (U._imp[k].rows || []).length; }, 0)],
-      ['📚', 'PYQs', pyqAll + impPyq]
+      ['🏢', 'Organizations', U.ORGS.length],
+      ['🎯', 'Exams', allExams().length],
+      ['🧩', 'Questions', qn],
+      ['📚', 'PYQs', pyqAll]
     ];
     var pdfN = (window.PDFS || []).filter(function (p) { return p && p.title; }).length;
     if (pdfN) stats.push(['📄', 'Study PDFs', pdfN]);
-
     var h = '<div class="bl-eu-hero"><div class="bl-eu-h-title">🎯 Exam Universe</div>'
-      + '<div class="bl-eu-h-sub">Everything you need to prepare for your exam — tests, PYQs, papers, practice and study resources in one place.</div>'
+      + '<div class="bl-eu-h-sub">Choose your exam and build a focused preparation plan — pick an organization, open your exam and get mocks, PYQs, papers, subjects and progress in one dedicated hub.</div>'
       + '<div class="bl-eu-stats">';
     stats.forEach(function (s) { h += '<div class="bl-eu-stat"><span class="bl-eu-stat-ic">' + s[0] + '</span><span class="bl-eu-stat-n">' + s[2].toLocaleString() + '</span><span class="bl-eu-stat-l">' + s[1] + '</span></div>'; });
-    h += '</div><input type="search" class="bl-eu-search" id="bl-eu-search" placeholder="Search exams…" aria-label="Search exams"></div>'
-      + '<div class="bl-eu-grid" id="bl-eu-grid"></div>';
+    h += '</div><input type="search" class="bl-eu-search" id="bl-eu-search" placeholder="Search organizations or exams…" aria-label="Search organizations or exams"></div>'
+      + '<div class="bl-eu-mini" style="margin:0 0 6px">🏢 Organizations</div>'
+      + '<div class="bl-eu-grid" id="bl-eu-orgs"></div>'
+      + '<div id="bl-eu-examresults"></div>';
     c.innerHTML = h;
-    U._renderGrid('');
+    U._renderOrgs('');
     var inp = document.getElementById('bl-eu-search');
-    if (inp) inp.addEventListener('input', function () { U._renderGrid(inp.value); });
+    if (inp) inp.addEventListener('input', function () { U._renderOrgs(inp.value); });
   };
 
-  U._renderGrid = function (q) {
-    var g = document.getElementById('bl-eu-grid'); if (!g) return;
+  U._orgStats = function (o) {
+    var seenQ = {}, n = 0, pyq = 0, mocks = 0, exN = 0;
+    o.exams.forEach(function (id) {
+      var e = findExam(id); if (!e) return;
+      exN++;
+      U.pool(e).forEach(function (q) {
+        var k = String(String(q[0]).slice(0, 60) + q[5]);
+        if (seenQ[k]) return;
+        seenQ[k] = 1; n++;
+        if (String(q[17]).toUpperCase() === 'PYQ') pyq++;
+      });
+      mocks += U.mockCount(e);
+    });
+    return { exN: exN, n: n, pyq: pyq, mocks: mocks };
+  };
+
+  U._orgCard = function (o) {
+    var s = U._orgStats(o);
+    return '<div class="bl-eu-card" onclick="BrainLabUniverse.openOrg(\'' + o.id + '\', true)">'
+      + '<div class="bl-eu-card-top"><span class="bl-eu-card-ic">' + o.ic + '</span><div><div class="bl-eu-card-name">' + esc(o.name) + '</div>'
+      + '<div class="bl-eu-card-desc">' + esc(o.desc) + '</div></div><span class="bl-eu-arrow">›</span></div>'
+      + '<div class="bl-eu-card-stats">'
+      + '<span>' + s.exN + ' exam' + (s.exN === 1 ? '' : 's') + '</span>'
+      + '<span>' + s.n.toLocaleString() + ' questions</span>'
+      + (s.pyq ? '<span>' + s.pyq + ' PYQs</span>' : '')
+      + (s.mocks ? '<span>' + s.mocks + ' mocks</span>' : '')
+      + '</div></div>';
+  };
+
+  U._examCard = function (e) {
+    var r = { n: U.pool(e).length, pyq: U.pyqPool(e).length, mocks: U.mockCount(e), pdfs: examPDFs(e).length };
+    var o = orgOf(e.id);
+    return '<div class="bl-eu-card" onclick="BrainLabUniverse.openExam(\'' + e.id + '\', true)">'
+      + '<div class="bl-eu-card-top"><span class="bl-eu-card-ic">🎯</span><div><div class="bl-eu-card-name">' + esc(e.name) + '</div>'
+      + '<div class="bl-eu-card-desc">' + esc(e.desc) + (o ? ' · ' + esc(o.name) : '') + '</div></div><span class="bl-eu-arrow">›</span></div>'
+      + '<div class="bl-eu-card-stats">'
+      + '<span>' + r.n.toLocaleString() + ' questions</span>'
+      + (r.pyq ? '<span>' + r.pyq + ' PYQ' + (r.pyq === 1 ? '' : 's') + '</span>' : '')
+      + (r.mocks ? '<span>' + r.mocks + ' mock' + (r.mocks === 1 ? '' : 's') + '</span>' : '')
+      + (r.pdfs ? '<span>' + r.pdfs + ' PDF' + (r.pdfs === 1 ? '' : 's') + '</span>' : '')
+      + '</div></div>';
+  };
+
+  U._renderOrgs = function (q) {
+    var g = document.getElementById('bl-eu-orgs'); if (!g) return;
+    var res = document.getElementById('bl-eu-examresults');
     q = String(q || '').toLowerCase().trim();
-    var rows = hub().map(function (e) {
-      return { e: e, n: U.pool(e).length, pyq: U.pyqPool(e).length, mocks: U.mockSeries(e).length, pdfs: examPDFs(e).length };
-    });
-    if (q) rows = rows.filter(function (r) { return (r.e.name + ' ' + r.e.desc + ' ' + r.e.subjects.join(' ')).toLowerCase().indexOf(q) !== -1; });
-    if (!rows.length) { g.innerHTML = '<div class="bl-eu-empty">No exams match “' + esc(q) + '”.</div>'; return; }
-    var h = '';
-    rows.sort(function (a, b) { return b.n - a.n; }).forEach(function (r) {
-      var e = r.e;
-      h += '<div class="bl-eu-card" onclick="BrainLabUniverse.openExam(\'' + e.id + '\', true)">'
-        + '<div class="bl-eu-card-top"><span class="bl-eu-card-ic">🎯</span><div><div class="bl-eu-card-name">' + esc(e.name) + '</div>'
-        + '<div class="bl-eu-card-desc">' + esc(e.desc) + '</div></div><span class="bl-eu-arrow">›</span></div>'
-        + '<div class="bl-eu-card-stats">'
-        + '<span>' + r.n.toLocaleString() + ' questions</span>'
-        + (r.pyq ? '<span>' + r.pyq + ' PYQ' + (r.pyq === 1 ? '' : 's') + '</span>' : '')
-        + (r.mocks ? '<span>' + r.mocks + ' mock' + (r.mocks === 1 ? '' : 's') + '</span>' : '')
-        + (r.pdfs ? '<span>' + r.pdfs + ' PDF' + (r.pdfs === 1 ? '' : 's') + '</span>' : '')
-        + '</div><div class="bl-eu-card-sub">' + esc(e.subjects.slice(0, 4).join(' · ')) + '</div></div>';
-    });
-    g.innerHTML = h;
+    if (!q) {
+      if (res) res.innerHTML = '';
+      g.innerHTML = U.ORGS.map(U._orgCard).join('');
+      return;
+    }
+    var oh = '';
+    U.ORGS.forEach(function (o) { if ((o.name + ' ' + o.desc).toLowerCase().indexOf(q) !== -1) oh += U._orgCard(o); });
+    g.innerHTML = oh || '<div class="bl-eu-empty">No organizations match “' + esc(q) + '”.</div>';
+    if (!res) return;
+    var exams = allExams().filter(function (e) { return (e.name + ' ' + e.desc + ' ' + e.subjects.join(' ')).toLowerCase().indexOf(q) !== -1; });
+    res.innerHTML = exams.length
+      ? '<div class="bl-eu-mini" style="margin:12px 0 6px">🎯 Matching exams</div><div class="bl-eu-grid">' + exams.map(U._examCard).join('') + '</div>'
+      : '';
   };
 
-  /* ═════════ DETAIL — #brainlab/exams/<id> ═════════ */
+  /* ═══ ORGANIZATION PAGE — #brainlab/exams/org/<id> → real exams ═══ */
+  U.openOrg = function (id, push) {
+    var o = U.ORGS.filter(function (g) { return g.id === id; })[0];
+    if (!o) { U.renderLanding(); return; }
+    if (push !== false) { location.hash = '#brainlab/exams/org/' + id; return; }
+    var c = document.getElementById('bl-sec-exams-body'); if (!c) return;
+    var cards = o.exams.map(function (eid) { var e = findExam(eid); return e ? U._examCard(e) : ''; }).join('');
+    var h = '<button class="bl-eu-back" onclick="BrainLabUniverse.back()">← Exam Universe</button>'
+      + '<div class="bl-eu-hero"><div class="bl-eu-h-title">' + o.ic + ' ' + esc(o.name) + '</div>'
+      + '<div class="bl-eu-h-sub">' + esc(o.desc) + ' — choose your exam to open its complete preparation hub.</div></div>'
+      + '<div class="bl-eu-mini" style="margin:0 0 6px">🎯 Available Exams</div>'
+      + '<div class="bl-eu-grid">' + cards + '</div>';
+    c.innerHTML = h;
+    var top = document.getElementById('blv8-exams');
+    if (top) top.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  U._to = function (id) { var el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+
+  /* ═══ EXAM PREPARATION HUB — #brainlab/exams/<id> ═══ */
   U.openExam = function (id, push) {
     var e = findExam(id); if (!e) { U.renderLanding(); return; }
     if (push !== false) { location.hash = '#brainlab/exams/' + id; return; }
@@ -210,9 +392,10 @@
 
     var pool = U.pool(e), pyq = U.pyqPool(e), mocks = U.mockSeries(e), key = examKey(id);
     var sess = (bl.getSessions() || []).filter(function (s) { return s.exam === key; });
-    U._e = e; U._pyqPool = pyq; U._mocks = mocks;
+    var yrs = pyqYears(pyq);
+    U._e = e; U._pyqPool = pyq; U._mocks = mocks; U._pyqYears = yrs.length ? yrs : [];
 
-    var h = '<button class="bl-eu-back" onclick="BrainLabUniverse.back()">← Exam Universe</button>';
+    var h = '<button class="bl-eu-back" onclick="BrainLabUniverse.back()">← ' + (orgOf(id) ? esc(orgOf(id).name) : 'Exam Universe') + '</button>';
     h += '<div class="bl-eu-hero"><div class="bl-eu-h-title">🎯 ' + esc(e.name) + '</div>'
       + '<div class="bl-eu-h-sub">' + esc(e.desc) + ' — complete preparation hub.</div>'
       + '<div class="bl-eu-badges">'
@@ -223,8 +406,11 @@
       + '<div class="bl-eu-stat"><span class="bl-eu-stat-ic">🧩</span><span class="bl-eu-stat-n">' + pool.length.toLocaleString() + '</span><span class="bl-eu-stat-l">Questions</span></div>'
       + '<div class="bl-eu-stat"><span class="bl-eu-stat-ic">📚</span><span class="bl-eu-stat-n">' + pyq.length + '</span><span class="bl-eu-stat-l">PYQs</span></div>'
       + '<div class="bl-eu-stat"><span class="bl-eu-stat-ic">📝</span><span class="bl-eu-stat-n">' + mocks.length + '</span><span class="bl-eu-stat-l">Mocks</span></div>'
+      + (yrs.length ? '<div class="bl-eu-stat"><span class="bl-eu-stat-ic">📄</span><span class="bl-eu-stat-n">' + yrs.length + '</span><span class="bl-eu-stat-l">Paper Years</span></div>' : '')
       + '<div class="bl-eu-stat" id="bl-eu-pdfstat" style="display:none"></div>'
-      + '</div></div>';
+      + '</div>'
+      + (e._variant ? '<div class="bl-eu-meta">ℹ️ A dedicated ' + esc(e.name) + ' question set is being curated — practice currently draws from the complete ' + esc((findExam(e._base) || {}).name || 'base exam') + ' pool.</div>' : '')
+      + '</div>';
 
     /* resource filter chips (anchor scroll — NOT a navigation system) */
     h += '<div class="bl-eu-chips"><button onclick="BrainLabUniverse._to(\'bl-eu-sec-prog\')">All</button>'
@@ -265,6 +451,8 @@
       h += '<div class="bl-eu-continue"><div><div class="bl-eu-card-name">' + esc(s.title || 'Practice') + '</div>'
         + '<div class="bl-eu-card-desc">Last attempted · ' + (s.score || 0) + '% accuracy</div></div>'
         + '<button class="bl-eu-btn" onclick="BrainLab.retrySession(\'' + esc(s.id) + '\')">CONTINUE</button></div>';
+    } else {
+      h += '<div class="bl-eu-empty">Start your first practice session.</div>';
     }
     h += '<div class="bl-eu-continue"><div><div class="bl-eu-card-name">⚡ Today\'s ' + esc(e.name) + ' Practice</div>'
       + '<div class="bl-eu-card-desc">10 exam-focused questions, fresh every day</div></div>'
@@ -272,7 +460,14 @@
         : '<button class="bl-eu-btn" onclick="BrainLabUniverse.startDaily(\'' + e.id + '\')">START</button>')
       + '</div></div>';
 
-    /* ── Mock Tests: 10 distinct mocks from real pool ── */
+    /* ── Quick Practice ── */
+    h += '<div class="bl-eu-quick" id="bl-eu-sec-quick"><div class="bl-eu-sec-t">⚡ Quick Practice</div>'
+      + '<div class="bl-eu-card-desc">Have a few minutes? Start a quick exam-focused session.</div>'
+      + '<div class="bl-eu-quick-btns">'
+      + [10, 25, 50].map(function (k) { return '<button class="bl-eu-btn" onclick="BrainLab.startQuizSession({mode:\'quiz\',title:\'' + esc(e.name) + ' Quick ' + k + '\',questions:' + k + ',exam:\'' + key + '\'})">QUICK ' + k + '</button>'; }).join('')
+      + '</div></div>';
+
+    /* ── Mock Tests: distinct mocks from real pool ── */
     h += '<div class="bl-eu-sec" id="bl-eu-sec-tests"><div class="bl-eu-sec-t">📝 Mock Tests</div>'
       + '<div class="bl-eu-sec-s">' + mocks.length + ' distinct full mocks — each built from a unique, non-overlapping set of the ' + pool.length.toLocaleString() + '-question real pool. Timed 1 min/question, auto-submit, review & analytics.</div>';
     if (mocks.length) {
@@ -285,28 +480,20 @@
       });
       h += '</div>';
     } else {
-      h += '<div class="bl-eu-empty">Not enough questions in this exam pool yet to build a mock series.</div>';
+      h += '<div class="bl-eu-empty">Not enough questions in this exam pool yet to build a mock series — import verified questions via Admin → BrainLab Manager to unlock mocks.</div>';
     }
     h += '</div>';
 
-    /* ── Quick Practice ── */
-    h += '<div class="bl-eu-quick" id="bl-eu-sec-quick"><div class="bl-eu-sec-t">⚡ Quick Practice</div>'
-      + '<div class="bl-eu-card-desc">Have a few minutes? Start a quick exam-focused session.</div>'
-      + '<div class="bl-eu-quick-btns">'
-      + [10, 25, 50].map(function (k) { return '<button class="bl-eu-btn" onclick="BrainLab.startQuizSession({mode:\'quiz\',title:\'' + esc(e.name) + ' Quick ' + k + '\',questions:' + k + ',exam:\'' + key + '\'})">QUICK ' + k + '</button>'; }).join('')
-      + '</div></div>';
-
-    /* ── PYQ Practice ── */
+    /* ── PYQ Practice (year / subject) ── */
     h += '<div class="bl-eu-sec" id="bl-eu-sec-pyq"><div class="bl-eu-sec-t">📚 PYQ Practice</div>';
     if (pyq.length) {
-      var yrs = pyqYears(pyq), subs = pyqSubjects(pyq);
+      var subs = pyqSubjects(pyq);
       h += '<div class="bl-eu-sec-s">' + pyq.length + ' verified PYQ' + (pyq.length === 1 ? '' : 's') + ' mapped to this exam'
         + (yrs.length ? ' · Years: ' + yrs.join(', ') : '') + '</div>'
         + '<div class="bl-eu-btns2" style="margin-bottom:8px">'
         + '<button class="bl-eu-btn" onclick="BrainLabUniverse.startPyq(0)">PRACTICE ALL</button>'
         + '<button class="bl-eu-btn bl-eu-btn2" onclick="BrainLabPages.go(\'pyq\')">PYQ HUB</button></div>';
       if (yrs.length > 1) {
-        U._pyqYears = yrs;
         h += '<div class="bl-eu-mini">By year:</div><div class="bl-eu-chips">' + yrs.map(function (y, i) { return '<button onclick="BrainLabUniverse.startPyqYear(' + i + ')">' + y + '</button>'; }).join('') + '</div>';
       }
       if (subs.length > 1) {
@@ -318,10 +505,23 @@
     }
     h += '</div>';
 
+    /* ── Previous Year Question Papers (year-grouped real PYQs + canonical PDFs) ── */
+    h += '<div class="bl-eu-sec" id="bl-eu-sec-papers"><div class="bl-eu-sec-t">📄 Previous Year Papers</div>';
+    if (yrs.length) {
+      h += '<div class="bl-eu-sec-s">Real mapped PYQs grouped by exam year — practice a full year\'s paper.</div>';
+      yrs.forEach(function (y, i) {
+        var n = pyqCountIn(pyq, y);
+        h += '<div class="bl-eu-testrow"><div><div class="bl-eu-card-name">' + esc(e.name) + ' ' + y + '</div>'
+          + '<div class="bl-eu-card-desc">' + n + ' previous year question' + (n === 1 ? '' : 's') + ' mapped</div></div>'
+          + '<button class="bl-eu-btn" onclick="BrainLabUniverse.startPyqYear(' + i + ')">PRACTICE</button></div>';
+      });
+    }
+    if (e.id === 'adre' || e.id === 'adre4' || (e._base === 'adre') || (e._base === 'adre4')) {
+      h += '<div class="bl-eu-testrow"><div><div class="bl-eu-card-name">🏛️ ADRE Official Previous Year Papers</div><div class="bl-eu-card-desc">Verified official papers with answer keys — full practice page</div></div><button class="bl-eu-btn" onclick="navigate(\'adre-papers\')">OPEN</button></div>';
+    }
+    h += '<div id="bl-eu-papers-body"></div></div>';
+
     /* ── Question Papers + Study Materials (async canonical PDF flow) ── */
-    h += '<div class="bl-eu-sec" id="bl-eu-sec-papers"><div class="bl-eu-sec-t">📄 Previous Year Question Papers</div>'
-      + ((e.id === 'adre' || e.id === 'adre4') ? '<div class="bl-eu-testrow"><div><div class="bl-eu-card-name">🏛️ ADRE Official Previous Year Papers</div><div class="bl-eu-card-desc">Verified official papers with answer keys — full practice page</div></div><button class="bl-eu-btn" onclick="navigate(\'adre-papers\')">OPEN</button></div>' : '')
-      + '<div class="bl-eu-empty" id="bl-eu-papers-body">Loading…</div></div>';
     h += '<div class="bl-eu-sec" id="bl-eu-sec-mats"><div class="bl-eu-sec-t">📚 Study Materials</div><div class="bl-eu-empty" id="bl-eu-mats-body">Loading…</div></div>';
 
     /* ── Subject-wise ── */
@@ -337,6 +537,33 @@
       });
       h += '</div>';
     } else { h += '<div class="bl-eu-empty">No mapped subjects yet.</div>'; }
+    h += '</div>';
+
+    /* ── Mistake Book (exam-scoped, real wrong answers) ── */
+    var mist = (bl.getMistakes() || []).filter(function (m) {
+      return e.subjects.indexOf(m.topic) !== -1 || e.subjects.indexOf(m.category) !== -1;
+    });
+    h += '<div class="bl-eu-sec"><div class="bl-eu-sec-t">❌ My Mistakes</div>';
+    if (mist.length) {
+      h += '<div class="bl-eu-testrow"><div><div class="bl-eu-card-name">' + mist.length + ' question' + (mist.length === 1 ? '' : 's') + ' to review</div>'
+        + '<div class="bl-eu-card-desc">Wrong answers from this exam\'s subjects — practice until mastered</div></div>'
+        + '<div class="bl-eu-btns2"><button class="bl-eu-btn" onclick="BrainLab.retryMistakes()">PRACTICE</button>'
+        + '<button class="bl-eu-btn bl-eu-btn2" onclick="BrainLabPages.go(\'mistakes\')">VIEW ALL</button></div></div>';
+    } else {
+      h += '<div class="bl-eu-empty">No mistakes recorded yet — wrong answers in practice are saved here automatically.</div>';
+    }
+    h += '</div>';
+
+    /* ── Saved Questions (🔖 from any review) ── */
+    var saved = U.savedList(e);
+    h += '<div class="bl-eu-sec"><div class="bl-eu-sec-t">🔖 Saved Questions</div>';
+    if (saved.n) {
+      h += '<div class="bl-eu-testrow"><div><div class="bl-eu-card-name">' + saved.n + ' saved question' + (saved.n === 1 ? '' : 's') + ' from this exam</div>'
+        + '<div class="bl-eu-card-desc">Tap 🔎 Save on any question in a test review to bookmark it here</div></div>'
+        + '<button class="bl-eu-btn" onclick="BrainLabUniverse.practiceSaved(\'' + e.id + '\')">PRACTICE</button></div>';
+    } else {
+      h += '<div class="bl-eu-empty">No saved questions yet — finish a test and tap 🔖 Save on any question in the review to keep it for revision.</div>';
+    }
     h += '</div>';
 
     /* ── Current Affairs ── */
@@ -359,8 +586,19 @@
     } else { h += '<div class="bl-eu-empty">Syllabus data not published yet.</div>'; }
     h += '</div>';
 
-    /* ── Exam Pattern (honest — only when admin publishes) ── */
-    h += '<div class="bl-eu-sec"><div class="bl-eu-sec-t">📝 Exam Pattern</div><div class="bl-eu-empty">Official pattern data has not been published for this exam yet. Verified details will appear here.</div></div>';
+    /* ── Exam Pattern (honest — only when published) ── */
+    h += '<div class="bl-eu-sec"><div class="bl-eu-sec-t">📝 Exam Pattern</div><div class="bl-eu-empty">Exam pattern information will be updated soon — official details will appear here once published.</div></div>';
+
+    /* ── Preparation Roadmap (registry-driven, real completion) ── */
+    var road = U.roadmap(e, sess);
+    h += '<div class="bl-eu-sec"><div class="bl-eu-sec-t">📅 Preparation Roadmap</div>'
+      + '<div class="bl-eu-sec-s">Suggested stages for ' + esc(e.name) + ' — progress is calculated from your real activity.</div><div class="bl-eu-road">';
+    road.forEach(function (st, i) {
+      h += '<div class="bl-eu-road-st ' + (st.done ? 'done' : (st.current ? 'cur' : '')) + '">'
+        + '<div class="bl-eu-road-dot">' + (st.done ? '✓' : (i + 1)) + '</div>'
+        + '<div><div class="bl-eu-card-name">' + esc(st.t) + '</div><div class="bl-eu-card-desc">' + esc(st.d) + '</div></div></div>';
+    });
+    h += '</div></div>';
 
     /* ── Weak Areas (hidden when insufficient data) ── */
     var weak = U.weakAreas(e);
@@ -397,6 +635,7 @@
     /* ── About ── */
     h += '<div class="bl-eu-sec"><div class="bl-eu-sec-t">ℹ️ About This Exam</div>'
       + '<div class="bl-eu-about"><div><span class="bl-eu-ab-l">Exam</span> ' + esc(e.name) + '</div>'
+      + (orgOf(id) ? '<div><span class="bl-eu-ab-l">Organization</span> ' + esc(orgOf(id).name) + '</div>' : '')
       + '<div><span class="bl-eu-ab-l">Focus</span> ' + esc(e.desc) + '</div>'
       + '<div><span class="bl-eu-ab-l">Subjects</span> ' + esc(e.subjects.join(', ')) + '</div></div></div>';
 
@@ -406,15 +645,13 @@
     if (top) top.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  U._to = function (id) { var el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
-
   /* ── PYQ starters (pool injection → existing engine) ── */
   U.startPyq = function (mode) {
     var bl = B(); if (!bl || !U._pyqPool || !U._pyqPool.length) return;
     bl.showCountPicker({ title: (U._e ? U._e.name : '') + ' PYQ Practice', category: 'All', pool: U._pyqPool, mode: 'pyq' });
   };
   U.startPyqYear = function (i) {
-    var y = (U._pyqYears || [])[i]; var bl = B(); if (!bl) return;
+    var y = (U._pyqYears || [])[i]; var bl = B(); if (!bl || !y) return;
     var p = (U._pyqPool || []).filter(function (q) { return String(q[18] || '').indexOf(y) !== -1; });
     if (!p.length) { bl.toast('No PYQs for ' + y); return; }
     bl.showCountPicker({ title: (U._e ? U._e.name : '') + ' PYQ — ' + y, category: 'All', pool: p, mode: 'pyq' });
@@ -442,7 +679,9 @@
           + '<span class="bl-eu-arrow">›</span></div>';
       }
       var pb = document.getElementById('bl-eu-papers-body'), mb = document.getElementById('bl-eu-mats-body');
-      if (pb) pb.innerHTML = papers.length ? papers.map(cardHTML).join('') : '<div class="bl-eu-empty">No question papers published yet.</div>';
+      if (pb) pb.innerHTML = papers.length
+        ? '<div class="bl-eu-mini" style="margin-top:8px">📄 Question paper PDFs</div>' + papers.map(cardHTML).join('')
+        : '<div class="bl-eu-empty" style="margin-top:8px">No question paper PDFs published yet.</div>';
       if (mb) mb.innerHTML = mats.length ? mats.map(cardHTML).join('') : '<div class="bl-eu-empty">No study materials published yet.</div>';
       var st = document.getElementById('bl-eu-pdfstat');
       if (st && list.length) { st.style.display = ''; st.innerHTML = '<span class="bl-eu-stat-ic">📄</span><span class="bl-eu-stat-n">' + list.length + '</span><span class="bl-eu-stat-l">PDFs</span>'; }
@@ -461,7 +700,13 @@
   };
 
   /* ── controls ── */
-  U.back = function () { location.hash = '#brainlab/exams'; };
+  U.back = function () {
+    var hh = location.hash || '';
+    if (hh.indexOf('#brainlab/exams/org/') === 0) { location.hash = '#brainlab/exams'; return; }
+    var em = hh.match(/#brainlab\/exams\/([a-z0-9-]+)/);
+    if (em) { var o = orgOf(em[1]); if (o) { location.hash = '#brainlab/exams/org/' + o.id; return; } }
+    location.hash = '#brainlab/exams';
+  };
   U.practiceSubject = function (i) {
     var bl = B(), r = (U._subjRows || [])[i]; if (!bl || !r) return;
     bl.showCountPicker({ title: r.s, category: r.s, pool: bl.filterQuestions({ category: r.s }), mode: 'quiz' });
@@ -471,12 +716,17 @@
     bl.showCountPicker({ title: cat, category: cat, pool: bl.filterQuestions({ category: cat }), mode: 'quiz' });
   };
 
-  /* boot: refresh imported questions when BrainLab route opens */
+  /* boot: refresh imported questions when a Universe route opens */
   var _origRenderLanding = U.renderLanding;
   U.renderLanding = function () { U.fetchImported(function () { _origRenderLanding(); }); };
   var _origOpen = U.openExam;
   U.openExam = function (id, push) {
     if (push !== false) return _origOpen(id, push);
     U.fetchImported(function () { _origOpen(id, push); });
+  };
+  var _origOrg = U.openOrg;
+  U.openOrg = function (id, push) {
+    if (push !== false) return _origOrg(id, push);
+    U.fetchImported(function () { _origOrg(id, push); });
   };
 })();
