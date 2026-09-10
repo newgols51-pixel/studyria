@@ -126,3 +126,45 @@ body.bl-tp-open { overflow: hidden; }
 @media (min-width: 700px) {
   #bl-act-page .bl-tp-body { max-width: 720px; margin: 0 auto; width: 100%; }
 }
+
+/* ═══ Fix: Quiz/MCQ/PYQ/Daily/Affairs player card matches Paper Cream page
+   (was hardcoded white, clashing with the cream dedicated-page background) ═══ */
+#bl-act-page .bl-quiz-player,
+#bl-tp-page .bl-quiz-player {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-bottom: 0;
+}
+
+/* ═══ Fix: Next/Skip/Prev buttons were forced full-width + stacked on mobile,
+   making "Next" look oversized. Match the mock test page's compact pill
+   sizing (wrap naturally, no forced 100% width, Next only slightly wider). ═══ */
+#bl-act-page .bl-qp-actions,
+#bl-tp-page .bl-qp-actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+#bl-act-page .bl-qp-btn,
+#bl-tp-page .bl-qp-btn {
+  width: auto;
+  flex: 1 1 auto;
+  min-width: 120px;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+}
+#bl-act-page .bl-qp-actions .bl-qp-next,
+#bl-tp-page .bl-qp-actions .bl-qp-next {
+  flex: 1.4 1 140px;
+  min-width: 140px;
+}
+#bl-act-page .bl-qp-skip,
+#bl-tp-page .bl-qp-skip {
+  margin-left: 0;
+}
+@media (max-width: 359px) {
+  #bl-act-page .bl-qp-btn,
+  #bl-tp-page .bl-qp-btn { min-width: 100px; font-size: 0.78rem; padding: 10px 12px; }
+  #bl-act-page .bl-qp-actions .bl-qp-next,
+  #bl-tp-page .bl-qp-actions .bl-qp-next { min-width: 120px; }
+}
