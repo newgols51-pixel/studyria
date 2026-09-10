@@ -280,13 +280,38 @@
       + '<div style="display:flex;gap:8px;margin:8px 0"><button class="bl-ei-btn" onclick="BrainLabExamAdmin.paste()">PARSE &amp; PREVIEW</button>'
       + '<a class="bl-ei-btn ghost" download="exam-import-template.csv" href="data:text/csv;charset=utf-8,' + encodeURIComponent('question,opt_a,opt_b,opt_c,opt_d,answer,subject,topic,difficulty,explanation,source,year,paper,is_pyq\nWhich city is Assam\'s capital?,"Dispur","Guwahati","Jorhat","Silchar",a,General Knowledge,Assam GK,easy,"Dispur is the capital region of Guwahati.",ADRE,2024,Paper 1,true') + '">⬇ CSV template</a></div>'
       + '<div id="bl-ei-preview"></div><div id="bl-ei-msg" class="bl-ei-msg"></div>'
-      + '<h3 style="margin:18px 0 8px;font-size:.95rem;font-weight:800">🏛️ Exam Cycles</h3><div id="bl-ei-cycles"></div><div id="bl-ei-cycleform" style="display:none"></div>'      + '<h3 style="margin:18px 0 8px;font-size:.95rem;font-weight:800">🗂 Existing imported questions</h3>'
+      + '<h3 style="margin:18px 0 8px;font-size:.95rem;font-weight:800">🏛️ Exam Cycles</h3><div id="bl-ei-cycles"></div><div id="bl-ei-cycleform" style="display:none"></div>'
+      + '<h3 style="margin:18px 0 8px;font-size:.95rem;font-weight:800">📝 Mock Package Status</h3><div id="bl-ei-mocks"></div>'      + '<h3 style="margin:18px 0 8px;font-size:.95rem;font-weight:800">🗂 Existing imported questions</h3>'
       + '<div style="display:flex;gap:8px;margin-bottom:8px"><button class="bl-ei-btn ghost" onclick="BrainLabExamAdmin.loadList()">↻ Refresh</button>'
       + '<button class="bl-ei-btn" onclick="BrainLabExamAdmin.verifyAll()">✅ Verify all pending</button></div>'
       + '<div id="bl-ei-list"></div>';
     A.renderList();
     A.loadList();
     A.loadCycles();
+    A.renderMocks();
+  };
+
+  /* ── Mock Package Status — live allocation from the real bank (no fabricated data) ── */
+  A.renderMocks = function () {
+    var el = document.getElementById('bl-ei-mocks'); if (!el) return;
+    var U2 = window.BrainLabUniverse, V7 = window.BrainLabV7;
+    if (!U2 || !V7 || !U2.mockSeries || !U2.pool) { el.innerHTML = '<div class="bl-ei-empty">Exam Universe data not loaded yet — open the BrainLab page first.</div>'; return; }
+    var h = '<div style="font-size:.62rem;opacity:.75;margin:2px 0 8px">Live allocation from the verified question bank. Mocks are distinct non-overlapping seeded sets per exam. A package is marked incomplete when the verified pool cannot support 10 distinct mocks — grow it via import above.</div>';
+    V7.EXAM_HUB.forEach(function (e) {
+      var exams = [{ id: e.id, name: e.name }].concat(Object.keys(U2.VARIANTS).filter(function (v) { return U2.VARIANTS[v].base === e.id; }).map(function (v) { return { id: v, name: U2.VARIANTS[v].name }; }));
+      exams.forEach(function (x) {
+        var ex = U2.findExam ? U2.findExam(x.id) : null;
+        var pool = ex ? U2.pool(ex) : [], mocks = ex ? U2.mockSeries(ex) : [];
+        var seen = {}, overlap = 0;
+        mocks.forEach(function (m) { m.qs.forEach(function (q) { var k = q[0] + '|' + (q[16] || q[1] || ''); if (seen[k]) overlap++; seen[k] = 1; }); });
+        var complete = mocks.length === 10;
+        h += '<div class="bl-ei-row"><div style="flex:1;min-width:0">'
+          + '<div style="font-size:.74rem;font-weight:700">' + esc(x.name) + '</div>'
+          + '<div style="font-size:.62rem;opacity:.7">Pool: ' + pool.length.toLocaleString() + ' questions · ' + mocks.length + ' mock' + (mocks.length === 1 ? '' : 's') + (mocks[0] ? ' × ' + mocks[0].qs.length + ' MCQs' : '') + ' · overlap: ' + overlap + '</div></div>'
+          + '<span style="font-size:.62rem;font-weight:800;color:' + (complete ? '#15803d' : '#b45309') + '">' + (complete ? '✅ 10/10' : '🟡 ' + mocks.length + '/10') + '</span></div>';
+      });
+    });
+    el.innerHTML = h;
   };
   A.renderPreview = function () {
     var p = document.getElementById('bl-ei-preview'); if (!p) return;

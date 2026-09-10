@@ -163,7 +163,7 @@
     var e = findExam(examId); if (!e) return;
     var m = U.mockSeries(e).filter(function (x) { return x.n === n; })[0];
     var bl = B(); if (!bl || !m) return;
-    bl.showCountPicker({ title: e.name + ' — Full Mock ' + (n < 10 ? '0' + n : n), category: 'All', pool: m.qs, mode: 'mock' });
+    bl.showCountPicker({ title: e.name + ' — Mock Test ' + n, category: 'All', pool: m.qs, mode: 'mock' });
   };
 
   /* ═══ DAILY EXAM PRACTICE — deterministic per-day real questions ═══ */
@@ -527,10 +527,10 @@
     if (mocks.length) {
       h += '<div class="bl-eu-mocks">';
       mocks.forEach(function (m) {
-        var nn = m.n < 10 ? '0' + m.n : m.n;
-        h += '<div class="bl-eu-testrow"><div><div class="bl-eu-card-name">Full Mock ' + nn + '</div>'
-          + '<div class="bl-eu-card-desc">' + m.qs.length + ' questions · ' + m.qs.length + ' min · exam-style</div></div>'
-          + '<button class="bl-eu-btn" onclick="BrainLabUniverse.startMockN(\'' + e.id + '\',' + m.n + ')">START</button></div>';
+        h += '<div class="bl-eu-testrow" style="cursor:pointer" onclick="BrainLabUniverse.startMockN(\'' + e.id + '\',' + m.n + ')"><div>'
+          + '<div class="bl-eu-card-name">' + (org ? org.ic + ' ' : '') + esc(e.name) + ' — Mock Test ' + m.n + '</div>'
+          + '<div class="bl-eu-card-desc">' + m.qs.length + ' Minutes · ' + m.qs.length + ' MCQs · exam-style, auto-submit</div></div>'
+          + '<span class="bl-eu-arrow">›</span></div>';
       });
       h += '</div>';
     } else {
@@ -679,9 +679,9 @@
         + '<button class="bl-eu-btn" onclick="BrainLabUniverse.practiceCategory(\'' + esc(weak[0].cat) + '\')">PRACTICE</button></div>';
     }
     if (mocks.length) {
-      h += '<div class="bl-eu-testrow"><div><div class="bl-eu-card-name">📝 Full Mock 01</div>'
-        + '<div class="bl-eu-card-desc">' + mocks[0].qs.length + '-question exam-style mock</div></div>'
-        + '<button class="bl-eu-btn" onclick="BrainLabUniverse.startMockN(\'' + e.id + '\',1)">START</button></div>';
+      h += '<div class="bl-eu-testrow" style="cursor:pointer" onclick="BrainLabUniverse.startMockN(\'' + e.id + '\',1)"><div><div class="bl-eu-card-name">' + (org ? org.ic + ' ' : '') + esc(e.name) + ' — Mock Test 1</div>'
+        + '<div class="bl-eu-card-desc">' + mocks[0].qs.length + ' Minutes · ' + mocks[0].qs.length + ' MCQs · exam-style</div></div>'
+        + '<span class="bl-eu-arrow">›</span></div>';
     }
     if (pyq.length) {
       h += '<div class="bl-eu-testrow"><div><div class="bl-eu-card-name">📚 PYQ Practice</div>'
@@ -875,6 +875,7 @@
     var top = document.getElementById('blv8-exams');
     if (top) top.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+  U.findExam = findExam; /* export for admin mock-status panel */
   U.startCycPyq = function () {
     var bl = B(); if (!bl || !U._cycPyq || !U._cycPyq.length) return;
     var cy = U._cycPyqCy || null;
