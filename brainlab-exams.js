@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════
-   brainlab-exams.js — STUDYRIA EXAM UNIVERSE v3 (additive layer)
+   brainlab-exams.js — STUDYRIA EXAM UNIVERSE v3.1 (additive layer)
    ════════════════════════════════════════════════════════════════
    BrainLab → Exam Universe → Organizations → Exam → Preparation Hub.
    Data-driven: adding an exam = registry entry, not new code.
@@ -22,7 +22,7 @@
   'use strict';
   function B() { return window.BrainLab; }
   function V7() { return window.BrainLabV7 || {}; }
-  var U = window.BrainLabUniverse = { _imp: {}, _impAt: 0 };
+  var U = window.BrainLabUniverse = { _imp: {}, _impAt: 0, _cycles: [] };
 
   function esc(s) { var bl = B(); return bl ? bl.escape(s) : String(s == null ? '' : s); }
 
@@ -119,6 +119,7 @@
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
     }).then(function (r) { return r.json(); })
       .then(function (res) {
+        U._cycles = (res && res.cycles) || [];
         U._imp = {};
         ((((res && res.ok) && res.questions) || [])).forEach(function (r) {
           var ex = r.exam || 'other';
@@ -371,10 +372,24 @@
     if (push !== false) { location.hash = '#brainlab/exams/org/' + id; return; }
     var c = document.getElementById('bl-sec-exams-body'); if (!c) return;
     var cards = o.exams.map(function (eid) { var e = findExam(eid); return e ? U._examCard(e) : ''; }).join('');
+    var cyc = U.cyclesFor(o.id);
     var h = '<button class="bl-eu-back" onclick="BrainLabUniverse.back()">← Exam Universe</button>'
       + '<div class="bl-eu-hero"><div class="bl-eu-h-title">' + o.ic + ' ' + esc(o.name) + '</div>'
-      + '<div class="bl-eu-h-sub">' + esc(o.desc) + ' — choose your exam to open its complete preparation hub.</div></div>'
-      + '<div class="bl-eu-mini" style="margin:0 0 6px">🎯 Available Exams</div>'
+      + '<div class="bl-eu-h-sub">' + esc(o.desc) + ' — choose a recruitment cycle or open a post-wise exam hub.</div></div>';
+    if (cyc.length) {
+      h += '<div class="bl-eu-mini" style="margin:0 0 6px">🗓️ Exam Cycles</div><div class="bl-eu-grid" style="margin-bottom:16px">';
+      cyc.forEach(function (cy) {
+        var up = cy.status === 'upcoming' || !cy.year;
+        h += '<div class="bl-eu-card" onclick="BrainLabUniverse.openCycle(\'' + cy.id + '\', true)">'
+          + '<div class="bl-eu-card-top"><span class="bl-eu-card-ic">' + (up ? '🟡' : '🏛️') + '</span><div>'
+          + '<div class="bl-eu-card-name">' + esc(cy.cycleName) + '</div>'
+          + '<div class="bl-eu-card-desc">' + (up ? 'Upcoming · Year to be announced' : 'Held in ' + cy.year) + '</div></div>'
+          + '<span class="bl-eu-arrow">›</span></div>'
+          + '<div class="bl-eu-card-stats">' + (up ? '<span>Preparation open</span><span>Coming soon</span>' : '<span>Previous Papers</span><span>Practice</span>') + '</div></div>';
+      });
+      h += '</div>';
+    }
+    h += '<div class="bl-eu-mini" style="margin:0 0 6px">🎯 Post-wise Exams</div>'
       + '<div class="bl-eu-grid">' + cards + '</div>';
     c.innerHTML = h;
     var top = document.getElementById('blv8-exams');
@@ -383,7 +398,47 @@
 
   U._to = function (id) { var el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
 
+  /* ═══ EXAM CYCLES (data-driven from ExamCycle via euLive — no frontend hardcode) ═══ */
+  U.cyclesFor = function (orgId) { return (U._cycles || []).filter(function (c) { return c.organizationId === orgId; }); };
+  U.cycleById = function (id) { return (U._cycles || []).filter(function (c) { return c.id === id; })[0] || null; };
+
+  /* real official paper records — lazy-load the existing ADRE papers config (metadata only) */
+  U._papers = function (cb) {
+    if (window.ADRE_PAPERS && window.ADRE_PAPERS.papers) { cb(window.ADRE_PAPERS.papers || []); return; }
+    window.ADRE_PAPERS = { papers: [] };
+    var s = document.createElement('script');
+    s.src = '/adre-papers-config.js?v=20260827d';
+    s.onload = function () { cb((window.ADRE_PAPERS && window.ADRE_PAPERS.papers) || []); };
+    s.onerror = function () { cb([]); };
+    document.head.appendChild(s);
+  };
+  /* grade/post-level matching — Grade III, Grade IV, Driver, Class VIII stay separate */
+  U.papersForExam = function (id) {
+    if (['adre', 'adre-driver', 'adre4', 'adre4-viii'].indexOf(id) === -1) return [];
+    return ((window.ADRE_PAPERS && window.ADRE_PAPERS.papers) || []).filter(function (p) {
+      var lvl = String(p.level || '') + ' ' + String(p.subtitle || '');
+      if (id === 'adre-driver') return p.grade === 'Grade-III' && /driver/i.test(lvl);
+      if (id === 'adre4-viii') return p.grade === 'Grade-IV' && /class viii/i.test(lvl);
+      if (id === 'adre') return p.grade === 'Grade-III' && !/driver/i.test(lvl);
+      if (id === 'adre4') return p.grade === 'Grade-IV' && !/class viii/i.test(lvl);
+      return false;
+    });
+  };
+  U._cycPyqPool = function (cy) {
+    var org = U.ORGS.filter(function (g) { return g.id === cy.organizationId; })[0] || { exams: [] };
+    var out = [];
+    (org.exams || []).forEach(function (ex) {
+      ((U._imp[ex] || {}).rows || []).forEach(function (r) {
+        if (r[17] !== 'PYQ') return;
+        var ym = String(r[18] || '').match(/(19|20)\d{2}/);
+        if (cy.year && ym && Number(ym[0]) === cy.year) out.push(r);
+      });
+    });
+    return out;
+  };
+
   /* ═══ EXAM PREPARATION HUB — #brainlab/exams/<id> ═══ */
+  /* ═══ EXAM PREPARATION HUB — #brainlab/exams/<id> (§12 order) ═══ */
   U.openExam = function (id, push) {
     var e = findExam(id); if (!e) { U.renderLanding(); return; }
     if (push !== false) { location.hash = '#brainlab/exams/' + id; return; }
@@ -395,7 +450,14 @@
     var yrs = pyqYears(pyq);
     U._e = e; U._pyqPool = pyq; U._mocks = mocks; U._pyqYears = yrs.length ? yrs : [];
 
-    var h = '<button class="bl-eu-back" onclick="BrainLabUniverse.back()">← ' + (orgOf(id) ? esc(orgOf(id).name) : 'Exam Universe') + '</button>';
+    /* PYQ provenance: exam-cycle-matched vs source-year overlap (NEVER conflated) */
+    var org = orgOf(id);
+    var cycles = org ? U.cyclesFor(org.id) : [];
+    var cycPyqN = {};
+    cycles.forEach(function (cy) { cycPyqN[cy.id] = U._cycPyqPool(cy).length; });
+    U._pyqCycles = cycles.filter(function (cy) { return cycPyqN[cy.id] > 0; });
+
+    var h = '<button class="bl-eu-back" onclick="BrainLabUniverse.back()">← ' + (org ? esc(org.name) : 'Exam Universe') + '</button>';
     h += '<div class="bl-eu-hero"><div class="bl-eu-h-title">🎯 ' + esc(e.name) + '</div>'
       + '<div class="bl-eu-h-sub">' + esc(e.desc) + ' — complete preparation hub.</div>'
       + '<div class="bl-eu-badges">'
@@ -406,7 +468,6 @@
       + '<div class="bl-eu-stat"><span class="bl-eu-stat-ic">🧩</span><span class="bl-eu-stat-n">' + pool.length.toLocaleString() + '</span><span class="bl-eu-stat-l">Questions</span></div>'
       + '<div class="bl-eu-stat"><span class="bl-eu-stat-ic">📚</span><span class="bl-eu-stat-n">' + pyq.length + '</span><span class="bl-eu-stat-l">PYQs</span></div>'
       + '<div class="bl-eu-stat"><span class="bl-eu-stat-ic">📝</span><span class="bl-eu-stat-n">' + mocks.length + '</span><span class="bl-eu-stat-l">Mocks</span></div>'
-      + (yrs.length ? '<div class="bl-eu-stat"><span class="bl-eu-stat-ic">📄</span><span class="bl-eu-stat-n">' + yrs.length + '</span><span class="bl-eu-stat-l">Paper Years</span></div>' : '')
       + '<div class="bl-eu-stat" id="bl-eu-pdfstat" style="display:none"></div>'
       + '</div>'
       + (e._variant ? '<div class="bl-eu-meta">ℹ️ A dedicated ' + esc(e.name) + ' question set is being curated — practice currently draws from the complete ' + esc((findExam(e._base) || {}).name || 'base exam') + ' pool.</div>' : '')
@@ -460,13 +521,6 @@
         : '<button class="bl-eu-btn" onclick="BrainLabUniverse.startDaily(\'' + e.id + '\')">START</button>')
       + '</div></div>';
 
-    /* ── Quick Practice ── */
-    h += '<div class="bl-eu-quick" id="bl-eu-sec-quick"><div class="bl-eu-sec-t">⚡ Quick Practice</div>'
-      + '<div class="bl-eu-card-desc">Have a few minutes? Start a quick exam-focused session.</div>'
-      + '<div class="bl-eu-quick-btns">'
-      + [10, 25, 50].map(function (k) { return '<button class="bl-eu-btn" onclick="BrainLab.startQuizSession({mode:\'quiz\',title:\'' + esc(e.name) + ' Quick ' + k + '\',questions:' + k + ',exam:\'' + key + '\'})">QUICK ' + k + '</button>'; }).join('')
-      + '</div></div>';
-
     /* ── Mock Tests: distinct mocks from real pool ── */
     h += '<div class="bl-eu-sec" id="bl-eu-sec-tests"><div class="bl-eu-sec-t">📝 Mock Tests</div>'
       + '<div class="bl-eu-sec-s">' + mocks.length + ' distinct full mocks — each built from a unique, non-overlapping set of the ' + pool.length.toLocaleString() + '-question real pool. Timed 1 min/question, auto-submit, review & analytics.</div>';
@@ -484,45 +538,40 @@
     }
     h += '</div>';
 
-    /* ── PYQ Practice (year / subject) ── */
+    /* ── PYQ Practice — EXAM CYCLE ≠ source year; honest provenance ── */
     h += '<div class="bl-eu-sec" id="bl-eu-sec-pyq"><div class="bl-eu-sec-t">📚 PYQ Practice</div>';
+    if (U._pyqCycles.length) {
+      h += '<div class="bl-eu-sec-s">Verified PYQs mapped to this exam\'s recruitment cycles.</div>'
+        + '<div class="bl-eu-mini">By exam cycle:</div><div class="bl-eu-chips">'
+        + U._pyqCycles.map(function (cy, i) { return '<button onclick="BrainLabUniverse.startPyqCycle(' + i + ')">' + esc(cy.cycleName) + (cy.year ? ' · ' + cy.year : '') + ' (' + cycPyqN[cy.id] + ')</button>'; }).join('')
+        + '</div>';
+    } else if (cycles.length) {
+      h += '<div class="bl-eu-empty">No ' + esc(cycles[0].cycleName.split(' ')[0]) + '-sourced PYQs verified for ' + esc(e.name) + ' yet — exam-cycle PYQs (' + cycles.map(function (cy) { return esc(cy.cycleName); }).join(', ') + ') can be imported via Admin → BrainLab Manager.</div>';
+    }
     if (pyq.length) {
       var subs = pyqSubjects(pyq);
-      h += '<div class="bl-eu-sec-s">' + pyq.length + ' verified PYQ' + (pyq.length === 1 ? '' : 's') + ' mapped to this exam'
-        + (yrs.length ? ' · Years: ' + yrs.join(', ') : '') + '</div>'
+      h += '<div class="bl-eu-sec-s">' + pyq.length + ' PYQ' + (pyq.length === 1 ? '' : 's') + ' currently available for practice via syllabus overlap.</div>'
         + '<div class="bl-eu-btns2" style="margin-bottom:8px">'
         + '<button class="bl-eu-btn" onclick="BrainLabUniverse.startPyq(0)">PRACTICE ALL</button>'
         + '<button class="bl-eu-btn bl-eu-btn2" onclick="BrainLabPages.go(\'pyq\')">PYQ HUB</button></div>';
-      if (yrs.length > 1) {
-        h += '<div class="bl-eu-mini">By year:</div><div class="bl-eu-chips">' + yrs.map(function (y, i) { return '<button onclick="BrainLabUniverse.startPyqYear(' + i + ')">' + y + '</button>'; }).join('') + '</div>';
+      if (yrs.length) {
+        h += '<div class="bl-eu-mini">By source year (question provenance — NOT exam cycles):</div><div class="bl-eu-chips">'
+          + yrs.map(function (y, i) { return '<button onclick="BrainLabUniverse.startPyqYear(' + i + ')">' + y + '</button>'; }).join('') + '</div>'
+          + '<div class="bl-eu-meta">Source years indicate the original exam these questions were taken from (year verification pending) — they are not ' + esc(org ? org.name : 'this exam') + ' recruitment versions.</div>';
       }
       if (subs.length > 1) {
         U._pyqSubs = subs;
         h += '<div class="bl-eu-mini">By subject:</div><div class="bl-eu-chips">' + subs.map(function (s2, i) { return '<button onclick="BrainLabUniverse.startPyqSub(' + i + ')">' + esc(s2) + '</button>'; }).join('') + '</div>';
       }
-    } else {
-      h += '<div class="bl-eu-empty">No PYQs verified for this exam yet — the PYQ bank is growing. Admins can import verified PYQs via Admin → BrainLab Manager.</div>';
+    } else if (!U._pyqCycles.length) {
+      h += '<div class="bl-eu-empty">No PYQs mapped to this exam yet — the PYQ bank is growing.</div>';
     }
     h += '</div>';
 
-    /* ── Previous Year Question Papers (year-grouped real PYQs + canonical PDFs) ── */
-    h += '<div class="bl-eu-sec" id="bl-eu-sec-papers"><div class="bl-eu-sec-t">📄 Previous Year Papers</div>';
-    if (yrs.length) {
-      h += '<div class="bl-eu-sec-s">Real mapped PYQs grouped by exam year — practice a full year\'s paper.</div>';
-      yrs.forEach(function (y, i) {
-        var n = pyqCountIn(pyq, y);
-        h += '<div class="bl-eu-testrow"><div><div class="bl-eu-card-name">' + esc(e.name) + ' ' + y + '</div>'
-          + '<div class="bl-eu-card-desc">' + n + ' previous year question' + (n === 1 ? '' : 's') + ' mapped</div></div>'
-          + '<button class="bl-eu-btn" onclick="BrainLabUniverse.startPyqYear(' + i + ')">PRACTICE</button></div>';
-      });
-    }
-    if (e.id === 'adre' || e.id === 'adre4' || (e._base === 'adre') || (e._base === 'adre4')) {
-      h += '<div class="bl-eu-testrow"><div><div class="bl-eu-card-name">🏛️ ADRE Official Previous Year Papers</div><div class="bl-eu-card-desc">Verified official papers with answer keys — full practice page</div></div><button class="bl-eu-btn" onclick="navigate(\'adre-papers\')">OPEN</button></div>';
-    }
-    h += '<div id="bl-eu-papers-body"></div></div>';
-
-    /* ── Question Papers + Study Materials (async canonical PDF flow) ── */
-    h += '<div class="bl-eu-sec" id="bl-eu-sec-mats"><div class="bl-eu-sec-t">📚 Study Materials</div><div class="bl-eu-empty" id="bl-eu-mats-body">Loading…</div></div>';
+    /* ── Previous Year Papers — REAL official paper records grouped by exam cycle ── */
+    h += '<div class="bl-eu-sec" id="bl-eu-sec-papers"><div class="bl-eu-sec-t">📄 Previous Year Papers</div>'
+      + '<div class="bl-eu-sec-s">Actual official papers with answer keys, grouped by recruitment cycle — no generated or unrelated years.</div>'
+      + '<div id="bl-eu-papers-body">Loading…</div></div>';
 
     /* ── Subject-wise ── */
     h += '<div class="bl-eu-sec" id="bl-eu-sec-subjects"><div class="bl-eu-sec-t">📖 Subject-wise Practice</div>';
@@ -538,6 +587,13 @@
       h += '</div>';
     } else { h += '<div class="bl-eu-empty">No mapped subjects yet.</div>'; }
     h += '</div>';
+
+    /* ── Quick Practice ── */
+    h += '<div class="bl-eu-quick" id="bl-eu-sec-quick"><div class="bl-eu-sec-t">⚡ Quick Practice</div>'
+      + '<div class="bl-eu-card-desc">Have a few minutes? Start a quick exam-focused session.</div>'
+      + '<div class="bl-eu-quick-btns">'
+      + [10, 25, 50].map(function (k) { return '<button class="bl-eu-btn" onclick="BrainLab.startQuizSession({mode:\'quiz\',title:\'' + esc(e.name) + ' Quick ' + k + '\',questions:' + k + ',exam:\'' + key + '\'})">QUICK ' + k + '</button>'; }).join('')
+      + '</div></div>';
 
     /* ── Mistake Book (exam-scoped, real wrong answers) ── */
     var mist = (bl.getMistakes() || []).filter(function (m) {
@@ -559,7 +615,7 @@
     h += '<div class="bl-eu-sec"><div class="bl-eu-sec-t">🔖 Saved Questions</div>';
     if (saved.n) {
       h += '<div class="bl-eu-testrow"><div><div class="bl-eu-card-name">' + saved.n + ' saved question' + (saved.n === 1 ? '' : 's') + ' from this exam</div>'
-        + '<div class="bl-eu-card-desc">Tap 🔎 Save on any question in a test review to bookmark it here</div></div>'
+        + '<div class="bl-eu-card-desc">Tap 🔖 Save on any question in a test review to bookmark it here</div></div>'
         + '<button class="bl-eu-btn" onclick="BrainLabUniverse.practiceSaved(\'' + e.id + '\')">PRACTICE</button></div>';
     } else {
       h += '<div class="bl-eu-empty">No saved questions yet — finish a test and tap 🔖 Save on any question in the review to keep it for revision.</div>';
@@ -572,6 +628,9 @@
       + '<div class="bl-eu-card-desc">Daily published affairs — quiz built from real updates</div></div>'
       + '<div class="bl-eu-btns2"><button class="bl-eu-btn" onclick="BrainLabV7.startAffairsQuiz()">QUIZ</button>'
       + '<button class="bl-eu-btn bl-eu-btn2" onclick="BrainLabPages.go(\'current-affairs\')">VIEW ALL</button></div></div></div>';
+
+    /* ── Study Materials (canonical PDF flow — papers + ebooks) ── */
+    h += '<div class="bl-eu-sec" id="bl-eu-sec-mats"><div class="bl-eu-sec-t">📚 Study Materials &amp; Papers</div><div class="bl-eu-empty" id="bl-eu-mats-body">Loading…</div></div>';
 
     /* ── Syllabus coverage (real bank topics) ── */
     h += '<div class="bl-eu-sec"><div class="bl-eu-sec-t">📋 Syllabus Coverage</div>'
@@ -635,20 +694,54 @@
     /* ── About ── */
     h += '<div class="bl-eu-sec"><div class="bl-eu-sec-t">ℹ️ About This Exam</div>'
       + '<div class="bl-eu-about"><div><span class="bl-eu-ab-l">Exam</span> ' + esc(e.name) + '</div>'
-      + (orgOf(id) ? '<div><span class="bl-eu-ab-l">Organization</span> ' + esc(orgOf(id).name) + '</div>' : '')
+      + (org ? '<div><span class="bl-eu-ab-l">Organization</span> ' + esc(org.name) + '</div>' : '')
       + '<div><span class="bl-eu-ab-l">Focus</span> ' + esc(e.desc) + '</div>'
       + '<div><span class="bl-eu-ab-l">Subjects</span> ' + esc(e.subjects.join(', ')) + '</div></div></div>';
 
     c.innerHTML = h;
+    U._loadPapers(e);
     U._loadPDFs(e);
     var top = document.getElementById('blv8-exams');
     if (top) top.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  /* real official papers → hub Papers section (lazy config load; grouped by cycle) */
+  U._loadPapers = function (e) {
+    var host = document.getElementById('bl-eu-papers-body'); if (!host) return;
+    if (['adre', 'adre-driver', 'adre4', 'adre4-viii'].indexOf(e.id) === -1) {
+      host.innerHTML = '<div class="bl-eu-empty">No official paper records mapped to this exam yet — paper PDFs appear under Study Materials.</div>';
+      return;
+    }
+    U._papers(function () {
+      var mine = U.papersForExam(e.id);
+      var cyc = U.cyclesFor('adr');
+      var hh = '';
+      cyc.forEach(function (cy) {
+        var ps = mine.filter(function (p) { return p.edition === cy.cycleName || (cy.year && p.year === cy.year); });
+        if (!ps.length) return;
+        hh += '<div class="bl-eu-mini" style="margin-top:10px">' + esc(cy.cycleName) + ' — ' + (cy.year || 'Upcoming') + '</div>';
+        ps.forEach(function (p) {
+          hh += '<div class="bl-eu-testrow"><div><div class="bl-eu-card-name">' + esc(p.title) + '</div>'
+            + '<div class="bl-eu-card-desc">' + esc(p.subtitle || p.level || '') + ' · ' + (p.total_questions || 0) + ' questions'
+            + (p.exam_date ? ' · exam ' + esc(p.exam_date) : '') + '</div></div>'
+            + '<button class="bl-eu-btn" onclick="navigate(\'adre-papers\')">OPEN</button></div>';
+        });
+      });
+      if (!mine.length) hh = '<div class="bl-eu-empty">No official paper records published for this exam yet.</div>';
+      host.innerHTML = hh;
+    });
   };
 
   /* ── PYQ starters (pool injection → existing engine) ── */
   U.startPyq = function (mode) {
     var bl = B(); if (!bl || !U._pyqPool || !U._pyqPool.length) return;
     bl.showCountPicker({ title: (U._e ? U._e.name : '') + ' PYQ Practice', category: 'All', pool: U._pyqPool, mode: 'pyq' });
+  };
+  U.startPyqCycle = function (i) {
+    var cy = (U._pyqCycles || [])[i]; var bl = B(); if (!bl || !cy) return;
+    var p = U._cycPyqPool(cy);
+    if (!p.length) { bl.toast('No PYQs mapped to ' + cy.cycleName); return; }
+    bl.showCountPicker({ title: cy.cycleName + (cy.year ? ' (' + cy.year + ')' : '') + ' — PYQ Practice', category: 'All', pool: p, mode: 'pyq' });
   };
   U.startPyqYear = function (i) {
     var y = (U._pyqYears || [])[i]; var bl = B(); if (!bl || !y) return;
@@ -678,11 +771,11 @@
           + '<div class="bl-eu-card-desc">' + esc(p.category || 'Study material') + ' · ' + badge + '</div></div>'
           + '<span class="bl-eu-arrow">›</span></div>';
       }
-      var pb = document.getElementById('bl-eu-papers-body'), mb = document.getElementById('bl-eu-mats-body');
-      if (pb) pb.innerHTML = papers.length
-        ? '<div class="bl-eu-mini" style="margin-top:8px">📄 Question paper PDFs</div>' + papers.map(cardHTML).join('')
-        : '<div class="bl-eu-empty" style="margin-top:8px">No question paper PDFs published yet.</div>';
-      if (mb) mb.innerHTML = mats.length ? mats.map(cardHTML).join('') : '<div class="bl-eu-empty">No study materials published yet.</div>';
+      var mb = document.getElementById('bl-eu-mats-body');
+      if (mb) mb.innerHTML =
+        (papers.length ? '<div class="bl-eu-mini" style="margin-top:2px">📄 Question paper PDFs</div>' + papers.map(cardHTML).join('') : '')
+        + '<div class="bl-eu-mini" style="margin-top:8px">📚 Study materials &amp; ebooks</div>'
+        + (mats.length ? mats.map(cardHTML).join('') : '<div class="bl-eu-empty">No study materials published yet.</div>');
       var st = document.getElementById('bl-eu-pdfstat');
       if (st && list.length) { st.style.display = ''; st.innerHTML = '<span class="bl-eu-stat-ic">📄</span><span class="bl-eu-stat-n">' + list.length + '</span><span class="bl-eu-stat-l">PDFs</span>'; }
     }
@@ -702,10 +795,90 @@
   /* ── controls ── */
   U.back = function () {
     var hh = location.hash || '';
+    var cm = hh.match(/#brainlab\/exams\/cycle\/([a-z0-9]+)/);
+    if (cm) { var cy = U.cycleById(cm[1]); if (cy) { location.hash = '#brainlab/exams/org/' + cy.organizationId; return; } location.hash = '#brainlab/exams'; return; }
     if (hh.indexOf('#brainlab/exams/org/') === 0) { location.hash = '#brainlab/exams'; return; }
     var em = hh.match(/#brainlab\/exams\/([a-z0-9-]+)/);
     if (em) { var o = orgOf(em[1]); if (o) { location.hash = '#brainlab/exams/org/' + o.id; return; } }
     location.hash = '#brainlab/exams';
+  };
+
+  /* ═══ CYCLE PAGE — #brainlab/exams/cycle/<id> (real papers + honest PYQ + post types) ═══ */
+  U.openCycle = function (cid, push) {
+    var cy = U.cycleById(cid);
+    if (!cy) { U.renderLanding(); return; }
+    if (push !== false) { location.hash = '#brainlab/exams/cycle/' + cid; return; }
+    var c = document.getElementById('bl-sec-exams-body'); if (!c) return;
+    var o = U.ORGS.filter(function (g) { return g.id === cy.organizationId; })[0] || null;
+    var upcoming = cy.status === 'upcoming' || !cy.year;
+
+    var h = '<button class="bl-eu-back" onclick="BrainLabUniverse.back()">← ' + esc((o || {}).name || 'Exam Universe') + '</button>'
+      + '<div class="bl-eu-hero"><div class="bl-eu-h-title">' + (upcoming ? '🟡' : '🏛️') + ' ' + esc(cy.cycleName) + '</div>'
+      + '<div class="bl-eu-h-sub">' + esc(cy.description || '') + '</div>'
+      + '<div class="bl-eu-badges">'
+      + (upcoming ? '<span class="bl-eu-badge">🟡 Upcoming</span><span class="bl-eu-badge">Year to be announced</span>' : '<span class="bl-eu-badge">✅ Held · ' + cy.year + '</span>')
+      + (o ? '<span class="bl-eu-badge">' + esc(o.name) + '</span>' : '') + '</div>'
+      + (cy.examDate ? '<div class="bl-eu-meta">📅 Official exam date: ' + esc(cy.examDate) + '</div>' : '')
+      + (cy.applicationDate ? '<div class="bl-eu-meta">📝 Applications: ' + esc(cy.applicationDate) + '</div>' : '')
+      + (cy.officialSourceUrl ? '<div class="bl-eu-meta">🔗 Source: <a href="' + esc(cy.officialSourceUrl) + '" style="font-weight:700">' + esc(cy.officialSource || 'Official reference') + '</a></div>' : (cy.officialSource ? '<div class="bl-eu-meta">🔗 Source: ' + esc(cy.officialSource) + '</div>' : ''))
+      + '</div>';
+
+    /* real official papers of this cycle (records only — grouped by grade) */
+    h += '<div class="bl-eu-sec"><div class="bl-eu-sec-t">📄 Official Previous Year Papers</div>'
+      + '<div class="bl-eu-sec-s">Actual paper records with answer keys — open any paper to practise it.</div>'
+      + '<div id="bl-eu-cyc-papers">Loading…</div></div>';
+
+    /* PYQs mapped to this cycle — only real data */
+    h += '<div class="bl-eu-sec"><div class="bl-eu-sec-t">📚 PYQ Practice</div>';
+    var cyp = U._cycPyqPool(cy);
+    U._cycPyq = cyp; U._cycPyqCy = cy;
+    if (upcoming) {
+      h += '<div class="bl-eu-empty">PYQs for ' + esc(cy.cycleName) + ' will be published after the exam — practise post-wise mock tests and previous papers meanwhile.</div>';
+    } else if (cyp.length) {
+      h += '<div class="bl-eu-sec-s">' + cyp.length + ' verified PYQ' + (cyp.length === 1 ? '' : 's') + ' mapped to ' + esc(cy.cycleName) + '.</div>'
+        + '<button class="bl-eu-btn" onclick="BrainLabUniverse.startCycPyq()">PRACTICE ' + esc(cy.cycleName) + ' PYQs</button>';
+    } else {
+      h += '<div class="bl-eu-empty">No ' + esc(cy.cycleName) + ' PYQs imported yet — verified PYQs can be added via Admin → BrainLab Manager.</div>';
+    }
+    h += '</div>';
+
+    /* post-wise exams of this organization */
+    if (o) {
+      h += '<div class="bl-eu-sec"><div class="bl-eu-sec-t">🎯 Post-wise Preparation</div>'
+        + '<div class="bl-eu-sec-s">Each post/level keeps its own mocks, PYQs, papers, subjects and progress.</div>'
+        + '<div class="bl-eu-grid">' + o.exams.map(function (eid) { var e = findExam(eid); return e ? U._examCard(e) : ''; }).join('') + '</div></div>';
+    }
+
+    c.innerHTML = h;
+
+    /* fill real papers (lazy config load) */
+    U._papers(function () {
+      var host = document.getElementById('bl-eu-cyc-papers'); if (!host) return;
+      var mine = ((window.ADRE_PAPERS && window.ADRE_PAPERS.papers) || []).filter(function (p) { return p.edition === cy.cycleName || (cy.year && p.year === cy.year); });
+      if (!mine.length) { host.innerHTML = '<div class="bl-eu-empty">No official paper records published for this cycle yet.</div>'; return; }
+      var g3 = mine.filter(function (p) { return p.grade === 'Grade-III'; });
+      var g4 = mine.filter(function (p) { return p.grade === 'Grade-IV'; });
+      var hh2 = '';
+      [[ 'Grade III posts', g3 ], [ 'Grade IV posts', g4 ]].forEach(function (grp) {
+        if (!grp[1].length) return;
+        hh2 += '<div class="bl-eu-mini">' + grp[0] + '</div>';
+        grp[1].forEach(function (p) {
+          hh2 += '<div class="bl-eu-testrow"><div><div class="bl-eu-card-name">' + esc(p.title) + '</div>'
+            + '<div class="bl-eu-card-desc">' + esc(p.subtitle || p.level || '') + ' · ' + (p.total_questions || 0) + ' questions'
+            + (p.exam_date ? ' · exam ' + esc(p.exam_date) : '') + '</div></div>'
+            + '<button class="bl-eu-btn" onclick="navigate(\'adre-papers\')">OPEN</button></div>';
+        });
+      });
+      host.innerHTML = hh2;
+    });
+
+    var top = document.getElementById('blv8-exams');
+    if (top) top.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  U.startCycPyq = function () {
+    var bl = B(); if (!bl || !U._cycPyq || !U._cycPyq.length) return;
+    var cy = U._cycPyqCy || null;
+    bl.showCountPicker({ title: (cy ? cy.cycleName : 'Cycle') + ' — PYQ Practice', category: 'All', pool: U._cycPyq, mode: 'pyq' });
   };
   U.practiceSubject = function (i) {
     var bl = B(), r = (U._subjRows || [])[i]; if (!bl || !r) return;
@@ -728,5 +901,10 @@
   U.openOrg = function (id, push) {
     if (push !== false) return _origOrg(id, push);
     U.fetchImported(function () { _origOrg(id, push); });
+  };
+  var _origCycle = U.openCycle;
+  U.openCycle = function (id, push) {
+    if (push !== false) return _origCycle(id, push);
+    U.fetchImported(function () { _origCycle(id, push); });
   };
 })();

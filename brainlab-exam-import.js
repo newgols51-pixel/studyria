@@ -188,6 +188,83 @@
 
   /* ── UI ── */
   A.msg = function (t, err) { var m = document.getElementById('bl-ei-msg'); if (m) { m.innerHTML = t; m.className = 'bl-ei-msg' + (err ? ' err' : ''); } };
+
+  /* ── Exam Cycles manager (data-driven cycles — admin updates without code changes) ── */
+  A.cycles = [];
+  A.loadCycles = async function () {
+    try { var res = await euApi('euManage', { op: 'cycleList' }); A.cycles = (res && res.rows) || []; }
+    catch (e) { A.cycles = []; }
+    A.renderCycles();
+  };
+  A.renderCycles = function () {
+    var el = document.getElementById('bl-ei-cycles'); if (!el) return;
+    var orgs = (window.BrainLabUniverse && window.BrainLabUniverse.ORGS) ? window.BrainLabUniverse.ORGS.map(function (o) { return o.id; }) : ['adr', 'police', 'apsc', 'tet', 'dhs', 'ssc', 'other'];
+    var h = '<div style="display:flex;gap:8px;margin:6px 0 10px"><button class="bl-ei-btn ghost" onclick="BrainLabExamAdmin.loadCycles()">↻ Refresh</button>'
+      + '<button class="bl-ei-btn" onclick="BrainLabExamAdmin.editCycle(-1)">＋ Add Cycle</button></div>';
+    if (!A.cycles.length) { el.innerHTML = h + '<div class="bl-ei-empty">No exam cycles yet — cycles power the exam-version structure (e.g. ADRE 1.0 · 2022, ADRE 3.0 · Upcoming).</div>'; return; }
+    A.cycles.forEach(function (c, i) {
+      h += '<div class="bl-ei-row"><div style="flex:1;min-width:0">'
+        + '<div style="font-size:.74rem;font-weight:700">' + esc(c.cycleName) + ' · ' + esc(c.organizationId) + (c.year ? ' · ' + c.year : ' · Year TBA') + '</div>'
+        + '<div style="font-size:.62rem;opacity:.7">' + (c.status === 'upcoming' ? '🟡 Upcoming' : '✅ Active/Held') + ' · ' + (c.active ? 'visible' : 'hidden') + (c.examDate ? ' · exam ' + esc(c.examDate) : '') + '</div></div>'
+        + '<button class="bl-ei-mini" onclick="BrainLabExamAdmin.editCycle(' + i + ')">Edit</button>'
+        + '<button class="bl-ei-mini" onclick="BrainLabExamAdmin.delCycle(' + i + ')">Delete</button></div>';
+    });
+    h += '<div class="bl-ei-inv" style="font-size:.62rem;opacity:.75;margin-top:6px">Edit fields: cycle name, organization, year (leave empty for upcoming), status, exam/application dates, description, official source + URL. Changes go live on Exam Universe instantly — no frontend deploy needed.</div>';
+    el.innerHTML = h;
+  };
+  A.editCycle = function (i) {
+    var c = i >= 0 ? A.cycles[i] : { organizationId: 'adr', status: 'upcoming' };
+    var orgs = (window.BrainLabUniverse && window.BrainLabUniverse.ORGS) ? window.BrainLabUniverse.ORGS.map(function (o) { return o.id; }) : ['adr', 'police', 'apsc', 'tet', 'dhs', 'ssc', 'other'];
+    var el = document.getElementById('bl-ei-cycleform'); if (!el) return;
+    el.style.display = '';
+    el.innerHTML = '<div class="bl-ei-card" style="margin-bottom:10px">'
+      + '<div style="font-size:.78rem;font-weight:800;margin-bottom:6px">' + (c.id ? 'Edit cycle — ' + esc(c.cycleName) : 'New exam cycle') + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+      + '<input id="bl-ec-name" class="bl-ei-inp" placeholder="Cycle name (e.g. ADRE 3.0)" value="' + esc(c.cycleName || '') + '">'
+      + '<select id="bl-ec-org" class="bl-ei-inp">' + orgs.map(function (o) { return '<option value="' + o + '"' + (c.organizationId === o ? ' selected' : '') + '>' + o + '</option>'; }).join('') + '</select>'
+      + '<input id="bl-ec-year" class="bl-ei-inp" placeholder="Year (empty = to be announced)" value="' + (c.year || '') + '">'
+      + '<select id="bl-ec-status" class="bl-ei-inp"><option value="active"' + (c.status === 'active' ? ' selected' : '') + '>active (held)</option><option value="upcoming"' + (c.status === 'upcoming' ? ' selected' : '') + '>upcoming</option></select>'
+      + '<input id="bl-ec-examdate" class="bl-ei-inp" placeholder="Exam date (if officially announced)" value="' + esc(c.examDate || '') + '">'
+      + '<input id="bl-ec-appdate" class="bl-ei-inp" placeholder="Application date (optional)" value="' + esc(c.applicationDate || '') + '">'
+      + '</div>'
+      + '<input id="bl-ec-desc" class="bl-ei-inp" style="width:100%;margin-top:6px" placeholder="Description" value="' + esc(c.description || '') + '">'
+      + '<input id="bl-ec-src" class="bl-ei-inp" style="width:100%;margin-top:6px" placeholder="Official source (authoritative only)" value="' + esc(c.officialSource || '') + '">'
+      + '<input id="bl-ec-srcurl" class="bl-ei-inp" style="width:100%;margin-top:6px" placeholder="Official source URL" value="' + esc(c.officialSourceUrl || '') + '">'
+      + '<div style="display:flex;gap:8px;margin-top:8px"><button class="bl-ei-btn" onclick="BrainLabExamAdmin.saveCycle(' + (i >= 0 ? i : -1) + ')">💾 SAVE CYCLE</button>'
+                  + '<button class="bl-ei-btn ghost" onclick="var f=document.getElementById(\'bl-ei-cycleform\');if(f)f.style.display=\'none\'">Cancel</button></div>'
+      + '</div>';
+  };
+  A.saveCycle = async function (i) {
+    var g = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+    var yearRaw = g('bl-ec-year');
+    var cyc = {
+      id: (i >= 0 && A.cycles[i]) ? A.cycles[i].id : undefined,
+      cycleName: g('bl-ec-name') || 'Unnamed Cycle',
+      organizationId: g('bl-ec-org') || 'adr',
+      year: yearRaw === '' ? null : Number(yearRaw),
+      status: g('bl-ec-status') || 'upcoming',
+      description: g('bl-ec-desc'),
+      examDate: g('bl-ec-examdate') || null,
+      applicationDate: g('bl-ec-appdate') || null,
+      officialSource: g('bl-ec-src') || null,
+      officialSourceUrl: g('bl-ec-srcurl') || null
+    };
+    if (cyc.year && (isNaN(cyc.year) || cyc.year < 1990 || cyc.year > 2100)) { A.msg('❌ Year must be a valid year (or empty for upcoming).', true); return; }
+    var res;
+    try { res = await euApi('euManage', { op: 'cycleSave', cycle: cyc }); } catch (e) { A.msg('❌ ' + e.message, true); return; }
+    if (!res || res.ok !== true) { A.msg('❌ ' + ((res && res.error) || 'Save failed'), true); return; }
+    A.msg('✅ Cycle saved — ' + (res.action === 'created' ? 'created' : 'updated') + '. It is live on Exam Universe.');
+    document.getElementById('bl-ei-cycleform').style.display = 'none';
+    A.loadCycles();
+  };
+  A.delCycle = async function (i) {
+    var c = A.cycles[i]; if (!c || !confirm('Delete cycle "' + c.cycleName + '"? It will be hidden from Exam Universe.')) return;
+    var res;
+    try { res = await euApi('euManage', { op: 'cycleDelete', id: c.id }); } catch (e) { A.msg('❌ ' + e.message, true); return; }
+    if (!res || res.ok !== true) { A.msg('❌ ' + ((res && res.error) || 'Delete failed'), true); return; }
+    A.msg('✅ Cycle deleted.');
+    A.loadCycles();
+  };
   A.render = function () {
     var el = document.getElementById('bl-examimport-content'); if (!el) return;
     var examOpts = exams().map(function (id) { return '<option value="' + id + '"' + (A.exam === id ? ' selected' : '') + '>' + id + '</option>'; }).join('');
@@ -203,12 +280,13 @@
       + '<div style="display:flex;gap:8px;margin:8px 0"><button class="bl-ei-btn" onclick="BrainLabExamAdmin.paste()">PARSE &amp; PREVIEW</button>'
       + '<a class="bl-ei-btn ghost" download="exam-import-template.csv" href="data:text/csv;charset=utf-8,' + encodeURIComponent('question,opt_a,opt_b,opt_c,opt_d,answer,subject,topic,difficulty,explanation,source,year,paper,is_pyq\nWhich city is Assam\'s capital?,"Dispur","Guwahati","Jorhat","Silchar",a,General Knowledge,Assam GK,easy,"Dispur is the capital region of Guwahati.",ADRE,2024,Paper 1,true') + '">⬇ CSV template</a></div>'
       + '<div id="bl-ei-preview"></div><div id="bl-ei-msg" class="bl-ei-msg"></div>'
-      + '<h3 style="margin:18px 0 8px;font-size:.95rem;font-weight:800">🗂 Existing imported questions</h3>'
+      + '<h3 style="margin:18px 0 8px;font-size:.95rem;font-weight:800">🏛️ Exam Cycles</h3><div id="bl-ei-cycles"></div><div id="bl-ei-cycleform" style="display:none"></div>'      + '<h3 style="margin:18px 0 8px;font-size:.95rem;font-weight:800">🗂 Existing imported questions</h3>'
       + '<div style="display:flex;gap:8px;margin-bottom:8px"><button class="bl-ei-btn ghost" onclick="BrainLabExamAdmin.loadList()">↻ Refresh</button>'
       + '<button class="bl-ei-btn" onclick="BrainLabExamAdmin.verifyAll()">✅ Verify all pending</button></div>'
       + '<div id="bl-ei-list"></div>';
     A.renderList();
     A.loadList();
+    A.loadCycles();
   };
   A.renderPreview = function () {
     var p = document.getElementById('bl-ei-preview'); if (!p) return;

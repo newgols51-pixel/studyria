@@ -213,7 +213,7 @@
   /* sync view from URL hash — used after navigate()/popstate */
   P.syncFromHash = function () {
     var m = (location.hash || '').match(/^#brainlab\/([a-z-]+)(?:\/([a-z0-9-]+))?(?:\/([a-z0-9-]+))?/);
-    if (m && P.PAGES[m[1]]) { P.show(m[1], false); if (m[1] === 'subjects' && m[2]) P.openSubject(m[2], false); if (m[1] === 'exams' && m[2] === 'org' && m[3] && window.BrainLabUniverse) { window.BrainLabUniverse.openOrg(m[3], false); } else if (m[1] === 'exams' && m[2] && m[2] !== 'org' && window.BrainLabUniverse) { window.BrainLabUniverse.openExam(m[2], false); } return true; }
+    if (m && P.PAGES[m[1]]) { P.show(m[1], false); if (m[1] === 'subjects' && m[2]) P.openSubject(m[2], false); if (m[1] === 'exams' && m[2] === 'org' && m[3] && window.BrainLabUniverse) { window.BrainLabUniverse.openOrg(m[3], false); } else if (m[1] === 'exams' && m[2] === 'cycle' && m[3] && window.BrainLabUniverse) { window.BrainLabUniverse.openCycle(m[3], false); } else if (m[1] === 'exams' && m[2] && m[2] !== 'org' && m[2] !== 'cycle' && window.BrainLabUniverse) { window.BrainLabUniverse.openExam(m[2], false); } return true; }
     if (window._blPendingSub && P.PAGES[window._blPendingSub]) { var s = window._blPendingSub; window._blPendingSub = null; P.show(s, false); return true; }
     window._blPendingSub = null;
     if (current !== 'home') P.show('home', false);
