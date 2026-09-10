@@ -46,3 +46,12 @@
 .bl-eu-about div{font-size:.76rem;line-height:1.6;padding:2px 0}
 .bl-eu-ab-l{display:inline-block;min-width:76px;font-weight:800;font-size:.66rem;opacity:.6;text-transform:uppercase;letter-spacing:.03em}
 .bl-eu-empty{padding:16px;text-align:center;opacity:.65;font-size:.76rem}
+
+/* ═══ Exam Universe v2 ═══ */
+.bl-eu-chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 6px;margin-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.bl-eu-chips::-webkit-scrollbar{display:none}
+.bl-eu-chips button{flex-shrink:0;border:1px solid rgba(166,25,46,.25);background:rgba(166,25,46,.06);border-radius:999px;padding:7px 13px;font-size:.7rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.bl-eu-mocks{display:flex;flex-direction:column}
+.bl-eu-mini{font-size:.68rem;font-weight:800;opacity:.7;margin:6px 0 4px}
+.bl-eu-done{font-size:.68rem;font-weight:800;color:#2e7d32;background:rgba(46,125,50,.1);border:1px solid rgba(46,125,50,.25);border-radius:999px;padding:5px 10px;white-space:nowrap}
+@media(max-width:360px){.bl-eu-btn{padding:8px 10px;font-size:.64rem}}
