@@ -158,6 +158,9 @@
       }
     }
     M.render();
+    /* background warm-up of Assamese translations for the whole test
+       (server cache; chunks; cancellable) — never blocks the test */
+    if (window.BLTR && B() && B()._lang === 'as' && B()._currentQuiz) window.BLTR.prefetch(B()._currentQuiz.questions);
   };
 
   /* ── language switch mid-test: only displayed content changes ── */
@@ -167,6 +170,11 @@
     var M = window.BrainLabMock;
     if (M && M.active) M.render();
     TP.onRender();
+    /* translation fallback: warm the cache in AS, cancel background work in EN */
+    if (window.BLTR) {
+      if (l === 'as') { if (bl._currentQuiz) window.BLTR.prefetch(bl._currentQuiz.questions); }
+      else window.BLTR.stop();
+    }
   };
 
   /* ── exit / abandon safety ── */

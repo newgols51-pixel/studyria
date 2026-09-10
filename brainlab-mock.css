@@ -33,3 +33,23 @@
 .bl-mk-btn.bl-mk-btn-on{border-color:rgba(230,126,0,.5);background:rgba(230,126,0,.12);color:#b35c00}
 .bl-mk-btn.bl-mk-next{background:var(--grad-primary,linear-gradient(135deg,#a6192e,#d43a4e));color:#fff;border:none;box-shadow:0 3px 10px rgba(166,25,46,.25)}
 .bl-mk-quit{width:100%;border:none;background:transparent;opacity:.6;font-size:.74rem;font-weight:700;text-decoration:underline;cursor:pointer;padding:8px}
+
+/* ══ v118: Assamese translation fallback — provenance badge + loading state ══
+   bl-mk-trsrc: honest provenance under a machine/reviewed translation
+   (auto → "স্বয়ংক্ৰিয় অনুবাদ", reviewed → "পৰ্যালোচিত অনুবাদ").
+   Verified Assamese content shows NO badge (it is the real thing). */
+.bl-mk-trsrc {
+  margin: 10px 0 0;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(28, 27, 26, 0.5);
+}
+.dark .bl-mk-trsrc, [data-theme="dark"] .bl-mk-trsrc { color: rgba(255, 255, 255, 0.5); }
+.bl-mk-asload {
+  animation: bl-mk-asload-pulse 1.2s ease-in-out infinite;
+}
+@keyframes bl-mk-asload-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}

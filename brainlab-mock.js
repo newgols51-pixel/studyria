@@ -60,7 +60,8 @@
     var idx = bl._currentQIdx, q = bl._currentQuiz.questions[idx];
     if (!q) return;
     var total = bl._currentQuiz.questions.length;
-    var disp = (window.BrainLabTranslate && BrainLabTranslate.getDisplay(q, bl._lang)) || { question: q.question_text, options: { A: q.option_a, B: q.option_b, C: q.option_c, D: q.option_d } };
+    var disp = (bl._lang === 'as' && q._translatedDisplay) ? q._translatedDisplay
+      : (window.BrainLabTranslate && BrainLabTranslate.getDisplay(q, bl._lang)) || { question: q.question_text, options: { A: q.option_a, B: q.option_b, C: q.option_c, D: q.option_d } };
     /* deterministic per-question display order (seeded) — stable across
        page refresh so a resumed attempt keeps the same option positions;
        texts re-mapped on every render → live language switching */
@@ -107,7 +108,11 @@
     h += '<div class="bl-mk-topic">' + esc(q.topic || q.category || '') + (q.difficulty ? ' · ' + esc(q.difficulty) : '') + '</div>'
       + '<div class="bl-mk-question">' + esc(disp.question) + '</div>'
       + (bl._lang === 'as' && !(q.question_as && q.question_as.length > 2)
-          ? '<div class="bl-mk-asnote">অসমীয়া সংস্করণ উপলব্ধ নহয় · ইংরাজীত দেখুওষা হৈছে</div>'
+          ? (q._trStatus
+              ? '<div class="bl-mk-trsrc">' + (q._trStatus === 'auto' ? 'স্বয়ংকৃিয় অনুবাদ' : 'পৰ্যালোচিত অনুবাদ') + '</div>'
+              : (q._trFail
+                  ? '<div class="bl-mk-asnote">অসমীয়া অনুবাদ এই মুহূৰ্তত উপলব্ধ নহয় · ইংৰাজীত দেখুওৱা হৈছে</div>'
+                  : '<div class="bl-mk-asnote bl-mk-asload">অনুবাদ লোড হৈ আছে…</div>'))
           : '')
       + '<div class="bl-mk-options">';
     shuffled.forEach(function (o, i) {
@@ -130,6 +135,23 @@
     c.innerHTML = h;
     c.style.display = 'block';
     if (window.BrainLabTestPage && window.BrainLabTestPage.onRender) window.BrainLabTestPage.onRender();
+    /* Assamese auto-translation fallback: when the current question has no
+       verified AS content, fetch/serve its translation from the server cache
+       (euTranslate generates + persists it server-side if missing). State is
+       never touched — answers/timer/marks/palette persist; the re-render only
+       swaps the displayed text in place. */
+    if (bl._lang === 'as' && !(q.question_as && q.question_as.length > 2) && !q._translatedDisplay && !q._trFail && !q._trBusy && window.BLTR) {
+      q._trBusy = true;
+      window.BLTR.ensure(q, function (tr) {
+        q._trBusy = false;
+        if (tr && tr.question) {
+          q._translatedDisplay = window.BLTR.display(tr);
+          q._trStatus = tr.status;
+        } else { q._trFail = true; }
+        var bl2 = B(); if (!bl2 || !M.active) return;
+        if (bl2._currentQIdx === idx && bl2._lang === 'as') M.render();
+      });
+    }
   };
 
   /* mock controls */

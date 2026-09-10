@@ -281,7 +281,11 @@
       + '<a class="bl-ei-btn ghost" download="exam-import-template.csv" href="data:text/csv;charset=utf-8,' + encodeURIComponent('question,opt_a,opt_b,opt_c,opt_d,answer,subject,topic,difficulty,explanation,source,year,paper,is_pyq\nWhich city is Assam\'s capital?,"Dispur","Guwahati","Jorhat","Silchar",a,General Knowledge,Assam GK,easy,"Dispur is the capital region of Guwahati.",ADRE,2024,Paper 1,true') + '">⬇ CSV template</a></div>'
       + '<div id="bl-ei-preview"></div><div id="bl-ei-msg" class="bl-ei-msg"></div>'
       + '<h3 style="margin:18px 0 8px;font-size:.95rem;font-weight:800">🏛️ Exam Cycles</h3><div id="bl-ei-cycles"></div><div id="bl-ei-cycleform" style="display:none"></div>'
-      + '<h3 style="margin:18px 0 8px;font-size:.95rem;font-weight:800">📝 Mock Package Status</h3><div id="bl-ei-mocks"></div>'      + '<h3 style="margin:18px 0 8px;font-size:.95rem;font-weight:800">🗂 Existing imported questions</h3>'
+      + '<h3 style="margin:18px 0 8px;font-size:.95rem;font-weight:800">📝 Mock Package Status</h3><div id="bl-ei-mocks"></div>'
+      + '<h3 style="margin:18px 0 8px;font-size:.95rem;font-weight:800">🌐 Assamese Translations</h3>'
+      + '<div style="font-size:.72rem;color:#666;margin-bottom:6px">Auto-translations generated in Assamese mock/practice mode land here for review. Verified rows always take priority; auto rows are honestly badged in the app.</div>'
+      + '<div id="bl-ei-trs"></div>'
+      + '<h3 style="margin:18px 0 8px;font-size:.95rem;font-weight:800">🗂 Existing imported questions</h3>'
       + '<div style="display:flex;gap:8px;margin-bottom:8px"><button class="bl-ei-btn ghost" onclick="BrainLabExamAdmin.loadList()">↻ Refresh</button>'
       + '<button class="bl-ei-btn" onclick="BrainLabExamAdmin.verifyAll()">✅ Verify all pending</button></div>'
       + '<div id="bl-ei-list"></div>';
@@ -289,6 +293,7 @@
     A.loadList();
     A.loadCycles();
     A.renderMocks();
+    A.loadTr();
   };
 
   /* ── Mock Package Status — live allocation from the real bank (no fabricated data) ── */
@@ -350,6 +355,65 @@
     });
     if (A.list.length > 50) h += '<div class="bl-ei-empty">Showing first 50 of ' + A.list.length + '.</div>';
     l.innerHTML = h;
+  };
+
+  /* ── Assamese translation review (server cache — euManage tr ops) ── */
+  A.loadTr = function () {
+    var el = document.getElementById('bl-ei-trs'); if (!el) return;
+    el.innerHTML = '<div class="bl-ei-empty">Loading translations…</div>';
+    euApi('euManage', { op: 'trList', limit: 20 }).then(function (d) {
+      if (!d || !d.ok) { el.innerHTML = '<div class="bl-ei-empty">' + esc((d && d.error) || 'Could not load — sign in to the Admin Panel first.') + '</div>'; return; }
+      var st = d.stats || {};
+      var h = '<div style="font-size:.72rem;color:#666;margin-bottom:8px">Cache: ' + (st.total || 0) + ' total · 🤖 auto ' + (st.auto || 0) + ' · 👀 reviewed ' + (st.reviewed || 0) + ' · ✅ verified ' + (st.verified || 0) + '</div>';
+      if (!d.rows.length) { el.innerHTML = h + '<div class="bl-ei-empty">No translations yet — Assamese mock mode generates and caches them automatically.</div>'; return; }
+      d.rows.forEach(function (r) {
+        var badge = r.status === 'verified' ? '✅ verified' : r.status === 'reviewed' ? '👀 reviewed' : '🤖 auto';
+        h += '<div class="bl-ei-card" style="margin-bottom:10px">'
+          + '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div style="font-size:.7rem;color:#666">' + badge + ' · ' + esc(r.source || '') + (r.reviewedBy ? ' · by ' + esc(r.reviewedBy) : '') + '</div>'
+          + '<div style="display:flex;gap:6px;flex-shrink:0">'
+          + '<button class="bl-ei-btn ghost" style="font-size:.68rem;padding:4px 8px" onclick="BrainLabExamAdmin.trEdit(\'' + r.id + '\')">✏️ Edit</button>'
+          + (r.status !== 'verified' ? '<button class="bl-ei-btn" style="font-size:.68rem;padding:4px 8px" onclick="BrainLabExamAdmin.trVerify(\'' + r.id + '\')">✅ Verify</button>' : '')
+          + '<button class="bl-ei-btn ghost" style="font-size:.68rem;padding:4px 8px;color:#b00" onclick="BrainLabExamAdmin.trDelete(\'' + r.id + '\')">🗑</button>'
+          + '</div></div>'
+          + '<div style="font-size:.72rem;color:#555;margin:4px 0">EN: ' + esc(r.srcQuestion || '') + '</div>'
+          + '<div style="font-size:.78rem;font-weight:600">অ: ' + esc(r.question || '') + '</div>'
+          + '<div id="bl-ei-tred-' + r.id + '"></div>'
+          + '</div>';
+      });
+      el.innerHTML = h;
+      A._tr = {};
+      d.rows.forEach(function (r) { A._tr[r.id] = r; });
+    }).catch(function (e) { el.innerHTML = '<div class="bl-ei-empty">' + esc(String((e && e.message) || e)) + '</div>'; });
+  };
+  A.trEdit = function (id) {
+    var r = A._tr && A._tr[id]; var host = document.getElementById('bl-ei-tred-' + id);
+    if (!r || !host) return;
+    host.innerHTML = '<div style="margin-top:8px">'
+      + '<textarea id="bl-ei-trq-' + id + '" class="bl-ei-inp" style="width:100%;height:52px;font-size:.75rem">' + esc(r.question || '') + '</textarea>'
+      + ['optA', 'optB', 'optC', 'optD'].map(function (f) { return '<input id="bl-ei-tr' + f + '-' + id + '" class="bl-ei-inp" style="width:100%;font-size:.75rem;margin-top:4px" value="' + esc(r[f] || '') + '">'; }).join('')
+      + '<textarea id="bl-ei-tre-' + id + '" class="bl-ei-inp" style="width:100%;height:52px;font-size:.72rem;margin-top:4px" placeholder="explanation">' + esc(r.explanation || '') + '</textarea>'
+      + '<div style="display:flex;gap:6px;margin-top:6px"><button class="bl-ei-btn" style="font-size:.7rem;padding:5px 10px" onclick="BrainLabExamAdmin.trSave(\'' + id + '\')">💫 Save (marks reviewed)</button>'
+      + '<button class="bl-ei-btn ghost" style="font-size:.7rem;padding:5px 10px" onclick="BrainLabExamAdmin.loadTr()">✖ Cancel</button></div></div>';
+  };
+  A.trSave = function (id) {
+    var g = function (f) { var el = document.getElementById('bl-ei-tr' + f + '-' + id); return el ? el.value : undefined; };
+    euApi('euManage', { op: 'trSave', id: id, tr: { question: g('q'), optA: g('optA'), optB: g('optB'), optC: g('optC'), optD: g('optD'), explanation: g('e'), status: 'reviewed' } }).then(function (d) {
+      if (!d || !d.ok) { A.msg((d && d.error) || 'Save failed', true); return; }
+      A.msg('Translation saved & marked reviewed ✓'); A.loadTr();
+    }).catch(function (e) { A.msg(String((e && e.message) || e), true); });
+  };
+  A.trVerify = function (id) {
+    euApi('euManage', { op: 'trSave', id: id, tr: { status: 'verified' } }).then(function (d) {
+      if (!d || !d.ok) { A.msg((d && d.error) || 'Failed', true); return; }
+      A.msg('Marked verified ✓ — verified Assamese always takes priority over auto'); A.loadTr();
+    }).catch(function (e) { A.msg(String((e && e.message) || e), true); });
+  };
+  A.trDelete = function (id) {
+    if (!confirm('Delete this translation? The question itself is NOT deleted — it will simply be re-translated automatically if needed.')) return;
+    euApi('euManage', { op: 'trDelete', id: id }).then(function (d) {
+      if (!d || !d.ok) { A.msg((d && d.error) || 'Failed', true); return; }
+      A.msg('Translation deleted'); A.loadTr();
+    }).catch(function (e) { A.msg(String((e && e.message) || e), true); });
   };
 
   /* ── mount into Admin → BrainLab Manager (additive) ── */
