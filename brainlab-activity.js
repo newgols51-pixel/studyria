@@ -243,9 +243,11 @@
     bl._startPlayer = function (opts) {
       var r = oStart.apply(this, arguments);
       /* never hijack the DEDICATED MOCK page's own sessions (TP sets _fromTP
-         around its startQuizSession call); anything else gets this page */
-      var tpBusy = TP().active || TP()._fromTP || M().active;
-      try { if (!tpBusy) A.onSession(opts); } catch (e) { }
+         around its startQuizSession call). A direct mock-mode _startPlayer
+         (Current Affairs 30+) has M.active but no TP page — it gets the
+         activity shell so the mock engine renders inside a dedicated page. */
+      var isTPMock = TP().active || TP()._fromTP;
+      try { if (!isTPMock) A.onSession(opts); } catch (e) { }
       return r;
     };
 

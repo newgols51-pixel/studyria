@@ -309,7 +309,7 @@ BrainLab._caStartQuiz=function(count){
   var sessionId='sess-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
   this._sessionId=sessionId;
   this._sessionMeta={id:sessionId,mode:count>=30?'mock':count>=20?'mcq':'quiz',title:'Current Affairs '+count+' Questions',category:'Current Affairs',topic:'All',exam:'All',difficulty:'mixed',total_questions:qs.length,started_at:new Date().toISOString()};
-  this._startPlayer({title:'Current Affairs Quiz ('+qs.length+' Q)',questions:qs,mode:count>=30?'mock':'quiz'});
+  this._startPlayer({title:'Current Affairs Quiz ('+qs.length+' Q)',questions:qs,mode:count>=30?'mock':'affairs'});
 };
 
 BrainLab._caPracticeImportant=function(){
@@ -324,7 +324,7 @@ BrainLab._caPracticeImportant=function(){
   var sessionId='sess-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
   this._sessionId=sessionId;
   this._sessionMeta={id:sessionId,mode:'quiz',title:'Important Current Affairs Practice',category:'Current Affairs',topic:'All',exam:'All',difficulty:'mixed',total_questions:qs.length,started_at:new Date().toISOString()};
-  this._startPlayer({title:'Important Current Affairs ('+qs.length+' Q)',questions:qs,mode:'quiz'});
+  this._startPlayer({title:'Important Current Affairs ('+qs.length+' Q)',questions:qs,mode:'affairs'});
 };
 
 /* ── 3. MISTAKE BOOK 2.0 ── */
