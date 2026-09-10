@@ -188,6 +188,7 @@
     }
     var ex = TP.exam;
     TP.unmount(); TP.active = false;
+    if (M && M.active && !TP.submitting) { try { M.reset(); } catch (e) { } } /* ghost-engine fix: attempt stays saved */
     location.hash = ex ? ('#brainlab/exams/' + ex) : (TP.exitHash || '#brainlab/mock-tests');
   };
   TP._before = function (e) {
@@ -207,6 +208,7 @@
       }
     }
     TP.unmount(); TP.active = false; /* attempt stays saved for resume */
+    if (M && M.active) { try { M.reset(); } catch (e) { } } /* ghost-engine fix: attempt stays saved */
   };
 
   /* ── dedicated page for ANY mock (spec §1/§2/§3): BrainLab mock-list cards,
