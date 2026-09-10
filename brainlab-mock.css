@@ -1,5 +1,5 @@
 /* ═══ brainlab-mock.css — Mock Test Engine (V8 Phase B, additive) ═══ */
-.bl-mk{max-width:640px;margin:0 auto;padding:14px 12px 28px;border-radius:16px}
+.bl-mk{max-width:640px;margin:0 auto;padding:14px 12px calc(28px + env(safe-area-inset-bottom,0px));border-radius:16px}
 .bl-mk-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .bl-mk-title{font-weight:800;font-size:.95rem;flex:1;min-width:120px}
 .bl-mk-timer{font-variant-numeric:tabular-nums;font-weight:800;font-size:.9rem;padding:5px 12px;border-radius:10px;background:rgba(166,25,46,.08);border:1px solid rgba(166,25,46,.25);white-space:nowrap}
@@ -27,10 +27,15 @@
 .bl-mk-opt.bl-mk-sel{border-color:var(--hp-red,#a6192e);background:rgba(166,25,46,.07);box-shadow:0 0 0 1px var(--hp-red,#a6192e) inset}
 .bl-mk-opt-l{font-weight:800;font-size:.8rem;min-width:18px;padding-top:1px}
 .bl-mk-opt-t{font-size:.88rem;line-height:1.4}
-.bl-mk-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:8px;margin-bottom:10px}
-.bl-mk-actions>span{visibility:hidden}
-.bl-mk-btn{border:1px solid rgba(128,145,180,.3);background:rgba(128,145,180,.07);border-radius:10px;padding:9px 8px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.bl-mk-actions{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 10px}
+.bl-mk-actions>span{display:none}
+/* spec §4/§6: every control label fully readable at 320px+ — flexible wrap,
+   NO nowrap, NO ellipsis, 44px min tap height, safe-area aware */
+.bl-mk-btn{flex:1 1 auto;min-width:132px;min-height:44px;box-sizing:border-box;border:1px solid rgba(128,145,180,.3);background:rgba(128,145,180,.07);border-radius:12px;padding:10px 14px;font-size:.82rem;font-weight:700;cursor:pointer;white-space:normal;word-break:break-word;line-height:1.3;transition:transform .08s}
+.bl-mk-btn:active{transform:scale(.98)}
+@media(max-width:359px){.bl-mk-btn{min-width:118px;font-size:.78rem;padding:10px 12px}}
 .bl-mk-btn.bl-mk-btn-on{border-color:rgba(230,126,0,.5);background:rgba(230,126,0,.12);color:#b35c00}
+.bl-mk-actions .bl-mk-next{flex:2 1 auto;min-width:170px}
 .bl-mk-btn.bl-mk-next{background:var(--grad-primary,linear-gradient(135deg,#a6192e,#d43a4e));color:#fff;border:none;box-shadow:0 3px 10px rgba(166,25,46,.25)}
 .bl-mk-quit{width:100%;border:none;background:transparent;opacity:.6;font-size:.74rem;font-weight:700;text-decoration:underline;cursor:pointer;padding:8px}
 

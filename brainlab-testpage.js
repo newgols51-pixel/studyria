@@ -30,7 +30,8 @@
   function U() { return window.BrainLabUniverse; }
 
   var TP = window.BrainLabTestPage = {
-    active: false, exam: null, n: 0, key: '', submitting: false, _fixedOrder: false
+    active: false, exam: null, n: 0, key: '', submitting: false, _fixedOrder: false,
+    _fromTP: false, resultMode: false, expectHash: '', exitHash: '', _lastCfg: null
   };
 
   function esc(s) { var bl = B(); return bl ? bl.escape(s) : String(s == null ? '' : s); }
@@ -46,7 +47,7 @@
     if (!bl || !M || !M.active || !TP.active || TP.submitting) return;
     try {
       localStorage.setItem(TP.key, JSON.stringify({
-        v: 1, exam: TP.exam, n: TP.n,
+        v: 1, exam: TP.exam, n: TP.n, cfg: TP._lastCfg || null,
         answers: bl._answers || [],
         marked: M.marked || {},
         qIdx: bl._currentQIdx || 0,
@@ -68,6 +69,8 @@
   /* ── page overlay ── */
   TP.mount = function (e, m) {
     TP.unmount();
+    TP.expectHash = TP.exam ? ('#brainlab/exams/mock/' + TP.exam + '/' + TP.n) : (location.hash || '#brainlab/mock-tests');
+    TP.exitHash = TP.exam ? ('#brainlab/exams/' + TP.exam) : (TP.exitHash || '#brainlab/mock-tests');
     var bl = B(); if (!bl) return;
     var pg = document.createElement('div');
     pg.id = 'bl-tp-page';
@@ -120,7 +123,7 @@
 
     /* start the attempt with the mock's OWN deterministic question set,
        in fixed order (stable across refresh → attempt state aligns) */
-    TP._fixedOrder = true;
+    TP._fixedOrder = true; TP._fromTP = true;
     try {
       bl.startQuizSession({
         mode: 'mock',
@@ -129,7 +132,7 @@
         exam: (u.examKey ? u.examKey(ex) : ex),
         pool: m.qs
       });
-    } finally { TP._fixedOrder = false; }
+    } finally { TP._fixedOrder = false; TP._fromTP = false; }
 
     var M = window.BrainLabMock;
     if (!M || !M.active) { TP.active = false; return; }
@@ -180,12 +183,13 @@
   /* ── exit / abandon safety ── */
   TP.exit = function () {
     var M = window.BrainLabMock;
+    if (TP.resultMode) { TP.exitResult(); return; }
     if (M && M.active && !TP.submitting) {
-      if (!confirm('Leave this test?\n\nYour attempt is saved — you can resume Mock Test ' + TP.n + ' anytime from the exam hub.')) return;
+      if (!confirm('Leave this test?\n\nYour attempt is saved — you can resume it anytime.')) return;
     }
     var ex = TP.exam;
     TP.unmount(); TP.active = false;
-    location.hash = '#brainlab/exams/' + ex;
+    location.hash = ex ? ('#brainlab/exams/' + ex) : (TP.exitHash || '#brainlab/mock-tests');
   };
   TP._before = function (e) {
     var M = window.BrainLabMock;
@@ -193,15 +197,99 @@
   };
   TP._onHash = function () {
     var M = window.BrainLabMock;
+    if (TP.resultMode) { TP.resultMode = false; TP.unmount(); TP.active = false; return; }
     if (!TP.active || TP.submitting) return;
-    var expect = '#brainlab/exams/mock/' + TP.exam + '/' + TP.n;
+    var expect = TP.expectHash || ('#brainlab/exams/mock/' + TP.exam + '/' + TP.n);
     if ((location.hash || '') === expect) return;
     if (M && M.active) {
-      if (!confirm('Leave this test?\n\nYour attempt is saved — resume Mock Test ' + TP.n + ' anytime from the exam hub.')) {
-        location.hash = expect; return;
+      if (!confirm('Leave this test?\n\nYour attempt is saved — you can resume it anytime.')) {
+        if (TP.expectHash) { location.hash = expect; return; }
+        history.pushState(null, '', expect); return;
       }
     }
     TP.unmount(); TP.active = false; /* attempt stays saved for resume */
+  };
+
+  /* ── dedicated page for ANY mock (spec §1/§2/§3): BrainLab mock-list cards,
+     count-picker mocks and retried sessions all open THIS full-screen page.
+     Universe exam mocks keep their #brainlab/exams/mock/<exam>/<n> route. ── */
+  TP.savedCustom = function (key) {
+    try { var j = JSON.parse(localStorage.getItem(key) || 'null'); return (j && j.v === 1) ? j : null; }
+    catch (e) { return null; }
+  };
+  TP.startDedicated = function (opts) {
+    var bl = B(); var M = window.BrainLabMock;
+    if (!bl || !M || M.active || TP.active) return;
+    var pool = opts.pool;
+    var count = Math.min(opts.questions || 10, pool ? pool.length : (opts.questions || 10));
+    var title = opts.title || 'Mock Test';
+    TP.exam = null; TP.n = 0;
+    TP.key = 'bl_tp_custom_' + title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60);
+    TP.exitHash = '#brainlab/mock-tests';
+    TP._lastCfg = { title: title, exam: opts.exam || 'All', category: opts.category || 'All',
+      topic: opts.topic || 'All', difficulty: opts.difficulty || 'mixed', questions: count };
+    TP._fixedOrder = true; TP._fromTP = true; /* deterministic set → refresh/resume aligned */
+    try {
+      bl.startQuizSession({ mode: 'mock', title: title, questions: count,
+        category: opts.category || 'All', topic: opts.topic || 'All',
+        exam: opts.exam || 'All', difficulty: opts.difficulty || 'mixed',
+        pool: pool });
+    } finally { TP._fixedOrder = false; TP._fromTP = false; }
+    if (!M || !M.active) return;
+    TP.mount({ name: title }, { qs: { length: count } });
+    TP.active = true;
+    /* resume a saved attempt for THIS mock (refresh path) */
+    var sv = TP.savedCustom(TP.key);
+    if (sv) {
+      bl._answers = sv.answers || [];
+      bl._currentQIdx = Math.min(sv.qIdx || 0, count - 1);
+      if (sv.startedAt) bl._startTime = sv.startedAt;
+      if (sv.lang) bl._lang = sv.lang;
+      M.marked = sv.marked || {};
+      if (sv.endAt && sv.endAt > Date.now()) { M.endAt = sv.endAt; }
+      else if (sv.endAt) {
+        setTimeout(function () {
+          if (M.active && !M.submitted && TP.active) {
+            alert('Time is up! Your test is being submitted automatically.');
+            M.submit();
+          }
+        }, 800);
+      }
+    }
+    M.render();
+    if (window.BLTR && B() && B()._lang === 'as' && B()._currentQuiz) window.BLTR.prefetch(B()._currentQuiz.questions);
+  };
+  TP.retry = function () {
+    var ex = TP.exam, n = TP.n, cfg = TP._lastCfg;
+    TP.resultMode = false; TP.unmount(); TP.active = false;
+    if (ex && window.BrainLabUniverse) { TP.open(ex, n, false); return; } /* same fixed question set */
+    if (cfg) TP.startDedicated({ mode: 'mock', title: cfg.title, questions: cfg.questions,
+      category: cfg.category, topic: cfg.topic, exam: cfg.exam, difficulty: cfg.difficulty });
+  };
+  TP.exitResult = function () {
+    TP.resultMode = false; TP.unmount(); TP.active = false;
+    location.hash = TP.exam ? ('#brainlab/exams/' + TP.exam) : (TP.exitHash || '#brainlab/mock-tests');
+  };
+  /* auto-resume a custom-mock attempt after a FULL page reload (mock-tests page) */
+  TP._bootResume = function () {
+    if (!/^#brainlab\/mock-tests/.test(location.hash || '')) return;
+    var bl = B(); if (!bl || bl._currentQuiz) return;
+    var M = window.BrainLabMock; if (!M || M.active || TP.active) return;
+    try {
+      var keys = Object.keys(localStorage).filter(function (k) { return k.indexOf('bl_tp_custom_') === 0; });
+      for (var i = 0; i < keys.length; i++) {
+        var j = TP.savedCustom(keys[i]);
+        if (!j || !j.cfg) { if (j === null) localStorage.removeItem(keys[i]); continue; }
+        if (!j.endAt || j.endAt <= Date.now()) { localStorage.removeItem(keys[i]); continue; }
+        var cfg = j.cfg;
+        var pool = bl.filterQuestions({ category: cfg.category || 'All', topic: cfg.topic || 'All', exam: cfg.exam || 'All', difficulty: 'mixed' });
+        if (cfg.difficulty && cfg.difficulty !== 'mixed') pool = pool.filter(function (q) { return q[9] === cfg.difficulty; });
+        if (!pool.length) continue;
+        TP.startDedicated({ mode: 'mock', title: cfg.title, questions: Math.min(cfg.questions || 10, pool.length),
+          category: cfg.category, topic: cfg.topic, exam: cfg.exam, difficulty: cfg.difficulty, pool: pool });
+        return;
+      }
+    } catch (e) { }
   };
 
   /* ── boot: engine-safe wraps (no engine internals modified) ── */
@@ -223,18 +311,49 @@
       if (TP.active) {
         TP.submitting = true;
         try { localStorage.removeItem(TP.key); } catch (e2) {}
-        TP.unmount(); TP.active = false;
-        /* the ORIGINAL _finishQuiz renders the result page into the hub
-           player area — make it visible again (hidden while the
-           dedicated test page was open) */
-        var hub = document.getElementById('bl-quiz-player-area');
-        if (hub) hub.style.display = 'block';
+        /* the ORIGINAL _finishQuiz now renders the result INTO the dedicated
+           page (#bl-tp-area wins in its container lookup) — the page stays
+           mounted so the result + review appear on the test page itself,
+           with no other BrainLab content around it (spec §2/§10) */
         var r = oSubmit.apply(this, arguments);
         TP.submitting = false;
+        TP.resultMode = true;
+        var area = document.getElementById('bl-tp-area');
+        if (area) {
+          var rb = area.querySelector('.bl-result-retry');
+          if (rb) rb.onclick = function () { TP.retry(); };
+          var xb = area.querySelector('.bl-result-exit');
+          if (xb) xb.onclick = function () { TP.exitResult(); };
+        }
         return r;
       }
       return oSubmit.apply(this, arguments);
     };
+    /* EVERY mock session (list cards, count-picker, retry of an old session)
+       opens the DEDICATED page — no mock plays inside a mixed page (spec §2) */
+    var oSess = bl.startQuizSession;
+    bl.startQuizSession = function (opts) {
+      if (opts && opts.mode === 'mock' && !TP._fromTP && !TP.active) {
+        return TP.startDedicated(opts);
+      }
+      return oSess.apply(this, arguments);
+    };
+    /* abort/quit from the dedicated page: the engine already confirmed —
+       clean up WITHOUT a second confirm dialog, drop the saved attempt */
+    var oQuit = bl.quitQuiz;
+    bl.quitQuiz = function () {
+      if (TP.active && !TP.resultMode) {
+        if (bl._timerInterval) clearInterval(bl._timerInterval);
+        bl._currentQuiz = null; bl._answers = []; bl._currentQIdx = 0;
+        try { localStorage.removeItem(TP.key); } catch (e2) { }
+        TP.unmount(); TP.active = false;
+        location.hash = TP.exam ? ('#brainlab/exams/' + TP.exam) : (TP.exitHash || '#brainlab/mock-tests');
+        return;
+      }
+      return oQuit.apply(this, arguments);
+    };
+    /* full-reload resume for list mocks (universe mocks resume via their hash route) */
+    setTimeout(function () { try { TP._bootResume(); } catch (e) { } }, 1500);
   }
   boot();
 })();

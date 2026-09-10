@@ -213,7 +213,7 @@
     var weakSub = subjRows.filter(function (r) { return r.pct < 60; });
     var weakest = weakSub.length ? weakSub[weakSub.length - 1] : null;
 
-    var isAs = BrainLab._lang === 'as';
+    var isAs = false; /* spec §5/§17: result/review chrome stays English — question content stays translated */
     var h = '<div class="bl-quiz-result"><div class="bl-result-hero"><div class="bl-result-score">' + pct + '%</div><div class="bl-result-label">' + (isAs ? 'স্ক' + 'োৰ' : 'Score') + '</div></div>';
     h += '<div class="bl-v7-result-banner">TEST COMPLETED — ' + correct + ' / ' + total + ' correct' + (session.title ? ' · ' + esc(session.title) : '') + '</div>';
     h += '<div class="bl-result-stats">'
@@ -221,7 +221,7 @@
       + '<div class="bl-result-stat"><div class="bl-result-stat-icon">❌</div><div class="bl-result-stat-num">' + wrong + '</div><div class="bl-result-stat-label">' + (isAs ? 'ভুল' : 'Wrong') + '</div></div>'
       + '<div class="bl-result-stat"><div class="bl-result-stat-icon">⏭️</div><div class="bl-result-stat-num">' + skipped + '</div><div class="bl-result-stat-label">' + (isAs ? 'বাদ' : 'Skipped') + '</div></div>'
       + '<div class="bl-result-stat"><div class="bl-result-stat-icon">⏱️</div><div class="bl-result-stat-num">' + mins + ':' + (secs < 10 ? '0' : '') + secs + '</div><div class="bl-result-stat-label">Time</div></div>'
-      + '<div class="bl-result-stat"><div class="bl-result-stat-icon">🎯</div><div class="bl-result-stat-num">' + pct + '%</div><div class="bl-result-stat-label">Accuracy</div></div>'
+      + '<div class="bl-result-stat"><div class="bl-result-stat-icon">🎯</div><div class="bl-result-stat-num">' + ((correct + wrong) > 0 ? Math.round((correct * 100) / (correct + wrong)) : 0) + '%</div><div class="bl-result-stat-label">Accuracy</div></div>'
       + '</div>';
     if (subjRows.length > 1) {
       h += '<div class="bl-v7-subj"><h3>SUBJECT PERFORMANCE</h3>';
@@ -240,12 +240,16 @@
         + Math.min(20, weakest.t) + ' ' + esc(weakest.s) + ' MCQs'
         + '</p><button class="bl-v7-reco-btn" onclick="BrainLab.startQuizSession({mode:\'weak\',title:\'' + esc(weakest.s) + ' — Practice\',questions:10,category:\'' + esc(weakest.s) + '\'})">PRACTICE WEAK AREAS</button></div>';
     }
-    h += '<div class="bl-result-review"><h3>' + (isAs ? 'প্ৰশ্ন পৰ্যালোচনা' : 'Question Review') + '</h3><div class="bl-v7-review-tabs">'
+    var nMarked = (window.BrainLabMock && BrainLabMock.lastMarked)
+      ? Object.keys(BrainLabMock.lastMarked).filter(function (k) { return BrainLabMock.lastMarked[k]; }).length : 0;
+    h += '<div class="bl-result-review"><h3>Question Review</h3><div class="bl-v7-review-tabs">'
       + '<button class="bl-v7-rt on" data-f="all" onclick="BrainLabV7.reviewTab(this,\'all\')">ALL (' + total + ')</button>'
-      + '<button class="bl-v7-rt" data-f="correct" onclick="BrainLabV7.reviewTab(this,\'correct\')">CORRECT (' + correct + ')</button>'
       + '<button class="bl-v7-rt" data-f="wrong" onclick="BrainLabV7.reviewTab(this,\'wrong\')">WRONG (' + wrong + ')</button>'
-      + '<button class="bl-v7-rt" data-f="skipped" onclick="BrainLabV7.reviewTab(this,\'skipped\')">SKIPPED (' + skipped + ')</button>'
+      + '<button class="bl-v7-rt" data-f="correct" onclick="BrainLabV7.reviewTab(this,\'correct\')">CORRECT (' + correct + ')</button>'
+      + '<button class="bl-v7-rt" data-f="skipped" onclick="BrainLabV7.reviewTab(this,\'skipped\')">UNANSWERED (' + skipped + ')</button>'
+      + (nMarked > 0 ? '<button class="bl-v7-rt" data-f="marked" onclick="BrainLabV7.reviewTab(this,\'marked\')">MARKED (' + nMarked + ')</button>' : '')
       + '</div><div class="bl-v7-review-list">';
+    var mkMap = (window.BrainLabMock && BrainLabMock.lastMarked) ? BrainLabMock.lastMarked : {};
     qs.forEach(function (q, i) {
       var a = ans[i];
       var isSk = a === null || a === undefined || (a && a.skipped);
@@ -253,22 +257,27 @@
       var cls = isSk ? 'bl-review-skipped' : isCr ? 'bl-review-correct' : 'bl-review-wrong';
       var fcls = isSk ? 'skipped' : isCr ? 'correct' : 'wrong';
       var disp = BrainLabTranslate.getDisplay(q, BrainLab._lang);
-      h += '<div class="bl-review-item ' + cls + ' bl-v7-ri" data-f="' + fcls + '">'
-        + '<div class="bl-review-q">' + (i + 1) + '. ' + esc(disp.question) + '</div>'
-        + '<div class="bl-v7-ri-meta"><span>' + esc(q.category || '') + '</span><span>' + esc(q.topic || '') + '</span><span>' + esc(q.difficulty || '') + '</span>' + (q.question_type === 'PYQ' ? '<span class="bl-v7-pyq">PYQ</span>' : '') + '</div>';
+      var dispT = (q._translatedDisplay && q._translatedDisplay.question) ? q._translatedDisplay : disp; /* AS server translation wins (same engine as the live player) */
+      function optTxt(L) { return (dispT.options && dispT.options[L]) ? ('. ' + esc(dispT.options[L])) : ''; }
+      var isMarked = !!mkMap[i];
+      h += '<div class="bl-review-item ' + cls + ' bl-v7-ri" data-f="' + fcls + '"' + (isMarked ? ' data-mk="1"' : '') + '>'
+        + '<div class="bl-review-q">' + (i + 1) + '. ' + esc(dispT.question) + '</div>'
+        + '<div class="bl-v7-ri-meta"><span>' + esc(q.category || '') + '</span><span>' + esc(q.topic || '') + '</span><span>' + esc(q.difficulty || '') + '</span>' + (q.question_type === 'PYQ' ? '<span class="bl-v7-pyq">PYQ</span>' : '') + (isMarked ? '<span class="bl-v7-pyq" style="color:#b35c00">⚑ MARKED</span>' : '') + '</div>';
+      var ca = q.correct_answer.toUpperCase();
       if (!isSk) {
-        var ua = a.selectedAnswer; ua = ua && ua.length === 1 ? ua.toUpperCase() : ua;
-        var ca = q.correct_answer.toUpperCase();
-        h += '<div class="bl-review-ans">' + (isAs ? 'তোমাৰ উত্তৰ:' : 'Your answer:') + ' <strong>' + esc(ua) + '</strong> | ' + (isAs ? 'সঠিক:' : 'Correct:') + ' <strong style="color:var(--hp-red,#930205)">' + ca + '</strong></div>';
+        var ua = a.selectedAnswer;
+        ua = (typeof ua === 'string' && ua.length === 1) ? ua.toUpperCase() : (typeof ua === 'boolean' ? (ua ? '—' : '—') : '—'); /* legacy boolean rows → honest dash */
+        h += '<div class="bl-review-ans">Your Answer: <strong>' + ua + optTxt(ua) + '</strong> | Correct Answer: <strong style="color:var(--hp-red,#930205)">' + ca + optTxt(ca) + '</strong></div>';
       } else {
-        h += '<div class="bl-review-ans">' + (isAs ? 'বাদ দিলা' : 'Skipped') + ' | ' + (isAs ? 'সঠিক:' : 'Correct:') + ' <strong>' + q.correct_answer.toUpperCase() + '</strong></div>';
+        h += '<div class="bl-review-ans">Not Answered | Correct Answer: <strong style="color:var(--hp-red,#930205)">' + ca + optTxt(ca) + '</strong></div>';
       }
-      h += '<div class="bl-review-exp">' + esc(disp.explanation || 'No explanation available.') + '</div></div>';
+      var expT = (dispT.explanation && dispT.explanation.length) ? dispT.explanation : 'No explanation available.';
+      h += '<div class="bl-review-exp">' + esc(expT) + '</div></div>';
     });
     h += '</div></div>';
     h += '<div class="bl-result-actions"><button class="bl-result-btn bl-result-retry" onclick="BrainLab.retryQuiz()">' + (isAs ? 'পুনঃ চেষ্টা' : 'Retry Quiz') + '</button><button class="bl-result-btn bl-result-exit" onclick="BrainLab.quitQuiz()">' + (isAs ? 'বাহিৰ ওলোৱা' : 'Back to BrainLab') + '</button></div></div>';
-    var c = document.getElementById('bl-quiz-player-area');
-    if (c) { c.innerHTML = h; c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    var c = document.getElementById('bl-tp-area') || document.getElementById('bl-quiz-player-area'); /* dedicated mock page (if open) wins */
+    if (c) { c.innerHTML = h; try { c.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { } }
     /* DB sync (fail-open, no-op when signed out / migration not run) */
     V7.syncAttempt(session);
     V7.afterResultRefresh();
@@ -281,7 +290,8 @@
     var list = wrap.parentElement.querySelector('.bl-v7-review-list');
     if (!list) return;
     list.querySelectorAll('.bl-v7-ri').forEach(function (el) {
-      el.style.display = (f === 'all' || el.getAttribute('data-f') === f) ? '' : 'none';
+      var show = f === 'all' || (f === 'marked' ? el.getAttribute('data-mk') === '1' : el.getAttribute('data-f') === f);
+      el.style.display = show ? '' : 'none';
     });
   };
 

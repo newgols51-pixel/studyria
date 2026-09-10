@@ -33,18 +33,19 @@
   };
 
   function esc(s) { var bl = B(); return bl ? bl.escape(s) : String(s); }
-  function mkSeed(str) { var h = 0; for (var i = 0; i < str.length; i++) { h = (h * 31 + str.charCodeAt(i)) >>> 0; } return h || 1; }
   function mkOrderFor(q, title) {
-    var s = mkSeed('mk:' + title + ':' + (q.id || '') + ':' + (q.question_text || '').slice(0, 40));
-    function rnd() { s = (s * 1103515245 + 12345) >>> 0; return (s >>> 16) / 65536; }
-    var perm = [0, 1, 2, 3];
-    for (var j = perm.length - 1; j > 0; j--) { var k = Math.floor(rnd() * (j + 1)); var t = perm[j]; perm[j] = perm[k]; perm[k] = t; }
-    return perm.map(function (p, i) {
-      var src = 'abcd'[p];
+    /* FIX (scoring bug): the previous seeded permutation assigned each display
+       position a RANDOM bank letter as `src` while the rendered text stayed
+       keyed by the position label — so `original` (isCorrect) was evaluated
+       against a random option, not the one shown. Identity mapping keeps the
+       exact same visual order (bank a,b,c,d under labels A-D) and makes the
+       correct-answer flag true exactly where it is displayed. */
+    return [0, 1, 2, 3].map(function (i) {
+      var src = 'abcd'[i];
       return { label: 'ABCD'[i], src: src, original: src === q.correct_answer };
     });
   }
-  function t(en, as) { var bl = B(); return (bl && bl._lang === 'as') ? as : en; }
+  function t(en, as) { return en; /* spec §5: test controls/buttons stay English; only question content is translated (handled by the display layer) */ }
 
   function remaining() { return Math.max(0, Math.ceil((M.endAt - Date.now()) / 1000)); }
   function fmt(sec) {
@@ -191,6 +192,7 @@
   M.submit = function () {
     var bl = B(); if (!bl || M.submitted) return;
     M.submitted = true;
+    M.lastMarked = M.marked || {}; /* review page MARKED filter (reset clears the live map) */
     /* unanswered become null (same as the original nextQuestion on last q) */
     var total = bl._currentQuiz.questions.length;
     for (var i = 0; i < total; i++) { if (bl._answers[i] === undefined) bl._answers[i] = null; }
