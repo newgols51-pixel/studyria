@@ -284,6 +284,7 @@
       + '<h3 style="margin:18px 0 8px;font-size:.95rem;font-weight:800">📝 Mock Package Status</h3><div id="bl-ei-mocks"></div>'
       + '<h3 style="margin:18px 0 8px;font-size:.95rem;font-weight:800">🌐 Assamese Translations</h3>'
       + '<div style="font-size:.72rem;color:#666;margin-bottom:6px">Auto-translations generated in Assamese mock/practice mode land here for review. Verified rows always take priority; auto rows are honestly badged in the app.</div>'
+      + '<div id="bl-ei-bulk"></div>'
       + '<div id="bl-ei-trs"></div>'
       + '<h3 style="margin:18px 0 8px;font-size:.95rem;font-weight:800">🗂 Existing imported questions</h3>'
       + '<div style="display:flex;gap:8px;margin-bottom:8px"><button class="bl-ei-btn ghost" onclick="BrainLabExamAdmin.loadList()">↻ Refresh</button>'
@@ -294,6 +295,7 @@
     A.loadCycles();
     A.renderMocks();
     A.loadTr();
+    A.bulkPanel();
   };
 
   /* ── Mock Package Status — live allocation from the real bank (no fabricated data) ── */
@@ -357,6 +359,109 @@
     l.innerHTML = h;
   };
 
+  /* ── ⚡ Auto Translate & Verify Assamese — automated bulk pipeline ──
+     Phase 1: core question bank (STUDYRIA_QB) → batches of 12 through the
+       PUBLIC euTranslate op — the SERVER does translation + 5-stage
+       validation + persistence (system_verified / auto_translated).
+       Idempotent (cached rows are skipped server-side), resumable via a
+       localStorage cursor, rate-limited, no manual review required.
+     Phase 2: imported ExamQuestion rows → euManage bulkTr (admin-gated,
+       server-side cursor loop).
+     No secrets, no API keys — the pipeline is entirely server-side. ── */
+  A._bulk = { running: false, cursor: Number(localStorage.getItem('bl_tr_bulk_cursor') || 0), items: null, done: 0, sysV: 0, autoT: 0, fail: 0, errs: 0, failures: [] };
+
+  A.bulkPanel = function () {
+    var el = document.getElementById('bl-ei-bulk'); if (!el) return;
+    var b = A._bulk;
+    var bankN = (window.STUDYRIA_QB || []).length;
+    var h = '<div class="bl-ei-card" style="margin-bottom:10px">'
+      + '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">'
+      + '<div style="font-size:.8rem;font-weight:800">⚡ Auto Translate &amp; Verify Assamese</div>'
+      + '<div style="display:flex;gap:6px">'
+      + (b.running ? '<button class="bl-ei-btn ghost" onclick="BrainLabExamAdmin.bulkStop()">⏸ Pause</button>'
+                   : '<button class="bl-ei-btn" onclick="BrainLabExamAdmin.bulkStart()">▶ Start / Resume</button>')
+      + '</div></div>'
+      + '<div style="font-size:.7rem;color:#666;margin:6px 0">Fully automated: English → Assamese → 5-stage validation → auto-verified (system_verified) or honestly kept auto_translated. ' + (bankN ? 'Core bank: ' + bankN.toLocaleString('en-IN') + ' questions · ' : '') + 'Batched server-side, resumable, never regenerates cached translations.</div>'
+      + '<div id="bl-ei-bulkprog">' + (b.running || b.done || b.sysV || b.autoT ? A.bulkProgressHtml() : '<div class="bl-ei-empty" style="margin:0">Not started. Click Start — no manual review needed.</div>') + '</div>'
+      + '</div>';
+    el.innerHTML = h;
+  };
+  A.bulkProgressHtml = function () {
+    var b = A._bulk, total = b.items ? b.items.length : 0;
+    var pct = total ? Math.min(100, Math.round(b.done / total * 100)) : 0;
+    return '<div style="font-size:.72rem;color:#555;margin-top:4px">'
+      + (total ? pct + '% · ' + b.done.toLocaleString('en-IN') + ' / ' + total.toLocaleString('en-IN') + ' processed · ✅ system-verified ' + b.sysV + ' · 🤖 auto-translated ' + b.autoT + ' · ⚠️ failed ' + b.fail : '')
+      + '</div>'
+      + '<div style="background:#eee;border-radius:6px;height:8px;margin:6px 0;overflow:hidden"><div style="background:linear-gradient(90deg,#4f46e5,#7c3aed);height:8px;width:' + pct + '%"></div></div>'
+      + (b.failures.length ? '<div style="font-size:.66rem;color:#a33;max-height:90px;overflow:auto">' + b.failures.slice(0, 12).map(function (f) { return '• ' + esc(f.src || f.key || '') + ' — ' + esc(f.reason || ''); }).join('<br>') + '</div>' : '');
+  };
+  A.bulkProgressRender = function () {
+    var el = document.getElementById('bl-ei-bulkprog'); if (el) el.innerHTML = A.bulkProgressHtml();
+  };
+  A.bulkStop = function () { A._bulk.running = false; A.bulkPanel(); A.msg('Paused — progress is saved; Start resumes from the last batch.'); };
+  A.bulkStart = function () {
+    var b = A._bulk;
+    if (b.running) return;
+    A.msg('Loading question bank…');
+    A.bulkBank(function (QB) {
+      if (!QB.length) { A.msg('Question bank unavailable.'); return; }
+      /* dedupe by content-hash key, skip native-Assamese rows (priority content, never translated over) */
+      var seen = {}, items = [];
+      QB.forEach(function (q) {
+        if (!q || !q[0]) return;
+        var k = (window.BLTR && window.BLTR.hashKey) ? window.BLTR.hashKey(q[0]) : String(q[0]).slice(0, 60);
+        if (seen[k]) return; seen[k] = 1;
+        if (q[11] && String(q[11]).trim().length > 2) return; /* native AS wins */
+        items.push({ key: k, question: String(q[0]).slice(0, 500), optA: String(q[1] || '').slice(0, 240), optB: String(q[2] || '').slice(0, 240), optC: String(q[3] || '').slice(0, 240), optD: String(q[4] || '').slice(0, 240), explanation: String(q[6] || '').slice(0, 600) });
+      });
+      b.items = items; b.running = true; b.errs = 0;
+      if (b.cursor >= items.length) b.cursor = 0;
+      A.bulkPanel();
+      A.bulkLoop();
+    });
+  };
+  A.bulkBank = function (cb) {
+    if (window.STUDYRIA_QB && window.STUDYRIA_QB.length) { cb(window.STUDYRIA_QB); return; }
+    var s = document.createElement('script');
+    s.src = '/question-bank.js';
+    s.onload = function () { cb(window.STUDYRIA_QB || []); };
+    s.onerror = function () { cb([]); };
+    document.head.appendChild(s);
+  };
+  A.bulkLoop = function () {
+    var b = A._bulk;
+    if (!b.running) return;
+    var items = b.items;
+    if (b.cursor >= items.length) { b.running = false; A.bulkPanel(); A.msg('Core bank phase complete ✓ ' + b.sysV + ' system-verified · ' + b.autoT + ' auto-translated'); A.bulkImportedPhase(); return; }
+    var batch = items.slice(b.cursor, b.cursor + 12);
+    fetch('https://vesper-501c3886.base44.app/functions/euTranslate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'translate', items: batch }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.ok) throw new Error((d && d.error) || 'batch failed');
+        b.done += batch.length;
+        b.cursor += batch.length;
+        b.sysV += (d.systemVerified || 0); b.autoT += (d.autoTranslated || 0); b.fail += (d.failed || 0);
+        (d.trFailed || []).forEach(function (f) { b.failures.push({ key: f.key, reason: f.error || '' }); });
+        (d.tr && Object.keys(d.tr) || []).forEach(function (k) { var t = d.tr[k]; if (t && t.status === 'auto_translated' && t.note) b.failures.push({ key: k, reason: t.note }); });
+        b.errs = 0;
+        localStorage.setItem('bl_tr_bulk_cursor', String(b.cursor));
+        A.bulkProgressRender();
+        setTimeout(A.bulkLoop, 1500); /* rate-limit protection */
+      })
+      .catch(function (e) {
+        b.errs++;
+        if (b.errs >= 3) { b.running = false; A.bulkPanel(); A.msg('⚠️ Paused after repeated errors — ' + String(e.message || e) + '. Start resumes from batch ' + Math.floor(b.cursor / 12 + 1) + '.'); return; }
+        setTimeout(A.bulkLoop, 4000);
+      });
+  };
+  /* Phase 2: imported ExamQuestion rows (server-side, admin-gated, resumable cursor) */
+  A.bulkImportedPhase = function () {
+    euApi('euManage', { op: 'bulkTr', limit: 15 }).then(function (d) {
+      if (!d || !d.ok) return; /* signed-out or no imported rows — phase simply has nothing to do */
+      A.loadTr();
+    }).catch(function () {});
+  };
+
   /* ── Assamese translation review (server cache — euManage tr ops) ── */
   A.loadTr = function () {
     var el = document.getElementById('bl-ei-trs'); if (!el) return;
@@ -364,10 +469,10 @@
     euApi('euManage', { op: 'trList', limit: 20 }).then(function (d) {
       if (!d || !d.ok) { el.innerHTML = '<div class="bl-ei-empty">' + esc((d && d.error) || 'Could not load — sign in to the Admin Panel first.') + '</div>'; return; }
       var st = d.stats || {};
-      var h = '<div style="font-size:.72rem;color:#666;margin-bottom:8px">Cache: ' + (st.total || 0) + ' total · 🤖 auto ' + (st.auto || 0) + ' · 👀 reviewed ' + (st.reviewed || 0) + ' · ✅ verified ' + (st.verified || 0) + '</div>';
+      var h = '<div style="font-size:.72rem;color:#666;margin-bottom:8px">Cache: ' + (st.total || 0) + ' total · 🛡️ system-verified ' + (st.system_verified || 0) + ' · 🤖 auto-translated ' + ((st.auto_translated || 0) + (st.auto || 0)) + ' · 👀 reviewed ' + (st.reviewed || 0) + ' · ✅ verified ' + (st.verified || 0) + (st.failed ? ' · ⚠️ failed ' + st.failed : '') + '</div>';
       if (!d.rows.length) { el.innerHTML = h + '<div class="bl-ei-empty">No translations yet — Assamese mock mode generates and caches them automatically.</div>'; return; }
       d.rows.forEach(function (r) {
-        var badge = r.status === 'verified' ? '✅ verified' : r.status === 'reviewed' ? '👀 reviewed' : '🤖 auto';
+        var badge = r.status === 'verified' ? '✅ verified' : r.status === 'reviewed' ? '👀 reviewed' : r.status === 'system_verified' ? '🛡️ system-verified' : r.status === 'auto_translated' ? '🤖 auto-translated' : '🤖 auto';
         h += '<div class="bl-ei-card" style="margin-bottom:10px">'
           + '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div style="font-size:.7rem;color:#666">' + badge + ' · ' + esc(r.source || '') + (r.reviewedBy ? ' · by ' + esc(r.reviewedBy) : '') + '</div>'
           + '<div style="display:flex;gap:6px;flex-shrink:0">'
