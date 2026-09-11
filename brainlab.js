@@ -105,14 +105,21 @@ getAttemptedIds:function(){try{return JSON.parse(localStorage.getItem('bl_attemp
 markAttempted:function(ids){try{var ex=this.getAttemptedIds();ids.forEach(function(id){if(ex.indexOf(id)===-1)ex.push(id);});if(ex.length>2000)ex=ex.slice(ex.length-2000);localStorage.setItem('bl_attempted_q',JSON.stringify(ex));}catch(e){}},
 selectQuestions:function(pool,count){var s=this;if(pool.length<=count)return this.shuffle(pool);var attempted=this.getAttemptedIds();var unseen=pool.filter(function(q){return attempted.indexOf(String(q[0].slice(0,50)+q[5]))===-1;});var seen=pool.filter(function(q){return attempted.indexOf(String(q[0].slice(0,50)+q[5]))!==-1;});var result=[];if(unseen.length>=count){result=this.shuffle(unseen).slice(0,count);}else{result=unseen.slice();result=result.concat(this.shuffle(seen).slice(0,Math.min(count-unseen.length,seen.length)));}var unique=[],seenIds={};result.forEach(function(q){var id=String(q[0].slice(0,50)+q[5]);if(!seenIds[id]){seenIds[id]=1;unique.push(q);}});if(unique.length<count){pool.forEach(function(q){if(unique.length>=count)return;var id=String(q[0].slice(0,50)+q[5]);if(!seenIds[id]){seenIds[id]=1;unique.push(q);}});}return this.shuffle(unique).slice(0,Math.min(count,unique.length));},
 toQuiz:function(items){return items.map(function(item,i){
-  /* SHUFFLE OPTIONS so correct answer is not always 'A' — fixes Arena/quiz pattern bug */
+  /* SHUFFLE OPTIONS so correct answer is not always 'A' — fixes Arena/quiz pattern bug.
+     DETERMINISTIC seed from the question text: the same bank question always
+     gets the same option positions, so resumed/retried/refreshed sessions keep
+     answers visually aligned with the exact options the learner picked
+     (answer-integrity fix for saved attempts — Tests module spec §10). */
   var _opts=[item[1],item[2],item[3],item[4]];
   var _optAs=[item[12]||'',item[13]||'',item[14]||'',item[15]||''];
   var _origAns=item[5];
   var _origIdx=_origAns==='a'?0:_origAns==='b'?1:_origAns==='c'?2:_origAns==='d'?3:0;
-  /* Fisher-Yates shuffle of index [0,1,2,3] */
-  var _perm=[0,1,2,3];
-  for(var j=_perm.length-1;j>0;j--){var k=Math.floor(Math.random()*(j+1));var t=_perm[j];_perm[j]=_perm[k];_perm[k]=t;}
+  var _qt=String(item[0]||'');var _seed=0;
+  for(var ci=0;ci<_qt.length;ci++){_seed=(_seed*31+_qt.charCodeAt(ci))%2147483647;}
+  if(_seed===0)_seed=49297;
+  /* seeded Fisher-Yates of index [0,1,2,3] — same PRNG as _seededShuffle */
+  var _perm=[0,1,2,3];var _ps=_seed;
+  for(var j=_perm.length-1;j>0;j--){_ps=(_ps*9301+49297)%233280;var k=_ps%(j+1);var t=_perm[j];_perm[j]=_perm[k];_perm[k]=t;}
   var _shOpts=_perm.map(function(p){return _opts[p];});
   var _shOptAs=_perm.map(function(p){return _optAs[p];});
   var _newCorrectIdx=_perm.indexOf(_origIdx);
