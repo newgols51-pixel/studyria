@@ -268,6 +268,7 @@
         case 'affairs':     this.renderAffairs(); break;
         case 'leaderboard': this.renderLeaderboard(); break;
         case 'analytics':   this.renderAnalytics(); break;
+        case 'tests':       this.renderTests(); break;
       }
     },
 
@@ -637,6 +638,111 @@
     },
 
     /* ── Leaderboard ── */
+    /* ── TESTS — Test Series Manager (real data only, spec §18/§26) ── */
+    /* Series definitions are a config registry in brainlab-tests.js (the
+       same config-as-code pattern as EXAM_HUB/ORGS — adding a series = a
+       registry entry). This manager shows the TRUTH: real pool sizes,
+       published vs target tests, MCQ allocation, content gaps, and
+       per-test question previews. A test only exists if its full,
+       deduplicated question set exists — incomplete tests are never
+       published, so there is nothing here that can fake completeness. */
+    renderTests: function () {
+      var c = document.getElementById('brainlab-admin-content');
+      if (!c) return;
+      var BT = window.BrainLabTests;
+      if (!BT || !BT.adminReport) {
+        c.innerHTML = '<div style="padding:20px;color:#ef4444;font-size:0.82rem">Tests module not loaded (brainlab-tests.js).</div>';
+        return;
+      }
+      var rows = BT.adminReport();
+      var nTests = 0, nQs = 0, nPending = 0;
+      rows.forEach(function (r) { nTests += r.published; nQs += r.mcqs; nPending += r.pending; });
+      var esc2 = escape;
+      var h = '<div style="margin-bottom:16px">' +
+        '<h3 style="font-size:1rem;font-weight:700;margin:0 0 8px">📝 Test Series Manager</h3>' +
+        '<p style="font-size:0.78rem;color:var(--text-secondary,#94a3b8);margin:0 0 12px">Dedicated Tests module — real exam-pattern test series. All counts below are computed live from the actual published question records; incomplete tests are never published.</p>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+          ['<span style="padding:6px 14px;border-radius:10px;background:rgba(139,92,246,0.15);color:#a78bfa;font-size:0.78rem;font-weight:700">' + rows.length + ' Series</span>',
+           '<span style="padding:6px 14px;border-radius:10px;background:rgba(34,197,94,0.15);color:#22c55e;font-size:0.78rem;font-weight:700">' + nTests + ' Published Tests</span>',
+           '<span style="padding:6px 14px;border-radius:10px;background:rgba(61,142,248,0.15);color:#3d8ef8;font-size:0.78rem;font-weight:700">' + nQs.toLocaleString('en-IN') + ' MCQ Slots</span>',
+           '<span style="padding:6px 14px;border-radius:10px;background:rgba(251,191,36,0.13);color:#fbbf24;font-size:0.78rem;font-weight:700">' + nPending + ' Content Pending</span>'].join('') +
+        '</div></div>';
+
+      h += '<div id="ts-list" style="display:flex;flex-direction:column;gap:8px">';
+      rows.forEach(function (r) {
+        var badge = r.status === 'Published' ? 'background:rgba(34,197,94,0.15);color:#22c55e'
+          : r.status === 'Partially Published' ? 'background:rgba(251,191,36,0.15);color:#fbbf24'
+          : 'background:rgba(239,68,68,0.15);color:#ef4444';
+        h += '<div style="border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;background:rgba(255,255,255,0.02)">' +
+          '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+            '<div style="flex:1;min-width:200px"><div style="font-size:0.88rem;font-weight:700">' + esc2(r.name) + '</div>' +
+            '<div style="font-size:0.72rem;color:var(--text-secondary,#94a3b8)">' + esc2(r.org) + '</div></div>' +
+            '<span style="padding:4px 12px;border-radius:8px;font-size:0.7rem;font-weight:700;' + badge + '">' + r.status + '</span>' +
+            '<button onclick="BrainLabAdmin.tsToggle(\'' + r.id + '\')" style="padding:4px 12px;border-radius:8px;background:rgba(61,142,248,0.15);color:#3d8ef8;border:none;cursor:pointer;font-size:0.72rem;font-weight:600">Tests &amp; Allocation</button>' +
+            '<button onclick="BrainLabAdmin.tsLaunch(\'' + r.id + '\')" style="padding:4px 12px;border-radius:8px;background:rgba(139,92,246,0.15);color:#a78bfa;border:none;cursor:pointer;font-size:0.72rem;font-weight:600">Open in App</button>' +
+          '</div>' +
+          '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:0.72rem;color:var(--text-secondary,#94a3b8)">' +
+            '<span>Real pool: <b style="color:inherit">' + r.pool.toLocaleString('en-IN') + ' Qs</b></span>' +
+            '<span>Config: <b style="color:inherit">' + r.perTest + ' Qs / test · ' + r.perTest + ' min</b></span>' +
+            '<span>Published: <b style="color:inherit">' + r.published + ' / ' + r.target + ' tests</b></span>' +
+            '<span>Allocated: <b style="color:inherit">' + r.mcqs.toLocaleString('en-IN') + ' MCQ slots</b></span>' +
+            (r.pending > 0 ? '<span style="color:#fbbf24">Missing: <b>' + (r.pending * r.perTest).toLocaleString('en-IN') + ' verified questions</b> for ' + r.pending + ' more test(s)</span>' : '') +
+          '</div>' +
+          '<div id="ts-x-' + r.id + '" style="display:none;margin-top:10px"></div>' +
+        '</div>';
+      });
+      h += '</div>';
+      h += '<div style="margin-top:14px;padding:12px 14px;border-radius:10px;background:rgba(251,191,36,0.07);border:1px solid rgba(251,191,36,0.18);font-size:0.72rem;color:var(--text-secondary,#94a3b8)">Series definitions (name, organization, pool, target, duration) live in the <b>brainlab-tests.js</b> registry — the same config-as-code pattern as the Exam Hub. To add or edit a series, edit the registry entry; the manager above always reflects the real, live state of the content. Tests are published only when the real question pool can fully fill them.</div>';
+      c.innerHTML = h;
+    },
+
+    tsToggle: function (sid) {
+      var x = document.getElementById('ts-x-' + sid);
+      if (!x) return;
+      if (x.style.display === 'block') { x.style.display = 'none'; return; }
+      var BT = window.BrainLabTests;
+      var info = BT && BT.info ? BT.info(sid) : null;
+      if (!info) { x.style.display = 'block'; x.innerHTML = '<div style="color:#ef4444;font-size:0.75rem">Series not found.</div>'; return; }
+      var h = '<div style="font-size:0.68rem;font-weight:800;letter-spacing:.06em;color:var(--text-secondary,#94a3b8);margin-bottom:6px">TEST ALLOCATION — ' + info.published + ' PUBLISHED TEST' + (info.published === 1 ? '' : 'S') + ' · ' + info.perTest + ' REAL QUESTIONS EACH (disjoint — never reused inside this pool group)</div>';
+      h += '<div style="display:flex;flex-direction:column;gap:4px;max-height:320px;overflow-y:auto">';
+      for (var n = 1; n <= info.published; n++) {
+        var t = BT.test(sid, n);
+        var ok = !!(t && t.qs.length === info.perTest);
+        h += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,0.03);font-size:0.74rem">' +
+          '<span style="font-weight:700">' + escape(info.s.name) + ' — Test ' + n + '</span>' +
+          '<span style="color:var(--text-secondary,#94a3b8)">' + (t ? t.qs.length : 0) + ' MCQs · ' + info.perTest + ' min</span>' +
+          '<span style="margin-left:auto;padding:2px 10px;border-radius:999px;font-size:0.66rem;font-weight:700;' + (ok ? 'background:rgba(34,197,94,0.15);color:#22c55e">Complete' : 'background:rgba(239,68,68,0.15);color:#ef4444">Incomplete') + '</span>' +
+          '<button onclick="BrainLabAdmin.tsPreview(\'' + sid + '\',' + n + ')" style="padding:3px 10px;border-radius:7px;background:rgba(61,142,248,0.15);color:#3d8ef8;border:none;cursor:pointer;font-size:0.68rem;font-weight:600">Preview Qs</button>' +
+        '</div>';
+      }
+      h += '</div><div id="ts-qprev-' + sid + '" style="margin-top:8px"></div>';
+      x.innerHTML = h;
+      x.style.display = 'block';
+    },
+
+    tsPreview: function (sid, n) {
+      var box = document.getElementById('ts-qprev-' + sid);
+      if (!box) return;
+      var BT = window.BrainLabTests;
+      var t = BT && BT.test ? BT.test(sid, n) : null;
+      if (!t) { box.innerHTML = '<div style="color:#ef4444;font-size:0.75rem;padding:6px 0">Test ' + n + ' is not published (incomplete question set).</div>'; return; }
+      var show = t.qs.slice(0, 3);
+      var h = '<div style="font-size:0.68rem;font-weight:800;letter-spacing:.06em;color:var(--text-secondary,#94a3b8);margin:6px 0">FIRST 3 OF ' + t.qs.length + ' REAL QUESTIONS — ' + escape(infoName(sid)) + ' — Test ' + n + '</div>';
+      show.forEach(function (q, i) {
+        h += '<div style="padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.03);margin-bottom:6px;font-size:0.74rem">' +
+          '<div style="font-weight:600;margin-bottom:4px">Q' + (i + 1) + '. ' + escape(String(q[0]).slice(0, 160)) + (String(q[0]).length > 160 ? '…' : '') + '</div>' +
+          '<div style="color:var(--text-secondary,#94a3b8);font-size:0.7rem">' + escape(q[7] || '') + ' · ' + escape(q[8] || '') + ' · ' + escape(q[9] || '') + (String(q[17] || '') === 'PYQ' ? ' · PYQ' : '') + '</div>' +
+        '</div>';
+      });
+      function infoName(id2) { var b = window.BrainLabTests; var s2 = b.find ? b.find(id2) : null; return s2 ? s2.name : id2; }
+      box.innerHTML = h;
+    },
+
+    tsLaunch: function (sid) {
+      window.location.hash = '#brainlab/tests/' + sid;
+      window.location.href = '/#brainlab/tests/' + sid;
+    },
+
     renderLeaderboard: async function () {
       var c = document.getElementById('brainlab-admin-content');
       if (!c) return;

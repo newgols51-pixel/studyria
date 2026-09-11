@@ -233,7 +233,7 @@
 
     bl._startPlayer = function (opts) {
       M.reset();
-      if (opts && opts.mode === 'mock') {
+      if (opts && (opts.mode === 'mock' || opts.mode === 'test')) { /* 'test' = BrainLab Tests module — same engine, own activity_type (spec §10) */
         M.active = true;
         M.duration = Math.max(1, (opts.questions || []).length) * 60; /* 1 min/question */
         M.endAt = Date.now() + M.duration * 1000;

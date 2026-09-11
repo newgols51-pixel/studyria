@@ -314,15 +314,15 @@ window.__blReady = function (fn) {
   })();
 };
 window.ROUTE_SCRIPTS = {
-  brainlab:      ['question-bank.js?v=20260816exp3', 'brainlab-icons.js?v=20260901gs', 'brainlab.js?v=20260910d', 'brainlab-ext.js?v=20260910a', 'arena.js?v=20260903fix2', 'brainlab-v7.js?v=20260910b', 'brainlab-pages.js?v=20260910c', 'brainlab-exams.js?v=20260910f', 'brainlab-mock.js?v=20260910d', 'brainlab-testpage.js?v=20260910e', 'brainlab-activity.js?v=20260910b', 'brainlab-tr-server.js?v=20260910b'],
-  campus:        ['campus.js?v=20260731a', 'campus-admin.js?v=20260731a'],
+  brainlab:      ['question-bank.js?v=20260816exp3', 'brainlab-icons.js?v=20260901gs', 'brainlab.js?v=20260910d', 'brainlab-ext.js?v=20260910a', 'arena.js?v=20260903fix2', 'brainlab-v7.js?v=20260910b', 'brainlab-pages.js?v=20260911a', 'brainlab-exams.js?v=20260910f', 'brainlab-mock.js?v=20260911a', 'brainlab-testpage.js?v=20260911a', 'brainlab-activity.js?v=20260910b', 'brainlab-tr-server.js?v=20260910b', 'brainlab-tests.js?v=20260911a'],
+  campus:        ['campus.js?v=20260731a', 'campus-admin.js?v=20260911a'],
   'adre-papers': ['adre-papers-data.js?v=20260827d', 'adre-papers-config.js?v=20260827d', 'adre-paper1-data.js?v=20260827d', 'adre-paper2-data.js?v=20260827d', 'adre-paper5-data.js?v=20260827d', 'adre-paper1-2022-data.js?v=20260827d', 'adre-paper2-2022-data.js?v=20260827d', 'adre-paper3-2022-data.js?v=20260827d', 'adre-paper4-2022-data.js?v=20260827d', 'adre-paper5-2022-data.js?v=20260827d', 'adre-exam.js?v=20260828a'],
-  admin:         ['brainlab-exam-import.js?v=20260910e', 'smart-publish-manager.js', 'pdf-classification-refactor.js?v=20260906', 'premium-edit-pdf-ui.js', 'admin-membership-manager.js', 'pwa-admin-v32.js', 'library-expansion-uploader.js', 'campus-admin.js?v=20260731a'],
+  admin:         ['brainlab-exam-import.js?v=20260910e', 'smart-publish-manager.js', 'pdf-classification-refactor.js?v=20260906', 'premium-edit-pdf-ui.js', 'admin-membership-manager.js', 'pwa-admin-v32.js', 'library-expansion-uploader.js', 'campus-admin.js?v=20260911a'],
   upload:        ['smart-publish-manager.js', 'pdf-classification-refactor.js?v=20260906', 'premium-edit-pdf-ui.js'],
   'ai-notes':    ['ai-notes-studio.js']
 };
 window.ROUTE_CSS = {
-  brainlab:      ['brainlab.css?v=20260910d', 'brainlab-icons.css?v=20260818icons1', 'brainlab-v7.css?v=20260908a', 'brainlab-pages.css?v=20260908c', 'brainlab-exams.css?v=20260910b', 'brainlab-mock.css?v=20260908a', 'brainlab-testpage.css?v=20260910c'],
+  brainlab:      ['brainlab.css?v=20260910d', 'brainlab-icons.css?v=20260818icons1', 'brainlab-v7.css?v=20260908a', 'brainlab-pages.css?v=20260908c', 'brainlab-exams.css?v=20260910b', 'brainlab-mock.css?v=20260908a', 'brainlab-testpage.css?v=20260910c', 'brainlab-tests.css?v=20260911a'],
   campus:        ['campus.css?v=20260731a'],
   'adre-papers': ['adre-exam.css?v=20260827d']
 };
@@ -9033,6 +9033,7 @@ function studyriaApp() {
           <a class="hp-menu-item" onclick="dhCloseHamburger();navigate('library');setTimeout(function(){var f=document.getElementById('dPaidFilter');if(f){f.value='free';f.dispatchEvent(new Event('change'));}},300)"><span class="hp-menu-icon">📄</span> Free PDFs</a>
           <a class="hp-menu-item" onclick="dhCloseHamburger();navigate('brainlab');__blReady(function(){BrainLab.switchTab('quiz');})"><span class="hp-menu-icon">🧩</span> Quizzes</a>
           <a class="hp-menu-item" onclick="dhCloseHamburger();navigate('brainlab');__blReady(function(){BrainLab.switchTab('mock');})"><span class="hp-menu-icon">📝</span> Mock Tests</a>
+          <a class="hp-menu-item" onclick="dhCloseHamburger();navigate('brainlab');__blReady(function(){window.BrainLabPages&&window.BrainLabPages.go('tests');})"><span class="hp-menu-icon">🧪</span> Tests</a>
           <a class="hp-menu-item" onclick="dhCloseHamburger();navigate('adre-papers')"><span class="hp-menu-icon">🏛️</span> ADRE Papers</a>
           <a class="hp-menu-item" onclick="dhCloseHamburger();navigate('brainlab');__blReady(function(){BrainLab.switchTab('pyq');})"><span class="hp-menu-icon">📋</span> PYQs</a>
           <a class="hp-menu-item" onclick="dhCloseHamburger();navigate('brainlab');__blReady(function(){BrainLab.switchTab('mcq');})"><span class="hp-menu-icon">✅</span> MCQs</a>
@@ -15493,6 +15494,7 @@ body.light .me-stat-val { filter:none; }
         <p style="font-size:0.82rem;color:var(--text-secondary,#94a3b8);margin:0">Manage quiz bank, mock tests, flashcards & analytics</p>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">
+        <button class="focus-btn focus-btn-secondary" onclick="BrainLabAdmin.switchSection('tests')" style="padding:8px 14px;font-size:0.78rem">📝 Tests</button>
         <button class="focus-btn focus-btn-primary" onclick="BrainLabAdmin.switchSection('quizzes')" style="padding:8px 14px;font-size:0.78rem">🧩 Quizzes</button>
         <button class="focus-btn focus-btn-secondary" onclick="BrainLabAdmin.switchSection('mocks')" style="padding:8px 14px;font-size:0.78rem">📝 Mock Tests</button>
         <button class="focus-btn focus-btn-secondary" onclick="BrainLabAdmin.switchSection('flashcards')" style="padding:8px 14px;font-size:0.78rem">🎴 Flashcards</button>

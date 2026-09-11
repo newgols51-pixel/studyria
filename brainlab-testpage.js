@@ -36,6 +36,12 @@
 
   function esc(s) { var bl = B(); return bl ? bl.escape(s) : String(s == null ? '' : s); }
 
+  /* ── route scoping (Tests module reuses this page with its own routes;
+       defaults keep every existing mock route byte-identical) ── */
+  TP.routePrefix = 'exams/mock';
+  TP.exitBase = '#brainlab/exams';
+  TP._route = function () { return '#brainlab/' + TP.routePrefix + '/' + TP.exam + '/' + TP.n; };
+
   /* ── attempt persistence (per exam + mock number — one active attempt) ── */
   TP.stateKey = function (ex, n) { return 'bl_tp_' + ex + '_' + n; };
   TP.saved = function (ex, n) {
@@ -69,8 +75,8 @@
   /* ── page overlay ── */
   TP.mount = function (e, m) {
     TP.unmount();
-    TP.expectHash = TP.exam ? ('#brainlab/exams/mock/' + TP.exam + '/' + TP.n) : (location.hash || '#brainlab/mock-tests');
-    TP.exitHash = TP.exam ? ('#brainlab/exams/' + TP.exam) : (TP.exitHash || '#brainlab/mock-tests');
+    TP.expectHash = TP.exam ? TP._route() : (location.hash || '#brainlab/mock-tests');
+    TP.exitHash = TP.exam ? (TP.exitBase + '/' + TP.exam) : (TP.exitHash || '#brainlab/mock-tests');
     var bl = B(); if (!bl) return;
     var pg = document.createElement('div');
     pg.id = 'bl-tp-page';
@@ -107,6 +113,7 @@
 
   /* ── open / resume ── */
   TP.open = function (ex, n, push) {
+    TP.routePrefix = 'exams/mock'; TP.exitBase = '#brainlab/exams';
     if (push !== false) { location.hash = '#brainlab/exams/mock/' + ex + '/' + n; return; }
     var u = U();
     if (!u || !u.findExam || !u.mockSeries) { setTimeout(function () { TP.open(ex, n, false); }, 250); return; }
@@ -189,7 +196,7 @@
     var ex = TP.exam;
     TP.unmount(); TP.active = false;
     if (M && M.active && !TP.submitting) { try { M.reset(); } catch (e) { } } /* ghost-engine fix: attempt stays saved */
-    location.hash = ex ? ('#brainlab/exams/' + ex) : (TP.exitHash || '#brainlab/mock-tests');
+    location.hash = ex ? (TP.exitBase + '/' + ex) : (TP.exitHash || '#brainlab/mock-tests');
   };
   TP._before = function (e) {
     var M = window.BrainLabMock;
@@ -199,7 +206,7 @@
     var M = window.BrainLabMock;
     if (TP.resultMode) { TP.resultMode = false; TP.unmount(); TP.active = false; return; }
     if (!TP.active || TP.submitting) return;
-    var expect = TP.expectHash || ('#brainlab/exams/mock/' + TP.exam + '/' + TP.n);
+    var expect = TP.expectHash || TP._route();
     if ((location.hash || '') === expect) return;
     if (M && M.active) {
       if (!confirm('Leave this test?\n\nYour attempt is saved — you can resume it anytime.')) {
@@ -209,6 +216,54 @@
     }
     TP.unmount(); TP.active = false; /* attempt stays saved for resume */
     if (M && M.active) { try { M.reset(); } catch (e) { } } /* ghost-engine fix: attempt stays saved */
+  };
+
+  /* ── TESTS MODULE — dedicated attempt for a Test Series test (spec §10/§11):
+     same page + engine + resume/auto-submit/result system as exam mocks,
+     with activity_type mode='test' and Tests-scoped routes. cfg:
+     { exam: seriesId, n: testNumber, name: seriesName, qs: question set } ── */
+  TP.openCustom = function (cfg) {
+    if (!cfg || !cfg.exam || !cfg.qs || !cfg.qs.length) return;
+    var bl = B();
+    if (!bl) { setTimeout(function () { TP.openCustom(cfg); }, 300); return; }
+    TP.routePrefix = 'tests'; TP.exitBase = '#brainlab/tests';
+    /* already showing this exact test → just refresh the view */
+    if (TP.active && TP.exam === cfg.exam && TP.n === cfg.n) { if (window.BrainLabMock) window.BrainLabMock.render(); return; }
+    TP.exam = cfg.exam; TP.n = cfg.n;
+    TP.key = TP.stateKey(cfg.exam, cfg.n); TP.submitting = false;
+    /* deterministic test set in fixed order (stable across refresh) */
+    TP._fixedOrder = true; TP._fromTP = true;
+    try {
+      bl.startQuizSession({
+        mode: 'test',
+        title: cfg.name + ' — Test ' + cfg.n,
+        questions: cfg.qs.length,
+        exam: cfg.name,
+        pool: cfg.qs
+      });
+    } finally { TP._fixedOrder = false; TP._fromTP = false; }
+    var M = window.BrainLabMock;
+    if (!M || !M.active) { TP.active = false; return; }
+    TP.mount({ name: cfg.name }, { qs: cfg.qs });
+    TP.active = true;
+    /* resume a saved attempt for THIS test (refresh/back-button path) */
+    var sv = TP.saved(cfg.exam, cfg.n);
+    if (sv) {
+      bl._answers = sv.answers || [];
+      bl._currentQIdx = Math.min(sv.qIdx || 0, cfg.qs.length - 1);
+      if (sv.startedAt) bl._startTime = sv.startedAt;
+      if (sv.lang) bl._lang = sv.lang;
+      M.marked = sv.marked || {};
+      if (sv.endAt && sv.endAt > Date.now()) {
+        M.endAt = sv.endAt;
+      } else if (sv.endAt) {
+        setTimeout(function () {
+          if (M.active && !M.submitted && TP.active) M.submit(); /* expired while away — honest auto-submit */
+        }, 800);
+      }
+    }
+    M.render();
+    if (window.BLTR && B() && B()._lang === 'as' && B()._currentQuiz) window.BLTR.prefetch(B()._currentQuiz.questions);
   };
 
   /* ── dedicated page for ANY mock (spec §1/§2/§3): BrainLab mock-list cards,
@@ -268,7 +323,7 @@
   };
   TP.exitResult = function () {
     TP.resultMode = false; TP.unmount(); TP.active = false;
-    location.hash = TP.exam ? ('#brainlab/exams/' + TP.exam) : (TP.exitHash || '#brainlab/mock-tests');
+    location.hash = TP.exam ? (TP.exitBase + '/' + TP.exam) : (TP.exitHash || '#brainlab/mock-tests');
   };
   /* auto-resume a custom-mock attempt after a FULL page reload (mock-tests page) */
   TP._bootResume = function () {
@@ -347,7 +402,7 @@
         bl._currentQuiz = null; bl._answers = []; bl._currentQIdx = 0;
         try { localStorage.removeItem(TP.key); } catch (e2) { }
         TP.unmount(); TP.active = false;
-        location.hash = TP.exam ? ('#brainlab/exams/' + TP.exam) : (TP.exitHash || '#brainlab/mock-tests');
+        location.hash = TP.exam ? (TP.exitBase + '/' + TP.exam) : (TP.exitHash || '#brainlab/mock-tests');
         return;
       }
       return oQuit.apply(this, arguments);
