@@ -20982,6 +20982,12 @@ async function navigate(page) {
   // V5.0: Initialize Campus / BrainLab modules
   if (page === 'campus' && window.Campus) Campus.init();
   if (page === 'brainlab' && window.BrainLab) BrainLab.init();
+  // BrainLab sub-route deep links (e.g. #brainlab/tests/vfa/1): navigate()
+  // normalized the page to 'brainlab' and KEPT the full hash — the V8
+  // sub-router must open the module page explicitly (no hashchange fires).
+  if (page === 'brainlab' && window._blPendingSub && window.BrainLabPages && window.BrainLabPages.syncFromHash) {
+    try { window.BrainLabPages.syncFromHash(); } catch (e) { console.warn('[blv8] sub-route sync failed', e); }
+  }
   window.scrollTo(0, 0);
 
   // ── Hash-based SPA routing (public pages only) ────────────────
@@ -39425,8 +39431,9 @@ document.addEventListener('DOMContentLoaded', async function _appInit() {
     const _QUERY_PAGE_ALLOWLIST = new Set([
       'about', 'career-hub', 'library', 'contact', 'privacy', 'terms', 'refund', 'notifications'
     ]);
-    if (_initHash && _initHash !== '404' && _SPA_PUBLIC_PAGES.has(_initHash)) {
-      navigate(_initHash);
+    const _isBlSubHash = _initHash.indexOf('brainlab/') === 0;
+    if (_initHash && _initHash !== '404' && (_SPA_PUBLIC_PAGES.has(_initHash) || (_isBlSubHash && _SPA_PUBLIC_PAGES.has('brainlab')))) {
+      navigate('brainlab'); /* sub-route: navigate() keeps the full hash and the V8 sub-router opens the module page */
     } else if (_initQueryPage === 'discover') {
       // 'discover' is a section of the home page, not a separate page —
       // render home, self-reference the canonical, then scroll to it.
