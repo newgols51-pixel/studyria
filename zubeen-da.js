@@ -478,6 +478,7 @@
       var bar = document.getElementById('z-player');
       if (!vid || !bar) return;
       this._pollStop();
+      this._keeper(false);   /* Apple embed can't be remote-controlled — no fake background */
       /* keep _current so ⏭/⏮ still work — but this is not our playback */
       if (navigator.mediaSession) {
         try { navigator.mediaSession.playbackState = 'none'; navigator.mediaSession.metadata = null; } catch (e) {}
@@ -569,6 +570,35 @@
       } catch (e) { /* media-session is a nice-to-have; never break playback */ }
     },
 
+    /* ── Background-play keeper ──────────────────────────────────────
+       Mobile browsers suspend iframe media (YouTube) when the app goes
+       to background. A near-silent native audio element playing in a
+       loop grants the page persistent audio focus, so Chrome keeps the
+       whole page — including the YouTube iframe — alive in background,
+       with the Media Session notification we already provide.
+       iOS is excluded: Safari suspends iframes regardless, and a lone
+       silent loop there would just fake a notification. */
+    _keeper: function (playing) {
+      var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      if (isIOS) { this._ka = null; return; }
+      var a = this._ka;
+      if (!a && playing) {
+        a = document.createElement('audio');
+        a.src = '/zubeen-silence.wav';
+        a.loop = true; a.preload = 'auto'; a.volume = 1;
+        a.setAttribute('playsinline', ''); a.setAttribute('webkit-playsinline', '');
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        this._ka = a;
+      }
+      if (!a) return;
+      try {
+        if (playing) { var p = a.play(); if (p && p.catch) p.catch(function () {}); }
+        else { a.pause(); }
+      } catch (e) { /* keeper is best-effort; never break playback */ }
+    },
+
     _vol: function () {
       var v = document.getElementById('z-player-vol');
       return v ? parseInt(v.value, 10) : 80;
@@ -634,6 +664,7 @@
       if (vid) vid.innerHTML = '';
       this._pollStop();
       if (this._yt) { try { this._yt.stopVideo(); } catch (e) {} }
+      this._keeper(false);
       this._current = null;
       if (navigator.mediaSession) {
         try { navigator.mediaSession.playbackState = 'none'; navigator.mediaSession.metadata = null; } catch (e) {}
@@ -677,6 +708,7 @@
     _syncState: function (target) {
       var s = target.getPlayerState();
       this._setPlayIcon(s === 1);
+      this._keeper(s === 1);
       if (navigator.mediaSession) {
         try { navigator.mediaSession.playbackState = s === 1 ? 'playing' : 'paused'; } catch (e) {}
       }
@@ -699,6 +731,7 @@
     _fail: function (song) {
       this._failed = true;
       this._pollStop();
+      this._keeper(false);
       if (navigator.mediaSession) {
         try { navigator.mediaSession.playbackState = 'none'; } catch (e) {}
       }
