@@ -11099,7 +11099,7 @@ body.light .sc-tag-new { background: rgba(147,2,5,0.12); }
   text-shadow: 0 2px 8px rgba(0,0,0,0.7);
   pointer-events: none;
 }
-.rank-1 { color: #fbbf24; }
+.rank-1 { color: var(--hp-gold, #c99a3c); }
 .rank-2 { color: #94a3b8; }
 .rank-3 { color: #f97316; }
 .rank-other { color: rgba(255,255,255,0.3); font-size: 1.5rem; }
@@ -12640,13 +12640,13 @@ window.addEventListener('resize', function() {
 .ottlib-sort-select option { background: var(--hp-paper, #faf7f2); color: var(--hp-ink, #1c1b1a); }
 .ottlib-free-btn {
   padding: 13px 18px; border-radius: 14px;
-  background: rgba(16,217,142,0.1); border: 1px solid rgba(16,217,142,0.3);
-  color: #34d399; font-size: .82rem; font-weight: 700; font-family: var(--font-ui, sans-serif);
+  background: rgba(47,111,79,0.10); border: 1px solid rgba(47,111,79,0.30);
+  color: #2f6f4f; font-size: .82rem; font-weight: 700; font-family: var(--font-ui, sans-serif);
   cursor: pointer; transition: all .2s; white-space: nowrap;
 }
 .ottlib-free-btn:hover, .ottlib-free-btn.active {
-  background: rgba(16,217,142,0.2); border-color: rgba(16,217,142,0.5);
-  box-shadow: 0 4px 16px rgba(16,217,142,0.2);
+  background: rgba(47,111,79,0.18); border-color: rgba(47,111,79,0.50);
+  box-shadow: 0 4px 16px rgba(47,111,79,0.18);
 }
 
 /* Stats strip */
@@ -12680,12 +12680,12 @@ window.addEventListener('resize', function() {
 /* ── OTTLIB STREAK & AI BANNERS ───────────────────────────────── */
 .ottlib-streak-banner {
   margin: 16px 20px;
-  background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(251,191,36,0.06));
-  border: 1px solid rgba(245,158,11,0.3); border-radius: 18px; padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(201,154,60,0.14), rgba(201,154,60,0.05));
+  border: 1px solid rgba(201,154,60,0.35); border-radius: 18px; padding: 16px 20px;
 }
 .ottlib-streak-inner { display: flex; align-items: center; gap: 14px; }
 .ottlib-streak-icon { font-size: 1.8rem; flex-shrink: 0; }
-.ottlib-streak-label { font-weight: 700; color: #fbbf24; font-size: .95rem; }
+.ottlib-streak-label { font-weight: 700; color: #b8862e; font-size: .95rem; }
 .ottlib-streak-sub { font-size: .78rem; color: rgba(28,27,26,0.6); margin-top: 2px; }
 
 .ottlib-ai-banner {
@@ -12846,15 +12846,15 @@ window.addEventListener('resize', function() {
   font-size: .58rem; font-weight: 800; padding: 3px 8px; border-radius: 6px;
   text-transform: uppercase; letter-spacing: .05em; font-family: var(--font-ui, sans-serif);
 }
-.ottlib-badge-new      { background: rgba(16,217,142,0.2); border: 1px solid rgba(16,217,142,0.4); color: #34d399; }
-.ottlib-badge-trending { background: rgba(255,77,109,0.18); border: 1px solid rgba(255,77,109,0.4); color: #ff8fa8; }
-.ottlib-badge-free     { background: rgba(16,217,142,0.18); border: 1px solid rgba(16,217,142,0.35); color: #34d399; }
+.ottlib-badge-new      { background: rgba(201,154,60,0.15); border: 1px solid rgba(201,154,60,0.35); color: #8a6a1e; }
+.ottlib-badge-trending { background: rgba(147,2,5,0.12); border: 1px solid rgba(147,2,5,0.28); color: var(--hp-red, #930205); }
+.ottlib-badge-free     { background: rgba(47,111,79,0.15); border: 1px solid rgba(47,111,79,0.30); color: #2f6f4f; }
 .ottlib-badge-reading  { background: rgba(201,154,60,0.2); border: 1px solid rgba(201,154,60,0.45); color: var(--hp-red-deep, #7d1122); }
 
 .ottlib-discount-badge {
   position: absolute; top: 10px; right: 10px; z-index: 3;
-  background: rgba(245,158,11,0.2); border: 1px solid rgba(245,158,11,0.4);
-  color: #fbbf24; font-size: .6rem; font-weight: 800; padding: 3px 7px; border-radius: 6px;
+  background: rgba(201,154,60,0.15); border: 1px solid rgba(201,154,60,0.35);
+  color: #8a6a1e; font-size: .6rem; font-weight: 800; padding: 3px 7px; border-radius: 6px;
   font-family: var(--font-ui, sans-serif);
 }
 .ottlib-dl-badge {
@@ -12909,10 +12909,10 @@ window.addEventListener('resize', function() {
 }
 .ottlib-card-rating {
   display: inline-flex; align-items: center; gap: 3px;
-  font-size: .68rem; color: #fbbf24; font-weight: 700;
+  font-size: .68rem; color: var(--hp-gold, #c99a3c); font-weight: 700;
   font-family: var(--font-ui, sans-serif);
 }
-.ottlib-star { color: #f59e0b; }
+.ottlib-star { color: #b8862e; }
 .ottlib-card-bottom {
   display: flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 4px;
 }
@@ -12920,7 +12920,10 @@ window.addEventListener('resize', function() {
   font-family: var(--font-display, sans-serif); font-weight: 800;
   font-size: .88rem; color: var(--hp-red, #930205);
 }
-.ottlib-card-price.is-free { color: #34d399; }
+.ottlib-card-price.is-free {
+  background: linear-gradient(135deg, var(--hp-gold, #c99a3c) 0%, #b8862e 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
 .ottlib-card-price-orig {
   font-size: .7rem; color: rgba(28,27,26,0.4);
   text-decoration: line-through; font-family: var(--font-ui, sans-serif);
@@ -12946,7 +12949,7 @@ window.addEventListener('resize', function() {
   font-size: 1.8rem; line-height: 1; opacity: 0.9;
   text-shadow: 0 2px 8px rgba(0,0,0,0.6);
 }
-.rank-1 { color: #fbbf24; }
+.rank-1 { color: var(--hp-gold, #c99a3c); }
 .rank-2 { color: #94a3b8; }
 .rank-3 { color: #f97316; }
 .rank-other { color: rgba(28,27,26,0.4); font-size: 1.4rem; }
@@ -13008,12 +13011,12 @@ window.addEventListener('resize', function() {
   border-radius: 14px; padding: 10px 14px; min-width: 180px;
   transition: all .2s;
 }
-.ottlib-ach.unlocked { border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.06); }
+.ottlib-ach.unlocked { border-color: rgba(201,154,60,0.35); background: rgba(201,154,60,0.07); }
 .ottlib-ach-icon { font-size: 1.6rem; flex-shrink: 0; }
 .ottlib-ach-name { font-weight: 700; font-size: .82rem; color: var(--hp-ink, #1c1b1a); }
 .ottlib-ach-desc { font-size: .68rem; color: rgba(28,27,26,0.5); margin-top: 1px; }
 .ottlib-ach-bar { height: 3px; background: rgba(28,27,26,0.1); border-radius: 2px; margin-top: 6px; }
-.ottlib-ach-bar-fill { height: 100%; background: linear-gradient(90deg, #f59e0b, #fbbf24); border-radius: 2px; }
+.ottlib-ach-bar-fill { height: 100%; background: linear-gradient(90deg, var(--hp-gold, #c99a3c), #b8862e); border-radius: 2px; }
 
 </style>
 
@@ -13130,9 +13133,9 @@ window.addEventListener('resize', function() {
   <section class="ottlib-section" id="ottlibContinueSection">
     <div class="ottlib-section-head">
       <div class="ottlib-section-label">
-        <span class="ottlib-section-dot" style="background:#8b5cf6;box-shadow:0 0 8px #8b5cf6"></span>
+        <span class="ottlib-section-dot" style="background:#c99a3c;box-shadow:0 0 8px #c99a3c"></span>
         <span class="ottlib-section-text">▶ Continue Reading</span>
-        <span class="ottlib-section-badge" style="background:rgba(139,92,246,0.15);color:#c4b5fd;border:1px solid rgba(139,92,246,0.3)">In Progress</span>
+        <span class="ottlib-section-badge" style="background:rgba(201,154,60,0.15);color:#8a6a1e;border:1px solid rgba(201,154,60,0.35)">In Progress</span>
       </div>
       <button class="ottlib-see-all" onclick="openMyLibrary()">My Library →</button>
     </div>
@@ -13146,9 +13149,9 @@ window.addEventListener('resize', function() {
   <section class="ottlib-section" id="ottlibTrendingSection">
     <div class="ottlib-section-head">
       <div class="ottlib-section-label">
-        <span class="ottlib-section-dot" style="background:#ff4d6d;box-shadow:0 0 8px #ff4d6d"></span>
+        <span class="ottlib-section-dot" style="background:#930205;box-shadow:0 0 8px #930205"></span>
         <span class="ottlib-section-text">🔥 Trending This Week</span>
-        <span class="ottlib-section-badge" style="background:rgba(255,77,109,0.12);color:#ff8fa8;border:1px solid rgba(255,77,109,0.3)">Hot</span>
+        <span class="ottlib-section-badge" style="background:rgba(147,2,5,0.12);color:#930205;border:1px solid rgba(147,2,5,0.28)">Hot</span>
       </div>
       <button class="ottlib-see-all" onclick="setLibCatFilter('All')">See All →</button>
     </div>
@@ -13162,9 +13165,9 @@ window.addEventListener('resize', function() {
   <section class="ottlib-section" id="ottlibMyPDFsSection" style="display:none">
     <div class="ottlib-section-head">
       <div class="ottlib-section-label">
-        <span class="ottlib-section-dot" style="background:#10d98e;box-shadow:0 0 8px #10d98e"></span>
+        <span class="ottlib-section-dot" style="background:#2f6f4f;box-shadow:0 0 8px #2f6f4f"></span>
         <span class="ottlib-section-text">📥 My PDFs</span>
-        <span class="ottlib-section-badge" style="background:rgba(16,217,142,0.12);color:#34d399;border:1px solid rgba(16,217,142,0.3)">Purchased</span>
+        <span class="ottlib-section-badge" style="background:rgba(47,111,79,0.12);color:#2f6f4f;border:1px solid rgba(47,111,79,0.3)">Purchased</span>
       </div>
       <button class="ottlib-see-all" onclick="openMyLibrary()">View All →</button>
     </div>
@@ -13178,9 +13181,9 @@ window.addEventListener('resize', function() {
   <section class="ottlib-section" id="ottlibAISection">
     <div class="ottlib-section-head">
       <div class="ottlib-section-label">
-        <span class="ottlib-section-dot" style="background:#8b5cf6;box-shadow:0 0 8px #8b5cf6"></span>
+        <span class="ottlib-section-dot" style="background:#7d1122;box-shadow:0 0 8px #7d1122"></span>
         <span class="ottlib-section-text">🤖 Recommended For You</span>
-        <span class="ottlib-section-badge" style="background:rgba(139,92,246,0.12);color:#c4b5fd;border:1px solid rgba(139,92,246,0.3)">AI Picks</span>
+        <span class="ottlib-section-badge" style="background:rgba(125,17,34,0.12);color:#7d1122;border:1px solid rgba(125,17,34,0.3)">AI Picks</span>
       </div>
       <button class="ottlib-see-all" onclick="setLibCatFilter('All')">Explore →</button>
     </div>
@@ -13194,9 +13197,9 @@ window.addEventListener('resize', function() {
   <section class="ottlib-section" id="ottlibNewSection">
     <div class="ottlib-section-head">
       <div class="ottlib-section-label">
-        <span class="ottlib-section-dot" style="background:#10d98e;box-shadow:0 0 8px #10d98e"></span>
+        <span class="ottlib-section-dot" style="background:#c99a3c;box-shadow:0 0 8px #c99a3c"></span>
         <span class="ottlib-section-text">🆕 New Arrivals</span>
-        <span class="ottlib-section-badge" style="background:rgba(16,217,142,0.12);color:#34d399;border:1px solid rgba(16,217,142,0.3)">Fresh</span>
+        <span class="ottlib-section-badge" style="background:rgba(201,154,60,0.15);color:#8a6a1e;border:1px solid rgba(201,154,60,0.35)">Fresh</span>
       </div>
       <button class="ottlib-see-all" onclick="setLibCatFilter('All')">See All →</button>
     </div>
@@ -13210,9 +13213,9 @@ window.addEventListener('resize', function() {
   <section class="ottlib-section" id="ottlibPopularSection">
     <div class="ottlib-section-head">
       <div class="ottlib-section-label">
-        <span class="ottlib-section-dot" style="background:#f59e0b;box-shadow:0 0 8px #f59e0b"></span>
+        <span class="ottlib-section-dot" style="background:#930205;box-shadow:0 0 8px #930205"></span>
         <span class="ottlib-section-text">🏆 Popular Downloads</span>
-        <span class="ottlib-section-badge" style="background:rgba(245,158,11,0.12);color:#fbbf24;border:1px solid rgba(245,158,11,0.3)">Top Picks</span>
+        <span class="ottlib-section-badge" style="background:rgba(147,2,5,0.12);color:#930205;border:1px solid rgba(147,2,5,0.28)">Top Picks</span>
       </div>
       <button class="ottlib-see-all" onclick="setLibCatFilter('All')">See All →</button>
     </div>
@@ -13239,7 +13242,7 @@ window.addEventListener('resize', function() {
   <div style="max-width:1280px;margin:16px auto 0;padding:0 20px">
     <div style="font-family:var(--font-display);font-size:.95rem;font-weight:800;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:8px">
       🏅 Achievement Progress
-      <span style="font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:8px;background:rgba(245,158,11,0.12);color:#fbbf24;border:1px solid rgba(245,158,11,0.25);font-family:var(--font-body)">Unlock Rewards</span>
+      <span style="font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:8px;background:rgba(201,154,60,0.14);color:#8a6a1e;border:1px solid rgba(201,154,60,0.35);font-family:var(--font-body)">Unlock Rewards</span>
     </div>
     <div class="ottlib-achievement-strip" id="ottlibAchievements"></div>
   </div>
@@ -14422,9 +14425,9 @@ body.light .me-tab-bar {
 .lib-sub-tab { display:flex; align-items:center; gap:7px; padding:12px 20px; border:none; background:none; font-family:var(--font-body); font-size:.82rem; font-weight:600; color:var(--text2); cursor:pointer; border-bottom:2px solid transparent; transition:all .2s; white-space:nowrap; }
 .lib-sub-tab:hover { color:var(--text); background:rgba(255,255,255,0.03); }
 .lib-sub-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
-.lib-sub-tab.active.premium { color:#fbbf24; border-bottom-color:#fbbf24; }
+.lib-sub-tab.active.premium { color: var(--hp-gold, #c99a3c); border-bottom-color: var(--hp-gold, #c99a3c); }
 .lib-sub-tab .lib-sub-badge { min-width:18px; height:18px; border-radius:9px; padding:0 5px; background:var(--accent); color:#fff; font-size:.65rem; font-weight:700; display:flex; align-items:center; justify-content:center; }
-.lib-sub-tab.premium .lib-sub-badge { background:linear-gradient(135deg,#fbbf24,#f59e0b); color:#000; }
+.lib-sub-tab.premium .lib-sub-badge { background:linear-gradient(135deg, var(--hp-gold, #c99a3c), #b8862e); color:#fff; }
 body.light .lib-sub-tabs { border-bottom-color:rgba(0,0,0,0.08); }
 body.light .lib-sub-tab:hover { background:rgba(0,0,0,0.03); }
 
@@ -14513,10 +14516,10 @@ body.light .lib-sub-tab:hover { background:rgba(0,0,0,0.03); }
   line-height:1; margin-bottom:4px;
   animation: countUp .5s cubic-bezier(0.34,1.56,0.64,1) .2s both;
 }
-.msc-pdf  .me-stat-val { color:#7ec4ff; }
-.msc-wish .me-stat-val { color:#ff8fa8; }
-.msc-spend .me-stat-val { color:#34d399; }
-.msc-time .me-stat-val { color:#fbbf24; }
+.msc-pdf  .me-stat-val { color: var(--hp-red, #930205); }
+.msc-wish .me-stat-val { color: var(--hp-red-deep, #7d1122); }
+.msc-spend .me-stat-val { color: #2f6f4f; }
+.msc-time .me-stat-val { color: #b8862e; }
 
 .me-stat-label {
   font-size:.75rem; font-weight:600;
@@ -14687,14 +14690,14 @@ body.light .me-lc-bar-track { background:rgba(0,0,0,0.08); }
   border-radius:22px;
   padding:28px 24px;
   margin-bottom:24px;
-  background:linear-gradient(135deg,#0a1e5e 0%,#0d1a3a 40%,#091028 100%);
-  border:1px solid rgba(147,2,5,0.25);
-  box-shadow:0 8px 48px rgba(147,2,5,0.12), 0 0 0 1px rgba(147,2,5,0.08);
+  background:linear-gradient(135deg, var(--hp-red-deep, #7d1122) 0%, var(--hp-red, #930205) 45%, #3d0a08 100%);
+  border:1px solid rgba(201,154,60,0.35);
+  box-shadow:0 8px 48px rgba(147,2,5,0.22), 0 0 0 1px rgba(201,154,60,0.10);
   animation: dashFadeUp .4s ease both;
 }
 body.light .me-premium-banner {
-  background:linear-gradient(135deg,#dbeafe 0%,#eff6ff 100%);
-  border-color:rgba(147,2,5,0.2);
+  background:linear-gradient(135deg, rgba(147,2,5,0.08) 0%, rgba(201,154,60,0.10) 55%, var(--hp-paper-dim, #f1ece3) 100%);
+  border-color:rgba(201,154,60,0.40);
 }
 .me-premium-banner::before {
   content:'';
