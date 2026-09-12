@@ -568,7 +568,10 @@
           if (res.error) {
             /* Table not migrated yet → honest error, never fake success */
             if (msg) {
-              msg.textContent = res.error.message && res.error.message.indexOf('does not exist') >= 0
+              var m = (res.error.message || '').toLowerCase();
+              var missingTable = m.indexOf('does not exist') >= 0 ||
+                m.indexOf('schema cache') >= 0 || m.indexOf('could not find') >= 0;
+              msg.textContent = missingTable
                 ? 'Submission is temporarily unavailable — the tribute archive is being set up. Please try again soon.'
                 : 'Something went wrong. Please try again.';
               msg.classList.add('err');
