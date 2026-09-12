@@ -133,10 +133,11 @@ async function adminSavePDF() {
     if (coverFile) {
       showProgress('Cover', 20, 'Uploading cover image…');
       btn.innerHTML = `<span class="auth-spinner"></span>Uploading cover…`;
+      if (window.studyCompressImage) coverFile = await window.studyCompressImage(coverFile);
       const ext   = coverFile.name.split('.').pop().toLowerCase();
       const fpath = `${Date.now()}_${slug.slice(0,40)}.${ext}`;
       const { error: coverErr } = await window.supabaseClient.storage
-        .from('covers').upload(fpath, coverFile, { upsert: true, contentType: coverFile.type });
+        .from('covers').upload(fpath, coverFile, { upsert: true, contentType: coverFile.type, cacheControl: '604800' });
       if (coverErr) throw new Error(`Cover upload failed: ${coverErr.message}`);
       const { data: cd } = window.supabaseClient.storage.from('covers').getPublicUrl(fpath);
       if (!cd?.publicUrl) throw new Error('Cover URL generation failed.');

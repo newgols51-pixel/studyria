@@ -2336,3 +2336,76 @@
   });
 
 })();
+
+/* ════════════════════════════════════════════════════════════════
+   Cover-image auto-compressor (egress guard) — v20260912
+   ────────────────────────────────────────────────────────────────
+   Free Supabase plans have a 5GB Cached Egress cap. Raw PNG/JPG
+   covers straight off a phone are often 2MB+ per image, which burns
+   the cap on every fresh visitor. All cover/banner upload paths now
+   run the file through this helper FIRST:
+     • images < 200KB pass through untouched
+     • larger images are downscaled to ≤ 800px wide and re-encoded
+       to WebP q0.82 (JPEG q0.80 fallback when WebP encode is
+       unavailable, e.g. old Safari)
+     • never enlarges, never overrides the source if the result is
+       not at least 30% smaller — the original file wins
+     • any failure returns the ORIGINAL file — an upload must never
+       break because compression failed
+   The returned File keeps the base name (extension updated), so
+   every existing upload site picks up the new ext automatically.
+   ════════════════════════════════════════════════════════════════ */
+window.studyCompressImage = async function (file, opts) {
+  opts = opts || {};
+  try {
+    if (!file || !/^image\//.test(file.type || '')) return file;
+    if (file.size < 200 * 1024) return file;               // already small
+    if (typeof document === 'undefined' || !document.createElement) return file;
+
+    var maxW = opts.maxWidth || 800;
+
+    // Decode — createImageBitmap first, <img> fallback for old browsers
+    var src = null;
+    try { src = await createImageBitmap(file); } catch (e) { src = null; }
+    if (!src) {
+      src = await new Promise(function (resolve) {
+        var url = URL.createObjectURL(file);
+        var img = new Image();
+        img.onload  = function () { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = function () { URL.revokeObjectURL(url); resolve(null); };
+        img.src = url;
+      });
+    }
+    if (!src) return file;                                  // undecodable → original
+
+    var w = src.width || (src.naturalWidth || 0), h = src.height || (src.naturalHeight || 0);
+    if (!w || !h) return file;
+    if (w > maxW) { h = Math.max(1, Math.round(h * maxW / w)); w = maxW; }
+
+    var canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    var ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, w, h);
+
+    function toBlob(type, q) {
+      return new Promise(function (resolve) {
+        try { canvas.toBlob(function (b) { resolve(b); }, type, q); }
+        catch (e) { resolve(null); }
+      });
+    }
+    var blob = await toBlob('image/webp', 0.82);
+    var ext = 'webp';
+    if (!blob) { blob = await toBlob('image/jpeg', 0.80); ext = 'jpg'; }
+    if (!blob) return file;                                 // encoder unavailable → original
+    if (blob.size >= file.size * 0.7) return file;          // not worth it → original
+
+    var base = String(file.name || 'cover').replace(/\.[^.]+$/, '');
+    var out = new File([blob], base + '.' + ext, { type: blob.type });
+    out.__compressedFrom = file.size;
+    return out;
+  } catch (e) {
+    return file;                                            // NEVER break the upload
+  }
+};

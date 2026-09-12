@@ -317,8 +317,8 @@ window.ROUTE_SCRIPTS = {
   brainlab:      ['question-bank.js?v=20260816exp3', 'brainlab-icons.js?v=20260901gs', 'brainlab.js?v=20260911a', 'brainlab-ext.js?v=20260910a', 'arena.js?v=20260903fix2', 'brainlab-v7.js?v=20260910b', 'brainlab-pages.js?v=20260911a', 'brainlab-exams.js?v=20260910f', 'brainlab-mock.js?v=20260911a', 'brainlab-testpage.js?v=20260911a', 'brainlab-activity.js?v=20260910b', 'brainlab-tr-server.js?v=20260910b', 'brainlab-tests.js?v=20260911a'],
   campus:        ['campus.js?v=20260731a', 'campus-admin.js?v=20260911a'],
   'adre-papers': ['adre-papers-data.js?v=20260827d', 'adre-papers-config.js?v=20260827d', 'adre-paper1-data.js?v=20260827d', 'adre-paper2-data.js?v=20260827d', 'adre-paper5-data.js?v=20260827d', 'adre-paper1-2022-data.js?v=20260827d', 'adre-paper2-2022-data.js?v=20260827d', 'adre-paper3-2022-data.js?v=20260827d', 'adre-paper4-2022-data.js?v=20260827d', 'adre-paper5-2022-data.js?v=20260827d', 'adre-exam.js?v=20260828a'],
-  admin:         ['brainlab-exam-import.js?v=20260910e', 'smart-publish-manager.js', 'pdf-classification-refactor.js?v=20260906', 'premium-edit-pdf-ui.js', 'admin-membership-manager.js', 'pwa-admin-v32.js', 'library-expansion-uploader.js', 'campus-admin.js?v=20260911a', 'zubeen-legacy-admin.js?v=20260912a'],
-  upload:        ['smart-publish-manager.js', 'pdf-classification-refactor.js?v=20260906', 'premium-edit-pdf-ui.js'],
+  admin:         ['brainlab-exam-import.js?v=20260910e', 'smart-publish-manager.js', 'pdf-classification-refactor.js?v=20260912a', 'premium-edit-pdf-ui.js', 'admin-membership-manager.js', 'pwa-admin-v32.js', 'library-expansion-uploader.js', 'campus-admin.js?v=20260911a', 'zubeen-legacy-admin.js?v=20260912a'],
+  upload:        ['smart-publish-manager.js', 'pdf-classification-refactor.js?v=20260912a', 'premium-edit-pdf-ui.js'],
   'ai-notes':    ['ai-notes-studio.js']
 };
 window.ROUTE_CSS = {
@@ -20078,7 +20078,7 @@ async function handleNewsletterSubscribe(btn) {
 // supabase.js prefers window.supabaseLib for its createClient() check.
 window.supabaseLib = window.supabase;
 </script>
-<script src="supabase.js"></script>
+<script src="supabase.js?v=20260912a"></script>
 <script src="studyria-notifications.js?v=5" defer></script>
 <script src="studyria-notification-center.js?v=5" defer></script>
 <link rel="stylesheet" href="cloud-manager.css?v=1"><script src="cloud-manager.js?v=1" defer></script>
@@ -30347,9 +30347,10 @@ async function sbpPublishReady() {
       // Upload cover
       let coverUrl = item.coverUrl;
       if (item.coverFile) {
+        if (window.studyCompressImage) item.coverFile = await window.studyCompressImage(item.coverFile);
         const ext = item.coverFile.name.split('.').pop().toLowerCase();
         const fp = `${Date.now()}_${slug.slice(0,30)}.${ext}`;
-        const { error: cErr } = await sb.storage.from('covers').upload(fp, item.coverFile, { upsert: true, contentType: item.coverFile.type });
+        const { error: cErr } = await sb.storage.from('covers').upload(fp, item.coverFile, { upsert: true, contentType: item.coverFile.type, cacheControl: '604800' });
         if (cErr) throw new Error('Cover upload: ' + cErr.message);
         const { data: cd } = sb.storage.from('covers').getPublicUrl(fp);
         coverUrl = cd?.publicUrl;
@@ -30610,10 +30611,11 @@ async function sbpPublishSelected() {
       // ── Upload cover ──────────────────────────────────────────────────
       let coverUrl = item.coverUrl;
       if (item.coverFile) {
+        if (window.studyCompressImage) item.coverFile = await window.studyCompressImage(item.coverFile);
         const ext = item.coverFile.name.split('.').pop().toLowerCase();
         const fp  = Date.now() + '_' + slug.slice(0, 30) + '.' + ext;
         const { error: cErr } = await sb.storage.from('covers').upload(fp, item.coverFile, {
-          upsert: true, contentType: item.coverFile.type
+          upsert: true, contentType: item.coverFile.type, cacheControl: '604800'
         });
         if (cErr) throw new Error('Cover upload: ' + cErr.message);
         const { data: cd } = sb.storage.from('covers').getPublicUrl(fp);
@@ -31846,10 +31848,11 @@ async function adminSavePDF() {
     if (coverFile) {
       showProgress('Cover', 20, 'Uploading cover image…');
       btn.innerHTML = `<span class="auth-spinner"></span>Uploading cover…`;
+      if (window.studyCompressImage) coverFile = await window.studyCompressImage(coverFile);
       const ext   = coverFile.name.split('.').pop().toLowerCase();
       const fpath = `${Date.now()}_${slug.slice(0,40)}.${ext}`;
       const { error: coverErr } = await window.supabaseClient.storage
-        .from('covers').upload(fpath, coverFile, { upsert: true, contentType: coverFile.type });
+        .from('covers').upload(fpath, coverFile, { upsert: true, contentType: coverFile.type, cacheControl: '604800' });
       if (coverErr) throw new Error(`Cover upload failed: ${coverErr.message}`);
       const { data: cd } = window.supabaseClient.storage.from('covers').getPublicUrl(fpath);
       if (!cd?.publicUrl) throw new Error('Cover URL generation failed.');
@@ -34467,16 +34470,18 @@ async function pccmSave() {
   };
   try {
     if (window._pccm.bannerFile) {
-      const f = window._pccm.bannerFile;
+      let f = window._pccm.bannerFile;
+      if (window.studyCompressImage) f = await window.studyCompressImage(f);
       const path = `category-banners/${slug}-${Date.now()}.${(f.name.split('.').pop() || 'jpg')}`;
-      const { error: upErr } = await sb.storage.from('covers').upload(path, f, { upsert: true, contentType: f.type });
+      const { error: upErr } = await sb.storage.from('covers').upload(path, f, { upsert: true, contentType: f.type, cacheControl: '604800' });
       if (upErr) throw upErr;
       payload.banner_url = sb.storage.from('covers').getPublicUrl(path).data.publicUrl;
     }
     if (window._pccm.thumbFile) {
-      const f = window._pccm.thumbFile;
+      let f = window._pccm.thumbFile;
+      if (window.studyCompressImage) f = await window.studyCompressImage(f);
       const path = `category-thumbs/${slug}-${Date.now()}.${(f.name.split('.').pop() || 'jpg')}`;
-      const { error: upErr } = await sb.storage.from('covers').upload(path, f, { upsert: true, contentType: f.type });
+      const { error: upErr } = await sb.storage.from('covers').upload(path, f, { upsert: true, contentType: f.type, cacheControl: '604800' });
       if (upErr) throw upErr;
       payload.thumbnail_url = sb.storage.from('covers').getPublicUrl(path).data.publicUrl;
     }

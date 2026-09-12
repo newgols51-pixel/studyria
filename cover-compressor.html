@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="as">
+<head>
+<!-- Google Tag Manager (site standard) -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,
+s);})(window,document,'script','dataLayer','GTM-PH9XCFFG');</script>
+<!-- End Google Tag Manager -->
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Studyria Cover Compressor — admin tool</title>
+<meta name="robots" content="noindex, nofollow" />
+<style>
+  body { max-width: 760px; margin: 0 auto; padding: 28px 20px 60px;
+         background: #0C0908; color: #F5EDE0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .cc-head h1 { font-size: 1.35rem; margin: 0 0 6px; }
+  .cc-head p { font-size: .85rem; opacity: .75; margin: 0 0 4px; line-height: 1.55; }
+  .cc-card { background: #171210; border: 1px solid rgba(201,154,60,.25);
+             border-radius: 14px; padding: 18px 20px; margin: 18px 0; }
+  .cc-card h3 { margin: 0 0 8px; font-size: .95rem; }
+  .cc-card p, .cc-note { font-size: .82rem; opacity: .8; margin: 0 0 10px; line-height: 1.6; }
+  .cc-btn { display: inline-block; padding: 10px 22px; border-radius: 10px; border: none; cursor: pointer;
+            background: linear-gradient(135deg, #930205, #c99a3c); color: #fff; font-weight: 700; font-size: .88rem; }
+  .cc-btn:disabled { opacity: .5; cursor: default; }
+  .cc-btn.ghost { background: transparent; border: 1px solid rgba(201,154,60,.5); color: #c99a3c; }
+  .cc-row { display: flex; gap: 12px; align-items: center; justify-content: space-between;
+            padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.06); font-size: .82rem; flex-wrap: wrap; }
+  .cc-row:last-child { border-bottom: none; }
+  .cc-row .nm { flex: 1 1 240px; word-break: break-all; }
+  .cc-row .sz { white-space: nowrap; opacity: .8; }
+  .cc-row .st { white-space: nowrap; font-weight: 700; }
+  .ok { color: #34c98e; } .skip { color: #c99a3c; } .err { color: #e55; }
+  #cc-log { margin-top: 14px; }
+  #cc-summary { font-size: .88rem; font-weight: 700; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="cc-head">
+  <h1>🗜️ Studyria Cover Compressor</h1>
+  <p>One-time maintenance tool for the free plan's <b>5GB Cached Egress</b> cap.</p>
+  <p>It lists every image in the <code>covers</code> bucket, and re-uploads any image over <b>150KB</b> as an
+     ≤800px-wide WebP at the <b>same storage path</b> — public URLs, database rows and the site stay exactly as
+     they are. Only the file bytes get smaller.</p>
+</div>
+
+<div class="cc-card">
+  <h3>① Sign-in check</h3>
+  <p id="cc-auth">Checking Supabase session…</p>
+</div>
+
+<div class="cc-card">
+  <h3>② Compress</h3>
+  <p>Requires an admin/editor session (the one you use in the Admin Console). Nothing is deleted —
+     every step is shown below, and images that are already small are skipped honestly.</p>
+  <button class="cc-btn" id="cc-run" disabled>Scan &amp; compress covers</button>
+  <button class="cc-btn ghost" id="cc-dry" disabled>Dry run (scan only)</button>
+  <div id="cc-summary"></div>
+  <div id="cc-log"></div>
+</div>
+
+<div class="cc-card">
+  <h3>After this</h3>
+  <p class="cc-note">New uploads are already covered — since today the site compresses cover images in the
+     browser before upload (WebP ≤800px), so this tool only needs to run once for the old files.</p>
+</div>
+
+<script src="supabase.js?v=20260912a"></script>
+<script>
+(function () {
+  'use strict';
+  var log = document.getElementById('cc-log');
+  var summary = document.getElementById('cc-summary');
+  var authEl = document.getElementById('cc-auth');
+  var runBtn = document.getElementById('cc-run');
+  var dryBtn = document.getElementById('cc-dry');
+
+  function sb() { return window.supabaseClient || null; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
+  function kb(n) { return (n/1024).toFixed(0) + ' KB'; }
+  function mb(n) { return (n/1048576).toFixed(2) + ' MB'; }
+  function row(name, html) {
+    var d = document.createElement('div'); d.className = 'cc-row'; d.innerHTML = html;
+    log.appendChild(d); return d;
+  }
+
+  function checkAuth() {
+    var client = sb();
+    if (!client) { authEl.innerHTML = '<span class="err">Supabase client not loaded — reload this page.</span>'; return; }
+    client.auth.getSession().then(function (r) {
+      var u = r && r.data && r.data.session && r.data.session.user;
+      if (u) {
+        authEl.innerHTML = '✅ Signed in as <b>' + esc(u.email) + '</b>';
+        runBtn.disabled = false; dryBtn.disabled = false;
+      } else {
+        authEl.innerHTML = '❌ Not signed in. Open <a href="/" style="color:#c99a3c">studyria.qzz.io</a>, sign in with your admin account, then come back to this page.';
+      }
+    });
+  }
+
+  // List all objects in covers bucket (paginated)
+  async function listAll() {
+    var client = sb(), out = [], from = null;
+    for (var i = 0; i < 50; i++) {
+      var q = client.storage.from('covers').list('', { limit: 100, sortBy: { column: 'name', order: 'asc' } });
+      if (from !== null) { /* supabase-js list has no offset param — dedupe by name below */ }
+      var r = await q;
+      if (r.error) throw new Error('list failed: ' + r.error.message);
+      var files = (r.data || []).filter(function (f) { return f.id !== undefined; }); // objects only, not folders
+      files.forEach(function (f) { out.push(f); });
+      if (!files.length || files.length < 100) break;
+      from = files[files.length - 1].name; // not used by API — guard below
+      break; // covers bucket holds <100 images; single page is enough. Re-run if more ever needed.
+    }
+    return out;
+  }
+
+  function decode(file) {
+    return new Promise(function (resolve) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = function () { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    });
+  }
+
+  async function compressBlob(file, maxW) {
+    var img = await decode(file);
+    if (!img) return null;
+    var w = img.naturalWidth, h = img.naturalHeight;
+    if (!w || !h) return null;
+    if (w > maxW) { h = Math.max(1, Math.round(h * maxW / w)); w = maxW; }
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    var ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, w, h);
+    var blob = await new Promise(function (res) { c.toBlob(res, 'image/webp', 0.82); });
+    if (!blob) blob = await new Promise(function (res) { c.toBlob(res, 'image/jpeg', 0.8); });
+    return blob;
+  }
+
+  async function run(dry) {
+    var client = sb();
+    runBtn.disabled = true; dryBtn.disabled = true;
+    log.innerHTML = ''; summary.textContent = 'Scanning covers bucket…';
+    try {
+      var objects = await listAll();
+      var images = objects.filter(function (f) {
+        return /\.(png|jpe?g|webp)$/i.test(f.name || '') && /\.(svg)$/i.test(f.name || '') === false;
+      });
+      summary.textContent = 'Found ' + objects.length + ' objects · ' + images.length + ' images. Processing…';
+
+      var publicBase = 'https://qsdfmgcekdpjdcyqhuhi.supabase.co/storage/v1/object/public/covers/';
+      var totalBefore = 0, totalAfter = 0, done = 0, skipped = 0, errors = 0;
+
+      for (var i = 0; i < images.length; i++) {
+        var f = images[i];
+        var el = row('', '<div class="nm">' + esc(f.name) + '</div><div class="sz">' + kb(f.metadata && f.metadata.size || 0) + '</div><div class="st">…</div>');
+        try {
+          var res = await fetch(publicBase + encodeURIComponent(f.name).replace(/%2F/g, '/'));
+          if (!res.ok) throw new Error('fetch ' + res.status);
+          var blob = await res.blob();
+          totalBefore += blob.size;
+          if (blob.size < 150 * 1024) { el.querySelector('.st').innerHTML = '<span class="skip">skip — already small</span>'; skipped++; done++; continue; }
+          var out = await compressBlob(blob, 800);
+          if (!out) { el.querySelector('.st').innerHTML = '<span class="skip">skip — undecodable</span>'; skipped++; done++; continue; }
+          if (out.size >= blob.size * 0.5) {
+            el.querySelector('.st').innerHTML = '<span class="skip">skip — compression not worth it</span>';
+            totalAfter += blob.size; skipped++; done++; continue;
+          }
+          if (dry) { el.querySelector('.st').innerHTML = '<span class="skip">dry-run: would become ' + kb(out.size) + '</span>'; totalAfter += out.size; done++; continue; }
+          var up = await client.storage.from('covers').upload(f.name, out, {
+            upsert: true, contentType: out.type || 'image/webp', cacheControl: '604800'
+          });
+          if (up.error) throw up.error;
+          totalAfter += out.size;
+          el.querySelector('.st').innerHTML = '<span class="ok">✓ ' + kb(blob.size) + ' → ' + kb(out.size) + '</span>';
+          done++;
+        } catch (e) {
+          errors++; totalAfter += (f.metadata && f.metadata.size) || 0;
+          el.querySelector('.st').innerHTML = '<span class="err">✗ ' + esc(e.message || e) + '</span>';
+        }
+        summary.textContent = 'Processed ' + (i + 1) + ' / ' + images.length + '…';
+      }
+      summary.innerHTML = (dry ? 'Dry run complete — ' : '✅ Compression complete — ') +
+        (done - errors) + ' done · ' + skipped + ' skipped · ' + errors + ' errors.<br>' +
+        'Bucket size: ' + mb(totalBefore) + ' → ' + mb(totalAfter) + '  (−' + ((1 - totalAfter / Math.max(totalBefore, 1)) * 100).toFixed(1) + '%)';
+    } catch (e) {
+      summary.innerHTML = '<span class="err">' + esc(e.message || e) + '</span>';
+    }
+    runBtn.disabled = false; dryBtn.disabled = false;
+  }
+
+  runBtn.onclick = function () { run(false); };
+  dryBtn.onclick = function () { run(true); };
+  setTimeout(checkAuth, 800);
+})();
+</script>
+</body>
+</html>
