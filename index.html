@@ -317,7 +317,7 @@ window.ROUTE_SCRIPTS = {
   brainlab:      ['question-bank.js?v=20260816exp3', 'brainlab-icons.js?v=20260901gs', 'brainlab.js?v=20260911a', 'brainlab-ext.js?v=20260910a', 'arena.js?v=20260903fix2', 'brainlab-v7.js?v=20260910b', 'brainlab-pages.js?v=20260911a', 'brainlab-exams.js?v=20260910f', 'brainlab-mock.js?v=20260911a', 'brainlab-testpage.js?v=20260911a', 'brainlab-activity.js?v=20260910b', 'brainlab-tr-server.js?v=20260910b', 'brainlab-tests.js?v=20260911a'],
   campus:        ['campus.js?v=20260731a', 'campus-admin.js?v=20260911a'],
   'adre-papers': ['adre-papers-data.js?v=20260827d', 'adre-papers-config.js?v=20260827d', 'adre-paper1-data.js?v=20260827d', 'adre-paper2-data.js?v=20260827d', 'adre-paper5-data.js?v=20260827d', 'adre-paper1-2022-data.js?v=20260827d', 'adre-paper2-2022-data.js?v=20260827d', 'adre-paper3-2022-data.js?v=20260827d', 'adre-paper4-2022-data.js?v=20260827d', 'adre-paper5-2022-data.js?v=20260827d', 'adre-exam.js?v=20260828a'],
-  admin:         ['brainlab-exam-import.js?v=20260910e', 'smart-publish-manager.js', 'pdf-classification-refactor.js?v=20260906', 'premium-edit-pdf-ui.js', 'admin-membership-manager.js', 'pwa-admin-v32.js', 'library-expansion-uploader.js', 'campus-admin.js?v=20260911a'],
+  admin:         ['brainlab-exam-import.js?v=20260910e', 'smart-publish-manager.js', 'pdf-classification-refactor.js?v=20260906', 'premium-edit-pdf-ui.js', 'admin-membership-manager.js', 'pwa-admin-v32.js', 'library-expansion-uploader.js', 'campus-admin.js?v=20260911a', 'zubeen-legacy-admin.js?v=20260912a'],
   upload:        ['smart-publish-manager.js', 'pdf-classification-refactor.js?v=20260906', 'premium-edit-pdf-ui.js'],
   'ai-notes':    ['ai-notes-studio.js']
 };
@@ -3808,6 +3808,40 @@ body.light .admin-sidebar { background: rgba(240,244,251,0.8); }
 .admin-badge-purple  { background: rgba(139,92,246,0.12); color: #a78bfa; border: 1px solid rgba(139,92,246,0.2); }
 .admin-table-search { padding: 8px 14px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: var(--glass); color: var(--text); font-family: var(--font-body); font-size: .85rem; outline: none; width: 200px; }
 .admin-table-search:focus { border-color: var(--accent); }
+
+/* ── Zubeen Da Legacy admin panel (additive, token-based) ───────── */
+.zla-head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:24px; }
+.zla-h2 { font-size:1.3rem; font-weight:800; margin:0 0 4px; }
+.zla-note { font-size:.82rem; color:var(--text2); margin:0; line-height:1.55; }
+.zla-note a { color:var(--accent); }
+.zla-section-label { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--text2); margin:0 0 12px; }
+.zla-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:14px; }
+.zla-tile { background:var(--glass); border:1px solid var(--glass-border); border-radius:var(--radius); padding:14px 16px; }
+.zla-tile.zla-att { border-color:rgba(245,158,11,0.4); }
+.zla-tile-num { font-size:1.5rem; font-weight:800; color:var(--text); line-height:1.1; }
+.zla-tile-label { font-size:.78rem; font-weight:600; color:var(--text); margin-top:4px; }
+.zla-tile-sub { font-size:.68rem; color:var(--text2); }
+.zla-card { background:var(--glass); border:1px solid var(--glass-border); border-radius:var(--radius); padding:18px 20px; margin-bottom:14px; }
+.zla-card.zla-warn { border-color:rgba(201,154,60,0.45); }
+.zla-card h3 { font-size:.95rem; font-weight:700; margin:0 0 8px; }
+.zla-card code { background:rgba(147,2,5,0.1); color:var(--accent); padding:1px 6px; border-radius:6px; font-size:.78rem; }
+.zla-steps { margin:10px 0 0; padding-left:20px; font-size:.82rem; color:var(--text2); line-height:1.9; }
+.zla-filters { display:flex; gap:8px; flex-wrap:wrap; margin:4px 0 14px; }
+.zla-fbtn { padding:7px 14px; border-radius:var(--radius-sm); border:1px solid var(--glass-border); background:transparent; color:var(--text2); font-size:.78rem; cursor:pointer; }
+.zla-fbtn.active { background:rgba(147,2,5,0.1); border-color:var(--accent); color:var(--accent); font-weight:600; }
+.zla-btn { padding:6px 12px; border-radius:var(--radius-sm); border:1px solid rgba(147,2,5,0.35); background:rgba(147,2,5,0.08); color:var(--accent); font-size:.74rem; cursor:pointer; margin-left:6px; }
+.zla-btn:hover { background:rgba(147,2,5,0.16); }
+.zla-btn:disabled { opacity:.5; cursor:default; }
+.zla-btn-warn { border-color:rgba(201,154,60,0.4); background:rgba(201,154,60,0.1); color:#c99a3c; }
+.zla-btn-danger { border-color:rgba(229,83,83,0.35); background:rgba(229,83,83,0.08); color:var(--danger,#e55); }
+.zla-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; }
+.zla-chip { display:inline-block; padding:3px 10px; border-radius:999px; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+.zla-chip-pending { background:rgba(245,158,11,0.12); color:#f59e0b; }
+.zla-chip-approved { background:rgba(47,111,79,0.15); color:#2f6f4f; }
+.zla-chip-featured { background:rgba(201,154,60,0.15); color:#b8862e; }
+.zla-chip-rejected { background:rgba(229,83,83,0.1); color:var(--danger,#e55); }
+.zla-song { font-size:.74rem; opacity:.7; font-style:italic; }
+@media (max-width:640px) { .zla-actions .zla-btn { margin:3px 0 0 6px; } .admin-table .zla-actions { justify-content:flex-start; } }
 
 /* ── PDF FORM TOGGLE PREVIEW ─────────────────────────────────── */
 .admin-cover-preview {
@@ -8547,7 +8581,7 @@ crossorigin="anonymous"></script>
   }
 </style>
 
-<link rel="stylesheet" href="text-visibility-fix.css?v=20260912a">
+<link rel="stylesheet" href="text-visibility-fix.css?v=20260912b">
 <style id="snComposerCss">
 /* ═══ Studyria Premium Notification Composer (additive) ═══ */
 .sn-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
@@ -15400,6 +15434,12 @@ body.light .me-stat-val { filter:none; }
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
           Library Manager
           <span class="admin-nav-badge" style="background:rgba(147,2,5,0.12);color:#930205;border-color:rgba(147,2,5,0.3)">New</span>
+        </button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">🕯️ TRIBUTE</div>
+        <button class="admin-nav-item" data-atab="zubeen-legacy" onclick="switchAdminTab('zubeen-legacy')" style="background:linear-gradient(90deg,rgba(147,2,5,0.12),rgba(201,154,60,0.08));border-left:2px solid #c99a3c">
+          🕯️ Zubeen Da Legacy
+          <span class="admin-nav-badge" style="background:rgba(201,154,60,0.12);color:#c99a3c;border-color:rgba(201,154,60,0.3)">New</span>
         </button>
 
         <div class="admin-nav-section-label" style="margin-top:16px">🏆 ENGAGEMENT</div>
@@ -26452,7 +26492,7 @@ function switchAdminTab(tab) {
     'pdf-manager-pro':'Advanced PDF Manager', 'category-manager-pro':'Advanced Category Manager', 'homepage-manager':'Homepage Manager', 'header-manager':'Header Manager', 'nav-manager':'Navigation Manager', 'customization':'Website Customization', 'users-pro':'User Management Pro',
     'finance':'Sales & Finance Center', 'coupons':'Coupons & Offers', 'blog':'Blog Manager', 'announcements':'Announcement Center', 'live-feed':'Live Feed Notifications', 'testimonials':'Testimonials', 'achievements':'Achievement System', 'notifications-pro':'Notification Center',
     'seo-manager':'SEO Manager', 'live-analytics':'Live Analytics Center', 'ai-center':'AI Control Center', 'security':'Security Center', 'system-advanced':'Advanced System Settings',
-    'pwa-control':'🚀 PWA Control Center','library-manager':'📚 Library Experience Manager', 'career-hub-manager':'💼 Career Hub Manager', 'community-manager':'🌐 Community Manager', 'whatsapp-community':'📱 WhatsApp Community', 'pass-management':'👑 Pass Management', 'campus-manager':'🏫 Campus Manager', 'brainlab-manager':'🧠 BrainLab Manager', 'cloud-storage':'☁️ Studyria Cloud' };
+    'pwa-control':'🚀 PWA Control Center','library-manager':'📚 Library Experience Manager', 'career-hub-manager':'💼 Career Hub Manager', 'community-manager':'🌐 Community Manager', 'whatsapp-community':'📱 WhatsApp Community', 'pass-management':'👑 Pass Management', 'campus-manager':'🏫 Campus Manager', 'brainlab-manager':'🧠 BrainLab Manager', 'cloud-storage':'☁️ Studyria Cloud', 'zubeen-legacy':'🕯️ Zubeen Da Legacy' };
   if (bc) bc.textContent = tabNames[tab] || tab;
 
   const main = document.getElementById('adminMain');
@@ -26515,6 +26555,7 @@ function switchAdminTab(tab) {
     case 'branding':              _safeRender(window.renderPCCBranding,           'Branding'); break;
     case 'pwa-control':            _safeRender(window.renderPWAdmin32,              'PWA Control Center'); break;
     case 'library-manager':       _safeRender(renderAdminLibraryManager,          'Library Manager'); break;
+    case 'zubeen-legacy':         _safeRender(window.renderZubeenLegacyAdmin,     'Zubeen Da Legacy'); break;
     case 'career-hub-manager':    _safeRender(renderAdminCareerHubManager,        'Career Hub Manager'); break;
     case 'community-manager':     _safeRender(renderAdminCommunityManager,        'Community Manager'); break;
     case 'whatsapp-community':    _safeRender(renderAdminWhatsAppCommunity,       'WhatsApp Community'); break;

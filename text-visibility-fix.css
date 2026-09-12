@@ -85,6 +85,17 @@ body.light .ottlib-cat-pill:hover {
   color: #930205 !important;
 }
 
+/* Active pill — restore the design-system maroon→gold gradient
+   (needed with !important because the inactive-pill tint above
+   uses !important and would otherwise flatten the active state) */
+body.light .ottlib-cat-pill.active {
+  background: linear-gradient(135deg, #930205, #c99a3c) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 16px rgba(147,2,5,0.35) !important;
+}
+
 /* ── OTTLIB Badges (on white cards, need darker colors) ──────── */
 body.light .ottlib-badge-new {
   background: rgba(47,111,79,0.1) !important;
