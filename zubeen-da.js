@@ -457,6 +457,14 @@
     play: function (id) {
       var song = this.findSong(id);
       if (!song) return;
+      /* Background mode: the YT iframe is suspended by Chrome/YouTube when the
+         page is hidden, so keep the music going with the licensed Apple 30s
+         preview via OUR native audio (chained auto-advance). Full playback
+         resumes automatically when the page becomes visible again. */
+      if (this._bg && this._ap && this._previewOf(song)) {
+        this._appleNative(song, true);
+        return;
+      }
       if (song.source_type === 'apple_music') {
         if (song.apple_preview) this._appleNative(song);
         else if (song.apple_embed) this._appleStart(song);
@@ -479,7 +487,7 @@
        (Android/desktop) playing when the page goes to the background — real
        background playback, real progress, real OS media controls. The embed
        iframe below remains only as a fallback for songs without a preview. */
-    _appleNative: function (song) {
+    _appleNative: function (song, bg) {
       var bar = document.getElementById('z-player');
       if (!bar) return;
       this._pollStop();
@@ -511,7 +519,10 @@
           self._setPlayIcon(false);
           if (navigator.mediaSession) { try { navigator.mediaSession.playbackState = 'paused'; } catch (e) {} }
         });
-        a.addEventListener('ended', function () { if (self._ap === a) self.next(); });
+        a.addEventListener('ended', function () {
+          if (self._ap !== a) return;
+          if (self._bg) self._bgNext(); else self.next();
+        });
         a.addEventListener('error', function () {
           if (self._ap === a) { self._ap = null; self._fail(self._current || song); }
         });
@@ -526,13 +537,15 @@
       var fb = document.getElementById('z-player-fb');
       if (title) title.textContent = song.title;
       if (artist) artist.textContent = 'Zubeen Garg' + (song.film ? ' · ' + song.film : (song.album ? ' · ' + song.album : ''));
-      if (srcmode) { srcmode.hidden = false; srcmode.textContent = 'Apple Music official preview (৩০ ছেকেণ্ড) — সম্পূৰ্ণ গানটো Apple Music-ত পোৱা যাব'; }
+      if (srcmode) { srcmode.hidden = false; srcmode.textContent = bg
+        ? 'Background mode — Apple Music official 30s preview · আপুনি ঘূৰি অহালৈ গান চলি থাকিব'
+        : 'Apple Music official preview (৩০ ছেকেণ্ড) — সম্পূৰ্ণ গানটো Apple Music-ত পোৱা যাব'; }
       if (fb) fb.hidden = true;
       this._current = song;
       this._failed = false;
       bar.classList.add('open', 'apple-mode');
       bar.setAttribute('aria-hidden', 'false');
-      this._ms(song);
+      this._ms(song, bg);
       this._setPlayIcon(false);
       var p = a.play();
       if (p && p.catch) p.catch(function () { /* autoplay blocked — tap ▶ */ });
@@ -543,6 +556,69 @@
       try { this._ap.pause(); } catch (e) {}
       try { this._ap.removeAttribute('src'); } catch (e) {}
       this._ap = null;
+    },
+
+    /* licensed Apple preview for any song (archive carries it directly;
+       curated songs get theirs from ZUBEEN_PREVIEW_FALLBACKS) */
+    _previewOf: function (song) {
+      if (!song) return null;
+      if (song.apple_preview) return song.apple_preview;
+      var f = window.ZUBEEN_PREVIEW_FALLBACKS;
+      return (f && f[song.id]) || null;
+    },
+
+    /* BACKGROUND PREVIEW MODE — YT embeds are suspended by Chrome/YouTube in
+       background (their policy, closed loophole Jan 2026). Instead of silence,
+       the same song's licensed official 30s Apple preview plays via our native
+       audio and chains forward. Nothing is faked: the notification and the
+       on-screen label say exactly what is playing. */
+    _vis: function () {
+      var self = this;
+      if (document.visibilityState === 'hidden') {
+        if (this._bg) return;
+        var cur = this._current;
+        if (!cur || this._failed) return;
+        var playing = false;
+        if (this._ap) playing = !this._ap.paused;
+        else if (this._yt && this._ready) { try { playing = this._yt.getPlayerState() === 1; } catch (e) {} }
+        if (!playing) return;
+        /* already on native preview — just flip to chained background mode */
+        if (this._ap && !this._ap.paused) { this._bg = true; return; }
+        if (!this._previewOf(cur)) return;   /* no licensed preview → honest: nothing faked */
+        this._bg = true;
+        this._bgFrom = cur.id;
+        try { if (this._yt) this._yt.pauseVideo(); } catch (e) {}
+        this._appleNative(cur, true);
+      } else {
+        if (!this._bg) return;
+        this._bg = false;
+        var was = this._bgFrom;
+        this._appleStop();
+        var bar = document.getElementById('z-player');
+        var srcmode = document.getElementById('z-player-srcmode');
+        if (srcmode) srcmode.hidden = true;
+        if (bar) bar.classList.remove('apple-mode');
+        var cur2 = this._current;
+        if (!cur2) return;
+        if (cur2.id === was && this._yt && this._ready) {
+          try { this._yt.playVideo(); } catch (e) {}     /* resume full song where it left off */
+        } else {
+          this.play(cur2.id);                             /* chained ahead → play that song in full */
+        }
+      }
+    },
+
+    _bgNext: function () {
+      var list = this._queue.length
+        ? this._queue.map(function (id) { return ZP.findSong(id); }).filter(Boolean)
+        : this.playableSongs();
+      if (!list.length || !this._current) return;
+      var i = list.map(function (s) { return s.id; }).indexOf(this._current.id);
+      if (i < 0) return;
+      for (var k = 1; k <= list.length; k++) {
+        var cand = list[(i + k) % list.length];
+        if (this._previewOf(cand)) { this._appleNative(cand, true); return; }
+      }
     },
 
     _appleStart: function (song) {
@@ -616,14 +692,14 @@
     },
 
     /* ── Media Session: OS-level media controls + background play priority ── */
-    _ms: function (song) {
+    _ms: function (song, bg) {
       var ms = navigator.mediaSession;
       if (!ms) return;
       try {
         ms.metadata = new MediaMetadata({
           title: song.title,
           artist: 'Zubeen Garg' + (song.film ? ' · ' + song.film : (song.album ? ' · ' + song.album : '')),
-          album: 'Zubeen Da — The Legacy',
+          album: bg ? 'Background preview — Apple Music 30s' : 'Zubeen Da — The Legacy',
           artwork: [
             { src: '/zubeen-hero-poster.webp', sizes: '512x512', type: 'image/webp' },
             { src: '/zubeen-hero-mobile.webp', sizes: '192x192', type: 'image/webp' }
@@ -755,6 +831,7 @@
       if (vid) vid.innerHTML = '';
       this._pollStop();
       this._appleStop();
+      this._bg = false;
       if (this._yt) { try { this._yt.stopVideo(); } catch (e) {} }
       this._keeper(false);
       this._current = null;
@@ -846,6 +923,7 @@
   }
 
   function initPlayerUI() {
+    document.addEventListener('visibilitychange', function () { ZP._vis(); });
     var toggle = document.getElementById('z-player-toggle');
     if (toggle) toggle.addEventListener('click', function () { ZP.toggle(); });
     var next = document.getElementById('z-player-next');
