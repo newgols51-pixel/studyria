@@ -109,14 +109,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <!-- ═══ HERO ═══════════════════════════════════════════════════ -->
 <section class="z-hero" id="hero" aria-labelledby="z-hero-name">
+  <!-- Phone/tablet (<1024px): full-bleed background — text is bottom-anchored so
+       the গামোচা + face stay completely unobstructed (see zubeen-da.css) -->
   <div class="z-hero-bg" aria-hidden="true">
     <picture>
-      <source srcset="zubeen-hero.webp" type="image/webp" />
-      <img src="zubeen-hero.jpg" alt="" width="1920" height="1080" fetchpriority="high" />
+      <source srcset="zubeen-hero-mobile.webp" type="image/webp" />
+      <img src="zubeen-hero-mobile.jpg" alt="" width="900" height="943" fetchpriority="high" />
     </picture>
   </div>
   <div class="z-hero-scrim" aria-hidden="true"></div>
-  <div class="z-wrap">
+  <div class="z-wrap z-hero-grid">
     <div class="z-hero-inner">
       <p class="z-hero-kicker">A Tribute · এটা শ্ৰদ্ধাঞ্জলি</p>
       <h1 class="z-hero-name" id="z-hero-name"><span class="as">জুবিন দা</span></h1>
@@ -126,8 +128,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p class="z-hero-quote">“এয়া কেৱল সুৰ নহয় — এয়া অসমৰ হৃদয়ৰ এক অংশ।”</p>
       <div class="z-hero-cta">
         <button class="z-btn z-btn-gold" id="z-cta-listen" type="button">▶ গান শুনক</button>
-        <button class="z-btn z-btn-ghost" id="z-cta-story" type="button">তেওঁৰ স্মৃতি জানক</button>
+        <button class="z-btn z-btn-ghost" id="z-cta-story" type="button">🕊️ স্মৃতিৰ যাত্ৰা</button>
       </div>
+    </div>
+    <!-- Desktop only (≥1024px): the COMPLETE tribute artwork, undistorted, credited -->
+    <div class="z-hero-art">
+      <picture>
+        <source srcset="zubeen-hero-poster.webp" type="image/webp" />
+        <img src="zubeen-hero-poster.jpg" alt="জুবিন দালৈ শ্ৰদ্ধাঞ্জলি চিত্ৰ — গামোচা, মাইক্ৰ'ফোন আৰু অসমৰ প্ৰতীক একশৃঙ্গ গঁড় সহ। শিল্পী: Prasanta Kr Das" width="918" height="1300" loading="eager" />
+      </picture>
     </div>
   </div>
   <div class="z-scroll-hint" aria-hidden="true">স্মৃতিৰ পৃষ্ঠালৈ</div>

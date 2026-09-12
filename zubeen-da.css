@@ -101,24 +101,26 @@ a:hover { color: var(--z-gold); }
 
 /* ── Hero ─────────────────────────────────────────────────────── */
 .z-hero {
-  position: relative; min-height: 92vh; display: flex; align-items: center;
-  overflow: hidden; isolation: isolate;
+  position: relative; min-height: 100svh; display: flex; align-items: flex-end;
+  overflow: hidden; isolation: isolate; background: var(--z-black);
 }
+/* Phone + tablet (<1024px): the tribute artwork is the full-bleed background.
+   Text is anchored to the BOTTOM so it never sits over Zubeen Da's face —
+   the top ~55% (গামোচা + face) of the artwork stays completely unobstructed. */
 .z-hero-bg { position: absolute; inset: 0; z-index: -2; }
 .z-hero-bg img, .z-hero-bg picture {
-  width: 100%; height: 100%; object-fit: cover; object-position: center;
+  width: 100%; height: 100%; object-fit: cover; object-position: 50% 10%;
 }
 .z-hero-scrim {
   position: absolute; inset: 0; z-index: -1;
-  background:
-    radial-gradient(120% 90% at 30% 40%, rgba(12, 9, 8, 0.88) 0%, rgba(12, 9, 8, 0.45) 55%, rgba(74, 14, 12, 0.35) 100%),
-    linear-gradient(180deg, rgba(12, 9, 8, 0.55) 0%, rgba(12, 9, 8, 0.15) 40%, rgba(12, 9, 8, 0.95) 100%);
+  background: linear-gradient(180deg,
+    rgba(12, 9, 8, 0.12) 0%, rgba(12, 9, 8, 0.04) 30%,
+    rgba(12, 9, 8, 0.52) 58%, rgba(12, 9, 8, 0.95) 82%, rgba(12, 9, 8, 0.98) 100%);
 }
-.z-hero-scrim::after {
-  content: ''; position: absolute; inset: 0;
-  box-shadow: inset 0 0 160px 40px rgba(12, 9, 8, 0.85);
-}
-.z-hero-inner { padding: 120px 20px 100px; max-width: 720px; }
+.z-hero-scrim::after { content: none; }
+/* Desktop-only side panel that shows the COMPLETE artwork (hidden <1024px, see below) */
+.z-hero-art { display: none; }
+.z-hero-inner { padding: 0 20px 88px; max-width: 720px; }
 .z-hero-kicker {
   font-size: 0.72rem; letter-spacing: 0.3em; text-transform: uppercase;
   color: var(--z-gold); font-weight: 600; margin-bottom: 18px;
@@ -548,11 +550,27 @@ a:hover { color: var(--z-gold); }
   .z-player { transition: none; }
 }
 
+/* ── Desktop (≥1024px): full artwork visible side-by-side with text — zero overlap
+   by construction (grid columns), not by fragile object-position guesswork ────── */
+@media (min-width: 1024px) {
+  .z-hero-bg { display: none; }
+  .z-hero-scrim { background: linear-gradient(180deg, rgba(12,9,8,0.25) 0%, transparent 22%, transparent 78%, rgba(12,9,8,0.5) 100%); }
+  .z-hero { align-items: center; min-height: 92vh; }
+  .z-hero .z-wrap.z-hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 42%); align-items: center; gap: 56px; }
+  .z-hero-inner { padding: 60px 0; max-width: none; }
+  .z-hero-art {
+    display: flex; align-items: center; justify-content: center;
+    height: min(80vh, 820px);
+  }
+  .z-hero-art img {
+    width: 100%; height: 100%; object-fit: contain; object-position: center;
+    border-radius: 14px; filter: drop-shadow(0 24px 60px rgba(0,0,0,0.55));
+  }
+}
+
 /* ── Responsive refinements ───────────────────────────────────── */
 @media (max-width: 640px) {
   .z-section { padding: 64px 0 56px; }
-  .z-hero-inner { padding: 100px 20px 90px; }
-  .z-hero { min-height: 88svh; }
   .z-songs { grid-template-columns: 1fr; }
   .z-cats { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
   .z-form { padding: 20px; }
