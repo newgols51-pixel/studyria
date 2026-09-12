@@ -126,30 +126,30 @@
       {
         id: 'ottlibGKShelf',
         label: '🏛️ Assam GK Essentials',
-        dotColor: '#d97706',
+        dotColor: '#c99a3c',
         badgeText: 'Assam Special',
-        badgeColor: 'rgba(217,119,6,0.12)',
-        badgeBorder: 'rgba(217,119,6,0.3)',
+        badgeColor: 'rgba(201,154,60,0.12)',
+        badgeBorder: 'rgba(201,154,60,0.3)',
         filter: p => (p.category || '').includes('Assam GK') || (p.subject_tags || '').includes('Assam'),
         sort: 'downloads'
       },
       {
         id: 'ottlibCAShelf',
         label: '📰 Current Affairs',
-        dotColor: '#14b8a6',
+        dotColor: '#2f6f4f',
         badgeText: 'Updated',
-        badgeColor: 'rgba(20,184,166,0.12)',
-        badgeBorder: 'rgba(20,184,166,0.3)',
+        badgeColor: 'rgba(47,111,79,0.12)',
+        badgeBorder: 'rgba(47,111,79,0.3)',
         filter: p => (p.category || '').includes('Current Affairs') || (p.material_type || '').includes('current_affairs') || (p.material_type || '').includes('monthly') || (p.material_type || '').includes('weekly') || (p.material_type || '').includes('daily'),
         sort: 'newest'
       },
       {
         id: 'ottlibRevisionShelf',
         label: '🎯 Last-Minute Revision',
-        dotColor: '#f59e0b',
+        dotColor: '#7d1122',
         badgeText: 'Quick Fix',
-        badgeColor: 'rgba(245,158,11,0.12)',
-        badgeBorder: 'rgba(245,158,11,0.3)',
+        badgeColor: 'rgba(125,17,34,0.12)',
+        badgeBorder: 'rgba(125,17,34,0.3)',
         filter: p => {
           const mt = (p.material_type || '');
           return mt.includes('revision') || mt.includes('formula') || mt.includes('one-liner') || mt.includes('shortcut') || (p.badge || '').includes('Last Minute');
@@ -159,10 +159,10 @@
       {
         id: 'ottlibFreeShelf',
         label: '🆓 Free Study Materials',
-        dotColor: '#10d98e',
+        dotColor: '#2f6f4f',
         badgeText: 'Free',
-        badgeColor: 'rgba(16,217,142,0.12)',
-        badgeBorder: 'rgba(16,217,142,0.3)',
+        badgeColor: 'rgba(47,111,79,0.12)',
+        badgeBorder: 'rgba(47,111,79,0.3)',
         filter: p => p.free || p.price === 0,
         sort: 'downloads'
       },
