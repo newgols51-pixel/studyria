@@ -33,12 +33,16 @@
 
   /* ── Content overview (static verified data; loads zubeen-data.js on demand) ── */
   function loadContentData(cb) {
-    if (window.ZUBEEN_DATA) return cb(window.ZUBEEN_DATA);
-    var s = document.createElement('script');
-    s.src = 'zubeen-data.js?v=3';
-    s.onload = function () { cb(window.ZUBEEN_DATA || null); };
-    s.onerror = function () { cb(null); };
-    document.head.appendChild(s);
+    if (window.ZUBEEN_DATA && window.ZUBEEN_SONGS) return cb(window.ZUBEEN_DATA);
+    var pending = 2;
+    function done() { if (--pending === 0) cb(window.ZUBEEN_DATA || null); }
+    ['zubeen-data.js?v=4', 'zubeen-songs.js?v=1'].forEach(function (u) {
+      var s = document.createElement('script');
+      s.src = u;
+      s.onload = done;
+      s.onerror = done;
+      document.head.appendChild(s);
+    });
   }
 
   function contentOverviewHTML(D) {
