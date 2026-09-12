@@ -106,7 +106,7 @@
     var actions = '';
     if (s.yt) {
       actions = '<button class="z-play" onclick="ZubeenPlayer.play(\'' + s.id + '\')">▶ Play</button>';
-    } else if (s.source_type === 'apple_music' && s.apple_embed) {
+    } else if (s.source_type === 'apple_music' && (s.apple_preview || s.apple_embed)) {
       actions = '<button class="z-play" onclick="ZubeenPlayer.play(\'' + s.id + '\')">▶ Preview</button>';
     }
     if (s.source) {
@@ -457,8 +457,9 @@
     play: function (id) {
       var song = this.findSong(id);
       if (!song) return;
-      if (song.source_type === 'apple_music' && song.apple_embed) {
-        this._appleStart(song);
+      if (song.source_type === 'apple_music') {
+        if (song.apple_preview) this._appleNative(song);
+        else if (song.apple_embed) this._appleStart(song);
         return;
       }
       if (!song.yt) return;
@@ -473,11 +474,83 @@
 
     /* Apple Music official embed — honest in-page preview; the full
        song plays on Apple Music. No fake progress values. */
+    /* Apple Music NATIVE audio — direct playback of the official 30-second
+       preview via OUR OWN <audio> element. First-party audio keeps Chrome
+       (Android/desktop) playing when the page goes to the background — real
+       background playback, real progress, real OS media controls. The embed
+       iframe below remains only as a fallback for songs without a preview. */
+    _appleNative: function (song) {
+      var bar = document.getElementById('z-player');
+      if (!bar) return;
+      this._pollStop();
+      this._keeper(false);          /* the native audio itself holds focus */
+      try { if (this._yt) this._yt.stopVideo(); } catch (e) {}
+      var self = this;
+      var a = this._ap;
+      if (!a) {
+        a = document.createElement('audio');
+        a.preload = 'auto';
+        a.setAttribute('playsinline', ''); a.setAttribute('webkit-playsinline', '');
+        a.style.display = 'none';
+        a.addEventListener('timeupdate', function () {
+          if (self._ap !== a || !self._current) return;
+          var d = a.duration || 0, t = a.currentTime || 0;
+          var prog = document.getElementById('z-player-prog');
+          var times = document.getElementById('z-player-times');
+          if (prog) { prog.disabled = !(d > 0); if (d > 0 && !prog._dragging) prog.value = (t / d) * 1000; }
+          if (times) times.textContent = d > 0 ? (fmt(t) + ' / ' + fmt(d)) : 'Streaming…';
+          if (d > 0 && navigator.mediaSession && navigator.mediaSession.setPositionState) {
+            try { navigator.mediaSession.setPositionState({ duration: d, position: Math.min(t, d), playbackRate: 1 }); } catch (e) {}
+          }
+        });
+        a.addEventListener('play', function () {
+          self._setPlayIcon(true);
+          if (navigator.mediaSession) { try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {} }
+        });
+        a.addEventListener('pause', function () {
+          self._setPlayIcon(false);
+          if (navigator.mediaSession) { try { navigator.mediaSession.playbackState = 'paused'; } catch (e) {} }
+        });
+        a.addEventListener('ended', function () { if (self._ap === a) self.next(); });
+        a.addEventListener('error', function () {
+          if (self._ap === a) { self._ap = null; self._fail(self._current || song); }
+        });
+        document.body.appendChild(a);
+        this._ap = a;
+      }
+      try { a.volume = this._vol() / 100; } catch (e) {}
+      a.src = song.apple_preview;
+      var title = document.getElementById('z-player-title');
+      var artist = document.getElementById('z-player-artist');
+      var srcmode = document.getElementById('z-player-srcmode');
+      var fb = document.getElementById('z-player-fb');
+      if (title) title.textContent = song.title;
+      if (artist) artist.textContent = 'Zubeen Garg' + (song.film ? ' · ' + song.film : (song.album ? ' · ' + song.album : ''));
+      if (srcmode) { srcmode.hidden = false; srcmode.textContent = 'Apple Music official preview (৩০ ছেকেণ্ড) — সম্পূৰ্ণ গানটো Apple Music-ত পোৱা যাব'; }
+      if (fb) fb.hidden = true;
+      this._current = song;
+      this._failed = false;
+      bar.classList.add('open', 'apple-mode');
+      bar.setAttribute('aria-hidden', 'false');
+      this._ms(song);
+      this._setPlayIcon(false);
+      var p = a.play();
+      if (p && p.catch) p.catch(function () { /* autoplay blocked — tap ▶ */ });
+    },
+
+    _appleStop: function () {
+      if (!this._ap) return;
+      try { this._ap.pause(); } catch (e) {}
+      try { this._ap.removeAttribute('src'); } catch (e) {}
+      this._ap = null;
+    },
+
     _appleStart: function (song) {
       var vid = document.getElementById('z-player-vid');
       var bar = document.getElementById('z-player');
       if (!vid || !bar) return;
       this._pollStop();
+      this._appleStop();   /* never two apple players at once */
       this._keeper(false);   /* Apple embed can't be remote-controlled — no fake background */
       /* keep _current so ⏭/⏮ still work — but this is not our playback */
       if (navigator.mediaSession) {
@@ -506,6 +579,7 @@
       var vid = document.getElementById('z-player-vid');
       var bar = document.getElementById('z-player');
       if (!vid || !bar) return;
+      this._appleStop();
       bar.classList.remove('apple-mode');
       var srcmode = document.getElementById('z-player-srcmode');
       if (srcmode) srcmode.hidden = true;
@@ -556,15 +630,21 @@
           ]
         });
         var self = this;
-        try { ms.setActionHandler('play', function () { if (self._yt && self._ready) self._yt.playVideo(); }); } catch (e) {}
-        try { ms.setActionHandler('pause', function () { if (self._yt && self._ready) self._yt.pauseVideo(); }); } catch (e) {}
+        try { ms.setActionHandler('play', function () {
+          if (self._ap) { var p = self._ap.play(); if (p && p.catch) p.catch(function () {}); }
+          else if (self._yt && self._ready) self._yt.playVideo();
+        }); } catch (e) {}
+        try { ms.setActionHandler('pause', function () {
+          if (self._ap) self._ap.pause();
+          else if (self._yt && self._ready) self._yt.pauseVideo();
+        }); } catch (e) {}
         try { ms.setActionHandler('nexttrack', function () { self.next(); }); } catch (e) {}
         try { ms.setActionHandler('previoustrack', function () { self.prev(); }); } catch (e) {}
         try {
           ms.setActionHandler('seekto', function (d) {
-            if (self._yt && self._ready && d && typeof d.seekTime === 'number') {
-              try { self._yt.seekTo(d.seekTime, true); } catch (e) {}
-            }
+            if (!d || typeof d.seekTime !== 'number') return;
+            if (self._ap) { var da = self._ap.duration || 0; if (da > 0) { try { self._ap.currentTime = Math.min(d.seekTime, da); } catch (e) {} } }
+            else if (self._yt && self._ready) { try { self._yt.seekTo(d.seekTime, true); } catch (e) {} }
           });
         } catch (e) {}
       } catch (e) { /* media-session is a nice-to-have; never break playback */ }
@@ -618,18 +698,29 @@
     },
 
     toggle: function () {
+      if (this._ap) {
+        if (this._ap.paused) { var p = this._ap.play(); if (p && p.catch) p.catch(function () {}); }
+        else { this._ap.pause(); }
+        return;
+      }
       if (!this._yt || !this._ready) return;
       var s = this._yt.getPlayerState();
       if (s === 1) { this._yt.pauseVideo(); } else { this._yt.playVideo(); }
     },
 
     seek: function (val) {
+      if (this._ap) {
+        var da = this._ap.duration || 0;
+        if (da > 0) { try { this._ap.currentTime = val * da; } catch (e) {} }
+        return;
+      }
       if (!this._yt || !this._ready) return;
       var d = this._yt.getDuration();
       if (d > 0) { try { this._yt.seekTo(val * d, true); } catch (e) {} }
     },
 
     setVol: function (v) {
+      if (this._ap) { try { this._ap.volume = v / 100; } catch (e) {} }
       if (this._yt && this._ready) { try { this._yt.setVolume(v); } catch (e) {} }
     },
 
@@ -663,6 +754,7 @@
       var vid = document.getElementById('z-player-vid');
       if (vid) vid.innerHTML = '';
       this._pollStop();
+      this._appleStop();
       if (this._yt) { try { this._yt.stopVideo(); } catch (e) {} }
       this._keeper(false);
       this._current = null;
@@ -731,6 +823,7 @@
     _fail: function (song) {
       this._failed = true;
       this._pollStop();
+      this._appleStop();
       this._keeper(false);
       if (navigator.mediaSession) {
         try { navigator.mediaSession.playbackState = 'none'; } catch (e) {}
