@@ -11,6 +11,42 @@
   var D = window.ZUBEEN_DATA;
   if (!D) { console.error('[Zubeen] data file missing'); return; }
 
+  /* Curated songs (zubeen-data.js) + verified archive (zubeen-songs.js) */
+  var ARCH = window.ZUBEEN_SONGS || [];
+  var ALL = D.songs.concat(ARCH);
+  var PLAYLISTS = window.ZUBEEN_PLAYLISTS || [];
+  var FEATURED = window.ZUBEEN_FEATURED || [];
+
+  function fmt(sec) {
+    sec = Math.max(0, Math.floor(sec || 0));
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  /* ── Favourites (device-local only — never transmitted) ───────── */
+  var favs = (function () {
+    try { return new Set(JSON.parse(localStorage.getItem('z_favs') || '[]')); }
+    catch (e) { return new Set(); }
+  })();
+  function saveFavs() {
+    try { localStorage.setItem('z_favs', JSON.stringify(Array.from(favs))); } catch (e) {}
+  }
+  function isFav(id) { return favs.has(id); }
+  function toggleFav(id, btn) {
+    if (favs.has(id)) { favs.delete(id); } else { favs.add(id); }
+    saveFavs();
+    if (btn) {
+      btn.classList.toggle('on', favs.has(id));
+      btn.setAttribute('aria-pressed', String(favs.has(id)));
+      btn.setAttribute('aria-label', favs.has(id) ? 'Remove from favourites' : 'Add to favourites');
+    }
+  }
+  window.ZubeenLib = {
+    toggleFav: function (id, btn) { toggleFav(id, btn); },
+    openPlaylist: function (id) { openPlaylist(id); },
+    exitPlaylist: function () { exitPlaylist(); }
+  };
+
   function esc(s) {
     if (s === null || s === undefined) return '';
     return String(s).replace(/[&<>'"]/g, function (c) {
@@ -20,7 +56,8 @@
 
   /* ══════════════════ MUSIC LIBRARY ══════════════════ */
 
-  var state = { q: '', filter: 'all', cat: null };
+  var state = { q: '', filter: 'all', cat: null, playlist: null, shown: 0 };
+  var PAGE = 24;
 
   var FILTERS = [
     { id: 'all', label: 'সকলো গান' },
@@ -31,20 +68,23 @@
     { id: 'film', label: 'চলচ্চিত্ৰৰ গান' },
     { id: 'album', label: 'এলবাম' },
     { id: 'single', label: 'Singles' },
-    { id: 'collab', label: 'Collaborations' }
+    { id: 'collab', label: 'Collaborations' },
+    { id: 'fav', label: '⭐ প্ৰিয়' }
   ];
 
   function matchFilter(song, f) {
+    var cats = song.categories || [];
     switch (f) {
       case 'all': return true;
       case 'assamese': return song.language === 'Assamese';
       case 'hindi': return song.language === 'Hindi';
       case 'bengali': return song.language === 'Bengali';
-      case 'bihu': return song.categories.indexOf('bihu') >= 0;
+      case 'bihu': return cats.indexOf('bihu') >= 0;
       case 'film': return song.kind === 'film';
       case 'album': return song.kind === 'album';
       case 'single': return song.kind === 'single';
       case 'collab': return !!song.coSinger;
+      case 'fav': return isFav(song.id);
       default: return true;
     }
   }
@@ -53,30 +93,42 @@
     if (!q) return true;
     q = q.toLowerCase();
     var hay = [song.title, song.album, song.film, song.language,
-               song.composedBy, song.coSinger, String(song.year || '')].join(' ').toLowerCase();
+               song.composedBy, song.coSinger, song.artist, String(song.year || '')].join(' ').toLowerCase();
     return hay.indexOf(q) >= 0;
   }
 
   function songCard(s) {
     var meta = [];
-    if (s.album) meta.push('Album: <b>' + esc(s.album) + '</b>');
     if (s.film) meta.push('Film: <b>' + esc(s.film) + '</b>');
-    meta.push(esc(s.language) + (s.year ? ' · ' + s.year : ' · Details unavailable'));
+    if (s.album && s.album !== s.film) meta.push('Album: <b>' + esc(s.album) + '</b>');
+    var langLine = esc(s.language) + (s.year ? ' · ' + s.year : ' · Details unavailable');
+    meta.push(langLine + (s.durationSec ? ' <span class="z-dur">' + fmt(s.durationSec) + '</span>' : ''));
     var actions = '';
     if (s.yt) {
-      actions = '<button class="z-play" onclick="ZubeenPlayer.play(\'' + s.id + '\')">▶ Play here</button>';
+      actions = '<button class="z-play" onclick="ZubeenPlayer.play(\'' + s.id + '\')">▶ Play</button>';
+    } else if (s.source_type === 'apple_music' && s.apple_embed) {
+      actions = '<button class="z-play" onclick="ZubeenPlayer.play(\'' + s.id + '\')">▶ Preview</button>';
+    }
+    if (s.source) {
+      actions += '<a class="z-official" style="font-size:0.72rem;padding:6px 10px" href="' + esc(s.source) + '" target="_blank" rel="noopener noreferrer" title="Open official source">↗ Official</a>';
+    }
+    var cover;
+    if (s.cover) {
+      cover = '<img src="' + esc(s.cover) + '" alt="" loading="lazy" />';
     } else {
-      actions = '<a class="z-official" href="' + esc(s.source) + '" target="_blank" rel="noopener noreferrer">↗ ' + esc(s.sourceLabel) + '</a>';
+      cover = '<div class="ph">' + esc(s.title.charAt(0)) + '</div>';
     }
-    if (s.yt && s.source) {
-      actions += '<a class="z-official" style="font-size:0.72rem;padding:6px 10px" href="' + esc(s.source) + '" target="_blank" rel="noopener noreferrer" title="Open on YouTube">↗ Official</a>';
-    }
-    return '<article class="z-song" aria-label="' + esc(s.title) + '">' +
-      '<div class="z-song-art" aria-hidden="true">' +
-        '<span class="monogram">' + esc(s.title.charAt(0)) + '</span>' +
-        (s.yt ? '<span class="yt-badge">▶ playable</span>' : '') +
-      '</div>' +
-      '<h3 class="z-song-title">🎵 ' + esc(s.title) + '</h3>' +
+    var srcBadge = s.yt
+      ? '<span class="src-badge yt">YT MUSIC</span>'
+      : (s.source_type === 'apple_music' ? '<span class="src-badge apple">APPLE MUSIC</span>' : '');
+    var verified = s.verified
+      ? '<span class="z-verified">✓ verified' + (s.verifiedAt ? ' ' + esc(s.verifiedAt) : '') + '</span>' : '';
+    var fav = '<button class="z-fav' + (isFav(s.id) ? ' on' : '') + '" type="button" ' +
+      'aria-pressed="' + isFav(s.id) + '" aria-label="' + (isFav(s.id) ? 'Remove from' : 'Add to') + ' favourites" ' +
+      'onclick="ZubeenLib.toggleFav(\'' + s.id + '\', this)">⭐</button>';
+    return '<article class="z-song" aria-label="' + esc(s.title) + '">' + fav +
+      '<div class="z-song-art z-song-cover" aria-hidden="true">' + cover + srcBadge + '</div>' +
+      '<h3 class="z-song-title">🎵 ' + esc(s.title) + verified + '</h3>' +
       '<p class="z-song-meta">' + meta.join('<br>') + '</p>' +
       (s.note ? '<p class="z-song-note">' + esc(s.note) + '</p>' : '') +
       '<div class="z-song-actions">' + actions + '</div>' +
@@ -84,25 +136,73 @@
     '</article>';
   }
 
-  function renderSongs() {
-    var list = D.songs.filter(function (s) {
+  function currentList() {
+    var pool = state.playlist
+      ? (PLAYLISTS.filter(function (p) { return p.id === state.playlist; })[0] || { songIds: [] }).songIds
+          .map(function (id) { return ALL.filter(function (s) { return s.id === id; })[0]; })
+          .filter(Boolean)
+      : ALL;
+    return pool.filter(function (s) {
       return matchFilter(s, state.filter) && matchSearch(s, state.q) &&
-        (!state.cat || s.categories.indexOf(state.cat) >= 0);
+        (!state.cat || (s.categories || []).indexOf(state.cat) >= 0);
     });
+  }
+
+  var sentinelIO = null;
+
+  function renderSongs(reset) {
+    var list = currentList();
     var host = document.getElementById('z-song-list');
     if (!host) return;
+    if (reset !== false) state.shown = 0;
+
     if (!list.length) {
       host.innerHTML = '<div class="z-state" role="status">' +
         '<div class="ic">🔍</div>' +
         '<p class="tt">No verified result found.</p>' +
         '<p>এই সংগ্ৰহত এতিয়ালৈ প্ৰকাশিত গানসমূহৰ ভিতৰত আপোনাৰ সন্ধানৰ কোনো ফলাফল নাই।</p></div>';
     } else {
-      host.innerHTML = list.map(songCard).join('');
+      state.shown = Math.min(state.shown || 0, list.length);
+      var slice = list.slice(0, state.shown + PAGE);
+      state.shown = slice.length;
+      host.innerHTML = slice.map(songCard).join('') +
+        (state.shown < list.length
+          ? '<button class="z-load-more" id="z-load-more" type="button">আৰু দেখুৱাওক · Load more (' + (list.length - state.shown) + ' left)</button>'
+          : '');
+      var more = document.getElementById('z-load-more');
+      if (more) more.addEventListener('click', function () { renderSongs(false); });
     }
+
     var count = document.getElementById('z-song-count');
     if (count) {
-      count.textContent = list.length + (list.length === 1 ? ' song' : ' songs') + ' in this curated collection';
+      count.textContent = list.length + (list.length === 1 ? ' song' : ' songs') +
+        (state.playlist ? ' in this collection' : ' — all individually verified');
     }
+
+    var banner = document.getElementById('z-playlist-banner');
+    if (banner) {
+      if (state.playlist) {
+        var pl = PLAYLISTS.filter(function (p) { return p.id === state.playlist; })[0];
+        banner.hidden = false;
+        banner.innerHTML = '🎶 এতিয়া চলি আছে: <b>' + esc(pl ? pl.name : '') + '</b> — ' +
+          list.length + ' গান <button class="z-pl-exit" type="button" onclick="ZubeenLib.exitPlaylist()">✕ সকলো গানলৈ ঘূৰি যাওক</button>';
+      } else {
+        banner.hidden = true;
+      }
+    }
+  }
+
+  function openPlaylist(id) {
+    state.playlist = id;
+    state.shown = 0;
+    renderSongs();
+    var el = document.getElementById('music');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  }
+  function exitPlaylist() {
+    state.playlist = null;
+    state.shown = 0;
+    renderSongs();
   }
 
   function initFilters() {
@@ -124,6 +224,7 @@
     if (input) {
       input.addEventListener('input', function () {
         state.q = input.value.trim();
+        state.shown = 0;
         var clear = document.getElementById('z-search-clear');
         if (clear) clear.hidden = !state.q;
         renderSongs();
@@ -140,11 +241,66 @@
     }
   }
 
+  function renderFeatured() {
+    var wrap = document.getElementById('z-featured-wrap');
+    var host = document.getElementById('z-featured');
+    if (!wrap || !host) return;
+    var songs = FEATURED.map(function (id) { return ALL.filter(function (s) { return s.id === id; })[0]; })
+      .filter(Boolean);
+    if (!songs.length) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+    host.innerHTML = songs.map(function (s) {
+      var art = s.cover
+        ? '<img src="' + esc(s.cover) + '" alt="" loading="lazy" />'
+        : '<div class="ph">' + esc(s.title.charAt(0)) + '</div>';
+      var sub = s.film ? s.film : (s.album ? s.album : s.language);
+      return '<button type="button" class="z-feat-card" onclick="ZubeenPlayer.play(\'' + s.id + '\')" aria-label="Play ' + esc(s.title) + '">' +
+        '<div class="z-feat-art">' + art + '<span class="z-feat-play" aria-hidden="true">▶</span></div>' +
+        '<div class="z-feat-meta"><div class="z-feat-title">' + esc(s.title) + '</div>' +
+        '<div class="z-feat-sub">' + esc(sub) + '</div></div></button>';
+    }).join('');
+  }
+
+  function renderPlaylists() {
+    var wrap = document.getElementById('z-playlists-wrap');
+    var host = document.getElementById('z-playlists');
+    if (!wrap || !host) return;
+    if (!PLAYLISTS.length) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+    host.innerHTML = PLAYLISTS.map(function (p) {
+      var n = (p.songIds || []).filter(function (id) {
+        return ALL.some(function (s) { return s.id === id; });
+      }).length;
+      return '<button type="button" class="z-pl-card" onclick="ZubeenLib.openPlaylist(\'' + p.id + '\')">' +
+        '<div class="z-pl-icon" aria-hidden="true">' + p.icon + '</div>' +
+        '<div class="z-pl-name">' + esc(p.name) + '</div>' +
+        '<div class="z-pl-desc">' + esc(p.desc) + '</div>' +
+        '<div class="z-pl-count">' + n + ' গান · verified</div></button>';
+    }).join('');
+  }
+
+  function renderStats() {
+    var el = document.getElementById('z-lib-stats');
+    if (!el) return;
+    var n = ALL.length;
+    var yt = ALL.filter(function (s) { return !!s.yt; }).length;
+    var ap = ALL.filter(function (s) { return s.source_type === 'apple_music'; }).length;
+    el.textContent = n + ' verified songs · ' + yt + ' full playback (YouTube official) · ' +
+      ap + ' official Apple Music preview · প্ৰতিটো গানৰ উৎস পৃথকে পৃথকে পৰীক্ষা কৰা হৈছে';
+  }
+
+  function initLibraryBar() {
+    var pa = document.getElementById('z-play-all');
+    if (pa) pa.addEventListener('click', function () { ZP.playAll(false); });
+    var sh = document.getElementById('z-shuffle-all');
+    if (sh) sh.addEventListener('click', function () { ZP.playAll(true); });
+  }
+
   function initCategories() {
     var host = document.getElementById('z-cats');
     if (!host) return;
     host.innerHTML = D.categories.map(function (c) {
-      var n = D.songs.filter(function (s) { return s.categories.indexOf(c.id) >= 0; }).length;
+      var n = ALL.filter(function (s) { return (s.categories || []).indexOf(c.id) >= 0; }).length;
       return '<button class="z-cat" aria-pressed="false" data-cat="' + c.id + '" aria-label="' + esc(c.name) + '">' +
         '<div class="ic" aria-hidden="true">' + c.icon + '</div>' +
         '<div class="nm">' + esc(c.name) + '</div>' +
@@ -157,6 +313,7 @@
       var wasOn = b.getAttribute('aria-pressed') === 'true';
       host.querySelectorAll('.z-cat').forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
       state.cat = wasOn ? null : id;
+      state.shown = 0;
       if (!wasOn) b.setAttribute('aria-pressed', 'true');
       renderSongs();
       var target = document.getElementById('music');
@@ -265,13 +422,22 @@
 
   var ZP = window.ZubeenPlayer = {
     _yt: null, _current: null, _ready: false, _poll: null, _pending: null, _failed: false,
+    _queue: [], _qi: -1,
 
     findSong: function (id) {
-      return D.songs.filter(function (s) { return s.id === id; })[0] || null;
+      return ALL.filter(function (s) { return s.id === id; })[0] || null;
     },
 
     playableSongs: function () {
-      return D.songs.filter(function (s) { return !!s.yt; });
+      return ALL.filter(function (s) { return !!s.yt; });
+    },
+
+    allSongs: function () { return ALL; },
+
+    setQueue: function (ids, startId) {
+      this._queue = (ids || []).slice();
+      this._qi = startId ? this._queue.indexOf(startId) : 0;
+      if (this._qi < 0) this._qi = 0;
     },
 
     _ensureApi: function () {
@@ -290,7 +456,12 @@
 
     play: function (id) {
       var song = this.findSong(id);
-      if (!song || !song.yt) return;
+      if (!song) return;
+      if (song.source_type === 'apple_music' && song.apple_embed) {
+        this._appleStart(song);
+        return;
+      }
+      if (!song.yt) return;
       this._failed = false;
       var self = this;
       this._ensureApi().then(function () {
@@ -300,11 +471,39 @@
       });
     },
 
+    /* Apple Music official embed — honest in-page preview; the full
+       song plays on Apple Music. No fake progress values. */
+    _appleStart: function (song) {
+      var vid = document.getElementById('z-player-vid');
+      var bar = document.getElementById('z-player');
+      if (!vid || !bar) return;
+      this._pollStop();
+      try { if (this._yt) this._yt.stopVideo(); } catch (e) {}
+      vid.innerHTML = '<iframe style="width:100%;max-width:340px;height:140px;border:0;overflow:hidden;background:transparent" ' +
+        'src="' + esc(song.apple_embed) + '" allow="autoplay *; encrypted-media *; clipboard-write" ' +
+        'title="' + esc(song.title) + ' — Apple Music preview" loading="lazy"></iframe>';
+      bar.classList.add('open', 'apple-mode');
+      bar.setAttribute('aria-hidden', 'false');
+      var title = document.getElementById('z-player-title');
+      var artist = document.getElementById('z-player-artist');
+      var srcmode = document.getElementById('z-player-srcmode');
+      var fb = document.getElementById('z-player-fb');
+      if (title) title.textContent = song.title;
+      if (artist) artist.textContent = 'Zubeen Garg' + (song.film ? ' · ' + song.film : (song.album ? ' · ' + song.album : ''));
+      if (srcmode) { srcmode.hidden = false; srcmode.textContent = 'Apple Music official preview — সম্পূৰ্ণ গানটো Apple Music-ত পোৱা যাব'; }
+      if (fb) fb.hidden = true;
+      this._current = song;
+      this._setPlayIcon(false);
+    },
+
     _start: function (song) {
       var self = this;
       var vid = document.getElementById('z-player-vid');
       var bar = document.getElementById('z-player');
       if (!vid || !bar) return;
+      bar.classList.remove('apple-mode');
+      var srcmode = document.getElementById('z-player-srcmode');
+      if (srcmode) srcmode.hidden = true;
 
       /* Reuse player if the hidden div survived a re-render; recreate otherwise */
       if (!this._yt || !vid.firstChild) {
@@ -346,7 +545,7 @@
       var bar = document.getElementById('z-player');
       var title = document.getElementById('z-player-title');
       var artist = document.getElementById('z-player-artist');
-      if (bar) bar.classList.add('open');
+      if (bar) { bar.classList.add('open'); bar.classList.remove('apple-mode'); }
       if (title) title.textContent = song.title;
       if (artist) artist.textContent = 'Zubeen Garg' + (song.film ? ' · ' + song.film : (song.album ? ' · ' + song.album : ''));
       var fb = document.getElementById('z-player-fb');
@@ -374,16 +573,31 @@
     prev: function () { this._step(-1); },
 
     _step: function (dir) {
-      var list = this.playableSongs();
+      var list = this._queue.length ? this._queue.map(function (id) { return ZP.findSong(id); }).filter(Boolean) : this.playableSongs();
       if (!list.length || !this._current) return;
       var i = list.map(function (s) { return s.id; }).indexOf(this._current.id);
       var j = (i + dir + list.length) % list.length;
       this.play(list[j].id);
     },
 
+    playAll: function (shuffle) {
+      var ids = currentList().map(function (s) { return s.id; });
+      if (!ids.length) return;
+      if (shuffle) {
+        for (var i = ids.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var t = ids[i]; ids[i] = ids[j]; ids[j] = t;
+        }
+      }
+      this.setQueue(ids, ids[0]);
+      this.play(ids[0]);
+    },
+
     close: function () {
       var bar = document.getElementById('z-player');
-      if (bar) bar.classList.remove('open');
+      if (bar) { bar.classList.remove('open', 'apple-mode'); bar.setAttribute('aria-hidden', 'true'); }
+      var vid = document.getElementById('z-player-vid');
+      if (vid) vid.innerHTML = '';
       this._pollStop();
       if (this._yt) { try { this._yt.stopVideo(); } catch (e) {} }
     },
@@ -700,6 +914,10 @@
     renderStatic();
     initFilters();
     initCategories();
+    renderFeatured();
+    renderPlaylists();
+    renderStats();
+    initLibraryBar();
     renderSongs();
     initPlayerUI();
     initMemoryForm();

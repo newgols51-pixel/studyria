@@ -76,9 +76,10 @@ window.SUPABASE_URL = 'https://qsdfmgcekdpjdcyqhuhi.supabase.co';
 <script src="supabase.js"></script>
 
 <!-- ── Page assets ─────────────────────────────────────────────── -->
-<link rel="stylesheet" href="zubeen-da.css?v=3" />
-<script src="zubeen-data.js?v=3" defer></script>
-<script src="zubeen-da.js?v=3" defer></script>
+<link rel="stylesheet" href="zubeen-da.css?v=4" />
+<script src="zubeen-data.js?v=4" defer></script>
+<script src="zubeen-songs.js?v=1" defer></script>
+<script src="zubeen-da.js?v=4" defer></script>
 </head>
 
 <body class="z-page">
@@ -167,21 +168,41 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- ═══ MUSIC LIBRARY ═══════════════════════════════════════════ -->
 <section class="z-section" id="music" aria-labelledby="z-music-h">
   <div class="z-wrap">
-    <p class="z-eyebrow">Curated Music Collection</p>
-    <h2 class="z-h2" id="z-music-h">🎵 MUSIC LIBRARY</h2>
-    <p class="z-section-intro">A curated collection of songs with verified sources. Each song plays only through its official, authorized source — nothing is copied or mirrored here.</p>
+    <p class="z-eyebrow">Verified Music Archive</p>
+    <h2 class="z-h2" id="z-music-h">🎵 <span class="as">জুবিন দাৰ সুৰ</span></h2>
+    <p class="z-section-intro">তেওঁৰ কণ্ঠৰ সুৰত স্মৃতিবোৰ আকৌ জীয়াই উঠক। Every song here is individually verified against an official, authorized source — nothing is copied or mirrored on this site.</p>
+    <p class="z-lib-stats" id="z-lib-stats" role="status"></p>
+
+    <div class="z-featured-wrap" id="z-featured-wrap" hidden>
+      <h3 class="z-h3">✨ <span class="as">বাছনি কৰা সুৰ</span> · Featured</h3>
+      <div class="z-featured" id="z-featured"></div>
+    </div>
+
+    <div class="z-playlists-wrap" id="z-playlists-wrap" hidden>
+      <h3 class="z-h3">🎶 <span class="as">প্লেলিষ্ট</span> · Collections</h3>
+      <div class="z-playlists" id="z-playlists"></div>
+    </div>
 
     <div class="z-search" role="search">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-      <input type="search" id="z-search" placeholder="গান, এলবাম বা চলচ্চিত্ৰ বিচাৰক..." aria-label="গান, এলবাম বা চলচ্চিত্ৰ বিচাৰক" autocomplete="off" />
+      <input type="search" id="z-search" placeholder="গান, এলবাম, চলচ্চিত্ৰ বা শিল্পী বিচাৰক..." aria-label="গান, এলবাম, চলচ্চিত্ৰ বা শিল্পী বিচাৰক" autocomplete="off" />
       <button class="clear" id="z-search-clear" type="button" aria-label="Clear search" hidden>✕</button>
     </div>
 
-    <div class="z-filters" id="z-filters" role="group" aria-label="Filters"></div>
+    <div class="z-lib-bar">
+      <div class="z-filters" id="z-filters" role="group" aria-label="Filters"></div>
+      <div class="z-lib-actions">
+        <button type="button" class="z-lib-btn" id="z-play-all">▶ <span class="as">সকলো গান প্লে</span></button>
+        <button type="button" class="z-lib-btn" id="z-shuffle-all">🔀 Shuffle</button>
+      </div>
+    </div>
+
+    <div class="z-playlist-banner" id="z-playlist-banner" hidden></div>
 
     <div class="z-songs" id="z-song-list" aria-live="polite"></div>
     <p class="z-source-tag" id="z-song-count" style="margin-top:16px" role="status"></p>
-    <p class="z-note">▶ Play here — playback via the official YouTube embed of the verified source. ↗ Official — opens the official listening platform. No copyrighted audio is hosted on Studyria.</p>
+    <div id="z-load-sentinel" aria-hidden="true"></div>
+    <p class="z-note">▶ Play — full playback through the official YouTube embed of a verified licensed upload. ▶ Preview — official Apple Music embed (short preview in-page; the full song plays on Apple Music). ⭐ — favourites are saved on your own device (localStorage), never sent anywhere. No copyrighted audio is hosted on Studyria.</p>
   </div>
 </section>
 
@@ -357,6 +378,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <div class="z-player-artist" id="z-player-artist"></div>
       <input class="z-progress" id="z-player-prog" type="range" min="0" max="1000" value="0" disabled aria-label="Seek" />
       <div class="z-player-times" id="z-player-times"></div>
+      <div class="z-player-srcmode" id="z-player-srcmode" hidden></div>
     </div>
     <div class="z-vol" aria-label="Volume">
       <span aria-hidden="true" style="font-size:0.8rem;color:var(--z-muted)">🔉</span>

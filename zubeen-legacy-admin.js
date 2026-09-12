@@ -52,20 +52,58 @@
     var cats = (D.categories || []).length;
     var verifiedSongs = songs.filter(function (s) { return s.verified; }).length;
 
+    /* Verified song archive (zubeen-songs.js) — merged view */
+    var ARCH = window.ZUBEEN_SONGS || [];
+    var archYT = ARCH.filter(function (s) { return !!s.yt; }).length;
+    var archApple = ARCH.filter(function (s) { return s.source_type === 'apple_music'; }).length;
+    var byLang = {};
+    ARCH.forEach(function (s) { byLang[s.language] = (byLang[s.language] || 0) + 1; });
+    var byKind = {};
+    ARCH.forEach(function (s) { byKind[s.kind] = (byKind[s.kind] || 0) + 1; });
+    var langTxt = Object.keys(byLang).sort().map(function (l) { return byLang[l] + ' ' + l; }).join(' · ') || '—';
+    var kindTxt = Object.keys(byKind).sort().map(function (k) { return byKind[k] + ' ' + k; }).join(' · ') || '—';
+    var needsReview = window.ZUBEEN_NEEDS_REVIEW && window.ZUBEEN_NEEDS_REVIEW.length || '—';
+
     var tile = function (num, label, sub) {
       return '<div class="zla-tile"><div class="zla-tile-num">' + num + '</div>' +
         '<div class="zla-tile-label">' + label + '</div><div class="zla-tile-sub">' + sub + '</div></div>';
     };
+
+    var archTable = '';
+    if (ARCH.length) {
+      var rows = ARCH.slice(0, 400).map(function (s) {
+        var src = s.yt
+          ? '<span class="zla-song">▶ YouTube · ' + esc(s.sourceLabel) + '</span>'
+          : '<span class="zla-song">🍎 Apple Music preview</span>';
+        var test = s.yt
+          ? '<button class="zla-btn" data-testyt="' + esc(s.yt) + '">Test playback</button>'
+          : (s.apple_embed ? '<button class="zla-btn" data-testapple="' + esc(s.apple_embed) + '">Test preview</button>' : '');
+        return '<tr><td style="max-width:260px"><div style="font-weight:600;font-size:.82rem">' + esc(s.title) + '</div>' +
+          '<div style="font-size:.72rem;opacity:.65">' + esc(s.language) + (s.year ? ' · ' + s.year : '') + (s.film ? ' · 🎬 ' + esc(s.film) : '') + '</div></td>' +
+          '<td style="font-size:.75rem;max-width:280px">' + src + '</td>' +
+          '<td><span class="zla-chip zla-chip-approved">verified ' + esc(s.verifiedAt || '') + '</span></td>' +
+          '<td style="text-align:right">' + test +
+          ' <a class="zla-btn" style="text-decoration:none;display:inline-block;padding:6px 10px" target="_blank" rel="noopener" href="' + esc(s.source) + '">↗ Source</a></td></tr>';
+      }).join('');
+      archTable = '<div class="zla-section-label" style="margin-top:28px">Music archive — per-song verification status (read-only)</div>' +
+        '<div class="admin-table-card"><table class="admin-table" style="width:100%">' +
+        '<thead><tr><th>Song</th><th>Verified source</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody></table></div>' +
+        '<div id="zla-embed-test" style="margin-top:14px"></div>';
+    }
+
     return '<div class="zla-tiles">' +
-      tile(songs.length, 'Songs', verifiedSongs + ' verified') +
-      tile(playable, 'Play here', 'official embeds') +
-      tile(linkOnly, 'Official link only', 'no verified embed') +
-      tile(albums, 'Albums', 'curated archive') +
-      tile(films, 'Films', 'verified filmography') +
-      tile(timeline, 'Journey', 'timeline events') +
+      tile(songs.length, 'Curated songs', verifiedSongs + ' verified') +
+      tile(playable, 'Play here (curated)', 'official embeds') +
+      tile(ARCH.length, 'Archive songs', (archYT + archApple) + ' individually verified') +
+      tile(archYT, 'Archive full playback', 'YouTube licensed embeds') +
+      tile(archApple, 'Archive previews', 'official Apple Music') +
+      tile(needsReview, 'Withheld (needs review)', 'not published — honest gap') +
       '</div>' +
-      '<p class="zla-note">Categories: ' + cats + ' editorial listening moods. All content is code-managed with per-item source / rights / verification status — ' +
-      'nothing here is editable from the panel, and no counts are fabricated. The tribute page is the single source of display truth.</p>';
+      '<p class="zla-note">Archive languages: ' + langTxt + ' · kinds: ' + kindTxt +
+      '. Every archive song was checked individually against an official source (YouTube licensed-channel oEmbed, or the Apple Music catalog where no licensed YouTube upload exists). ' +
+      'Unverifiable entries are withheld, never guessed. Albums: ' + albums + ' · films: ' + films + ' · journey: ' + timeline + ' events · categories: ' + cats + ' editorial moods.</p>' +
+      archTable;
   }
 
   /* ── Migration / setup state (honest) ── */
@@ -166,6 +204,25 @@
 
     var rf = document.getElementById('zla-refresh');
     if (rf) rf.onclick = function () { A.refresh(); };
+    /* per-song playback verification — real embed test, visible proof */
+    var et = document.getElementById('zla-embed-test');
+    if (et && !et._wired) {
+      et._wired = true;
+      et.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-testyt],[data-testapple]');
+        if (!b) return;
+        var yt = b.getAttribute('data-testyt');
+        var ap = b.getAttribute('data-testapple');
+        et.innerHTML = yt
+          ? '<div style="max-width:420px"><div style="max-width:420px;aspect-ratio:16/9">' +
+            '<iframe style="width:100%;height:100%;border:0" src="https://www.youtube-nocookie.com/embed/' +
+            esc(yt) + '?rel=0" title="Playback verification" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>' +
+            '<p class="zla-note">Direct embed test for <code>' + esc(yt) + '</code> — if this plays, the live page plays.</p></div>'
+          : '<div style="max-width:420px"><iframe style="width:100%;max-width:380px;height:140px;border:0;background:transparent" src="' +
+            esc(ap) + '" allow="autoplay *; encrypted-media *" title="Apple Music preview verification" loading="lazy"></iframe>' +
+            '<p class="zla-note">Apple Music embed preview test — press ▶ inside the card. The full song plays on Apple Music.</p></div>';
+      });
+    }
     var fl = document.getElementById('zla-filters');
     if (fl) fl.onclick = function (e) {
       var b = e.target.closest('[data-filter]');
