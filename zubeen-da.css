@@ -777,3 +777,16 @@ a:hover { color: var(--z-gold); }
   .z-lib-actions { justify-content: space-between; }
   .z-lib-btn { flex: 1; text-align: center; padding: 9px 10px; }
 }
+
+/* Apple Music preview needs a VISIBLE embed — unlike the YT iframe,
+   which plays hidden audio-only, the Apple card must be tapped. */
+.z-player.apple-mode .z-player-vid {
+  display: block;
+  max-width: var(--z-maxw);
+  margin: 0 auto;
+  padding: 10px 16px 0;
+}
+.z-player.apple-mode .z-player-vid iframe {
+  display: block;
+  margin: 0 auto;
+}
