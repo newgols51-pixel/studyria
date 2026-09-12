@@ -478,6 +478,10 @@
       var bar = document.getElementById('z-player');
       if (!vid || !bar) return;
       this._pollStop();
+      /* keep _current so ⏭/⏮ still work — but this is not our playback */
+      if (navigator.mediaSession) {
+        try { navigator.mediaSession.playbackState = 'none'; navigator.mediaSession.metadata = null; } catch (e) {}
+      }
       try { if (this._yt) this._yt.stopVideo(); } catch (e) {}
       vid.innerHTML = '<iframe style="width:100%;max-width:340px;height:140px;border:0;overflow:hidden;background:transparent" ' +
         'src="' + esc(song.apple_embed) + '" allow="autoplay *; encrypted-media *; clipboard-write" ' +
@@ -536,6 +540,35 @@
       }
     },
 
+    /* ── Media Session: OS-level media controls + background play priority ── */
+    _ms: function (song) {
+      var ms = navigator.mediaSession;
+      if (!ms) return;
+      try {
+        ms.metadata = new MediaMetadata({
+          title: song.title,
+          artist: 'Zubeen Garg' + (song.film ? ' · ' + song.film : (song.album ? ' · ' + song.album : '')),
+          album: 'Zubeen Da — The Legacy',
+          artwork: [
+            { src: '/zubeen-hero-poster.webp', sizes: '512x512', type: 'image/webp' },
+            { src: '/zubeen-hero-mobile.webp', sizes: '192x192', type: 'image/webp' }
+          ]
+        });
+        var self = this;
+        try { ms.setActionHandler('play', function () { if (self._yt && self._ready) self._yt.playVideo(); }); } catch (e) {}
+        try { ms.setActionHandler('pause', function () { if (self._yt && self._ready) self._yt.pauseVideo(); }); } catch (e) {}
+        try { ms.setActionHandler('nexttrack', function () { self.next(); }); } catch (e) {}
+        try { ms.setActionHandler('previoustrack', function () { self.prev(); }); } catch (e) {}
+        try {
+          ms.setActionHandler('seekto', function (d) {
+            if (self._yt && self._ready && d && typeof d.seekTime === 'number') {
+              try { self._yt.seekTo(d.seekTime, true); } catch (e) {}
+            }
+          });
+        } catch (e) {}
+      } catch (e) { /* media-session is a nice-to-have; never break playback */ }
+    },
+
     _vol: function () {
       var v = document.getElementById('z-player-vol');
       return v ? parseInt(v.value, 10) : 80;
@@ -550,6 +583,7 @@
       if (artist) artist.textContent = 'Zubeen Garg' + (song.film ? ' · ' + song.film : (song.album ? ' · ' + song.album : ''));
       var fb = document.getElementById('z-player-fb');
       if (fb) fb.hidden = true;
+      this._ms(song);
       this._setPlayIcon(false);
     },
 
@@ -600,6 +634,10 @@
       if (vid) vid.innerHTML = '';
       this._pollStop();
       if (this._yt) { try { this._yt.stopVideo(); } catch (e) {} }
+      this._current = null;
+      if (navigator.mediaSession) {
+        try { navigator.mediaSession.playbackState = 'none'; navigator.mediaSession.metadata = null; } catch (e) {}
+      }
     },
 
     _pollStart: function () {
@@ -625,6 +663,9 @@
             times.textContent = d > 0 ? (fmt(t) + ' / ' + fmt(d)) : 'Live / streaming';
           }
           self._setPlayIcon(self._yt.getPlayerState() === 1);
+          if (d > 0 && navigator.mediaSession && navigator.mediaSession.setPositionState) {
+            try { navigator.mediaSession.setPositionState({ duration: d, position: Math.min(t, d), playbackRate: 1 }); } catch (e) {}
+          }
         } catch (e) { /* audio failure never breaks the page */ }
       }, 500);
     },
@@ -634,7 +675,17 @@
     },
 
     _syncState: function (target) {
-      this._setPlayIcon(target.getPlayerState() === 1);
+      var s = target.getPlayerState();
+      this._setPlayIcon(s === 1);
+      if (navigator.mediaSession) {
+        try { navigator.mediaSession.playbackState = s === 1 ? 'playing' : 'paused'; } catch (e) {}
+      }
+      /* Song finished → keep the music going: auto-advance to the next song in the queue */
+      if (s === 0 && this._current && !this._failed && !this._ending) {
+        var self = this;
+        this._ending = true;
+        setTimeout(function () { self._ending = false; self.next(); }, 400);
+      }
     },
 
     _setPlayIcon: function (playing) {
@@ -648,6 +699,9 @@
     _fail: function (song) {
       this._failed = true;
       this._pollStop();
+      if (navigator.mediaSession) {
+        try { navigator.mediaSession.playbackState = 'none'; } catch (e) {}
+      }
       var fb = document.getElementById('z-player-fb');
       var bar = document.getElementById('z-player');
       if (bar) bar.classList.add('open');
