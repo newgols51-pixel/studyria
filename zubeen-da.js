@@ -598,7 +598,7 @@
         var bar = document.getElementById('z-player');
         var srcmode = document.getElementById('z-player-srcmode');
         if (srcmode) srcmode.hidden = true;
-        if (bar) bar.classList.remove('apple-mode');
+        if (bar) bar.classList.remove('apple-mode', 'native');
         var cur2 = this._current;
         if (!cur2) return;
         if (cur2.id === was && this._yt && this._ready) {
