@@ -606,7 +606,7 @@
           var sm2 = document.getElementById('z-player-srcmode');
           if (sm2) {
             sm2.hidden = false;
-            sm2.textContent = '⛶ → fullscreen → home swipe → background-ত চলিব';
+            sm2.textContent = 'গোটা গান YouTube-ৰ পৰা বজি আছে · background-ত 30s preview চলিব';
           }
           try { this._yt.playVideo(); } catch (e) {}     /* resume full song where it left off */
         } else {
@@ -668,7 +668,7 @@
       var srcmode = document.getElementById('z-player-srcmode');
       if (srcmode) {
         srcmode.hidden = false;
-        srcmode.textContent = '⛶ → fullscreen → home swipe → background-ত চলিব';
+        srcmode.textContent = 'গোটা গান YouTube-ৰ পৰা বজি আছে · background-ত 30s preview চলিব';
       }
 
       /* Reuse player if the hidden div survived a re-render; recreate otherwise */

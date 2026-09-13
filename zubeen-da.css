@@ -781,31 +781,14 @@ a:hover { color: var(--z-gold); }
   .z-lib-btn { flex: 1; text-align: center; padding: 9px 10px; }
 }
 
-/* ── Full-song background: visible mini video + Picture-in-Picture ──
-   Chrome/YouTube suspend hidden embed iframes when the page hides (their
-   policy), so the licensed 30s Apple preview chain covers AUTOMATIC
-   background. For the FULL song the video must be visible: ⛶ puts the
-   embed fullscreen; swiping home lets Android Chrome offer
-   Picture-in-Picture and the whole song keeps playing.
-   Layout: video top-left, full control row (title/buttons/progress) BELOW
-   it at full bar width — stacked, not side-by-side, so the controls never
-   have to compete with the video for horizontal room. */
-.z-player.yt-live { display: flex; flex-direction: column; align-items: stretch; }
-.z-player.yt-live .z-player-vid {
-  display: block; flex: none; align-self: flex-start;
-  width: 168px; height: 94px; margin: 10px 0 0 16px;
-  border-radius: 8px; overflow: hidden; background: #000;
-}
-.z-player.yt-live .z-player-vid iframe { display: block; width: 100%; height: 100%; }
-.z-player.yt-live .z-player-inner { flex: 1; min-width: 0; margin: 0; width: 100%; }
+/* ── Full-song YouTube: AUDIO-ONLY (user request, Sep 13 2026) ──
+   The YT embed iframe stays hidden (.z-player-vid display:none, base rule)
+   — video is NOT shown in the bar: lighter layout and much friendlier to
+   low-data mobile users. The iframe still plays the licensed audio while
+   the page is open; when the page hides, the Apple 30s preview chain takes
+   over background automatically (see zubeen-da.js _vis). The ⛶ PiP button
+   stays hidden (PiP needs a visible video, which we no longer render). */
 #z-player-pip { display: none; }
-.z-player.yt-live #z-player-pip { display: inline-flex; }
-@media (max-width: 560px) {
-  .z-player.yt-live .z-player-vid { width: 130px; height: 73px; margin: 8px 0 0 10px; }
-  .z-player.yt-live .z-player-inner { gap: 8px; padding: 8px 10px; }
-  .z-player.yt-live .z-pbtn { width: 36px; height: 36px; font-size: 0.82rem; }
-  .z-player.yt-live .z-pbtn.main { width: 42px; height: 42px; }
-}
 /* Native Apple preview audio: the vid container still holds the YT iframe —
    keep it hidden (the .apple-mode rule below is only for the embed card) */
 .z-player.apple-mode.native .z-player-vid { display: none; }
