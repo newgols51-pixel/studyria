@@ -606,7 +606,7 @@
           var sm2 = document.getElementById('z-player-srcmode');
           if (sm2) {
             sm2.hidden = false;
-            sm2.textContent = 'গোটা গান background-ত: ⛶ → fullscreen → home swipe → Chrome Picture-in-Picture-ত চলিব';
+            sm2.textContent = '⛶ → fullscreen → home swipe → background-ত চলিব';
           }
           try { this._yt.playVideo(); } catch (e) {}     /* resume full song where it left off */
         } else {
@@ -668,7 +668,7 @@
       var srcmode = document.getElementById('z-player-srcmode');
       if (srcmode) {
         srcmode.hidden = false;
-        srcmode.textContent = 'গোটা গান background-ত: ⛶ → fullscreen → home swipe → Chrome Picture-in-Picture-ত চলিব';
+        srcmode.textContent = '⛶ → fullscreen → home swipe → background-ত চলিব';
       }
 
       /* Reuse player if the hidden div survived a re-render; recreate otherwise */

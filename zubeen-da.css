@@ -767,6 +767,19 @@ a:hover { color: var(--z-gold); }
 .z-player-srcmode {
   font-size: 0.68rem; color: var(--z-gold-soft); margin-top: 3px;
   letter-spacing: 0.02em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%; display: block;
+}
+.z-player-times { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+@media (max-width: 560px) {
+  /* yt-live mini video + pip button eat most of the row width on phones —
+     give .z-player-info a guaranteed minimum so the hint text truncates
+     cleanly instead of collapsing to a near-zero column and wrapping
+     character-by-character off the edge of the screen. */
+  .z-player.yt-live .z-player-vid { width: 96px; height: 54px; margin-left: 8px; }
+  .z-player.yt-live .z-player-inner { gap: 6px; }
+  .z-player.yt-live .z-pbtn { width: 34px; height: 34px; font-size: 0.82rem; }
+  .z-player.yt-live .z-pbtn.main { width: 40px; height: 40px; }
 }
 #z-player-vid iframe { border: 0; }
 
