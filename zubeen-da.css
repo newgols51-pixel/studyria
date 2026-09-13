@@ -771,22 +771,7 @@ a:hover { color: var(--z-gold); }
   max-width: 100%; display: block;
 }
 .z-player-times { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-@media (max-width: 560px) {
-  /* yt-live mini video + 4 pbtns + close eat most of the row width on phones —
-     shrink them further so .z-player-info keeps a real, comfortable minimum
-     instead of the text truncating to almost nothing (or, pre-fix, the whole
-     column collapsing to 0 width because flex-basis:0 got no shrink share). */
-  .z-player.yt-live .z-player-vid { width: 84px; height: 47px; margin-left: 6px; }
-  .z-player.yt-live .z-player-inner { gap: 4px; padding: 8px 8px; }
-  .z-player.yt-live .z-pbtn { width: 32px; height: 32px; font-size: 0.78rem; }
-  .z-player.yt-live .z-pbtn.main { width: 36px; height: 36px; }
-}
 #z-player-vid iframe { border: 0; }
-
-@media (max-width: 560px) {
-  .z-player.yt-live .z-player-vid { width: 118px; height: 66px; margin-left: 10px; }
-  .z-player.yt-live .z-player-inner { padding: 8px 10px; gap: 10px; }
-}
 
 @media (max-width: 640px) {
   .z-featured { padding-bottom: 10px; }
@@ -801,17 +786,26 @@ a:hover { color: var(--z-gold); }
    policy), so the licensed 30s Apple preview chain covers AUTOMATIC
    background. For the FULL song the video must be visible: ⛶ puts the
    embed fullscreen; swiping home lets Android Chrome offer
-   Picture-in-Picture and the whole song keeps playing. */
-.z-player.yt-live { display: flex; align-items: center; }
+   Picture-in-Picture and the whole song keeps playing.
+   Layout: video top-left, full control row (title/buttons/progress) BELOW
+   it at full bar width — stacked, not side-by-side, so the controls never
+   have to compete with the video for horizontal room. */
+.z-player.yt-live { display: flex; flex-direction: column; align-items: stretch; }
 .z-player.yt-live .z-player-vid {
-  display: block; flex: none; align-self: center;
-  width: 152px; height: 86px; margin: 0 0 0 16px;
+  display: block; flex: none; align-self: flex-start;
+  width: 168px; height: 94px; margin: 10px 0 0 16px;
   border-radius: 8px; overflow: hidden; background: #000;
 }
 .z-player.yt-live .z-player-vid iframe { display: block; width: 100%; height: 100%; }
-.z-player.yt-live .z-player-inner { flex: 1; min-width: 0; margin: 0; }
+.z-player.yt-live .z-player-inner { flex: 1; min-width: 0; margin: 0; width: 100%; }
 #z-player-pip { display: none; }
 .z-player.yt-live #z-player-pip { display: inline-flex; }
+@media (max-width: 560px) {
+  .z-player.yt-live .z-player-vid { width: 130px; height: 73px; margin: 8px 0 0 10px; }
+  .z-player.yt-live .z-player-inner { gap: 8px; padding: 8px 10px; }
+  .z-player.yt-live .z-pbtn { width: 36px; height: 36px; font-size: 0.82rem; }
+  .z-player.yt-live .z-pbtn.main { width: 42px; height: 42px; }
+}
 /* Native Apple preview audio: the vid container still holds the YT iframe —
    keep it hidden (the .apple-mode rule below is only for the embed card) */
 .z-player.apple-mode.native .z-player-vid { display: none; }
