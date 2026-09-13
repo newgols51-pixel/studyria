@@ -770,6 +770,11 @@ a:hover { color: var(--z-gold); }
 }
 #z-player-vid iframe { border: 0; }
 
+@media (max-width: 560px) {
+  .z-player.yt-live .z-player-vid { width: 118px; height: 66px; margin-left: 10px; }
+  .z-player.yt-live .z-player-inner { padding: 8px 10px; gap: 10px; }
+}
+
 @media (max-width: 640px) {
   .z-featured { padding-bottom: 10px; }
   .z-feat-card { flex-basis: 132px; }
@@ -777,6 +782,26 @@ a:hover { color: var(--z-gold); }
   .z-lib-actions { justify-content: space-between; }
   .z-lib-btn { flex: 1; text-align: center; padding: 9px 10px; }
 }
+
+/* ── Full-song background: visible mini video + Picture-in-Picture ──
+   Chrome/YouTube suspend hidden embed iframes when the page hides (their
+   policy), so the licensed 30s Apple preview chain covers AUTOMATIC
+   background. For the FULL song the video must be visible: ⛶ puts the
+   embed fullscreen; swiping home lets Android Chrome offer
+   Picture-in-Picture and the whole song keeps playing. */
+.z-player.yt-live { display: flex; align-items: center; }
+.z-player.yt-live .z-player-vid {
+  display: block; flex: none; align-self: center;
+  width: 152px; height: 86px; margin: 0 0 0 16px;
+  border-radius: 8px; overflow: hidden; background: #000;
+}
+.z-player.yt-live .z-player-vid iframe { display: block; width: 100%; height: 100%; }
+.z-player.yt-live .z-player-inner { flex: 1; min-width: 0; margin: 0; }
+#z-player-pip { display: none; }
+.z-player.yt-live #z-player-pip { display: inline-flex; }
+/* Native Apple preview audio: the vid container still holds the YT iframe —
+   keep it hidden (the .apple-mode rule below is only for the embed card) */
+.z-player.apple-mode.native .z-player-vid { display: none; }
 
 /* Apple Music preview needs a VISIBLE embed — unlike the YT iframe,
    which plays hidden audio-only, the Apple card must be tapped. */

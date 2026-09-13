@@ -543,7 +543,8 @@
       if (fb) fb.hidden = true;
       this._current = song;
       this._failed = false;
-      bar.classList.add('open', 'apple-mode');
+      bar.classList.remove('yt-live');
+      bar.classList.add('open', 'apple-mode', 'native');
       bar.setAttribute('aria-hidden', 'false');
       this._ms(song, bg);
       this._setPlayIcon(false);
@@ -601,6 +602,12 @@
         var cur2 = this._current;
         if (!cur2) return;
         if (cur2.id === was && this._yt && this._ready) {
+          bar.classList.add('yt-live');
+          var sm2 = document.getElementById('z-player-srcmode');
+          if (sm2) {
+            sm2.hidden = false;
+            sm2.textContent = 'গোটা গান background-ত: ⛶ → fullscreen → home swipe → Chrome Picture-in-Picture-ত চলিব';
+          }
           try { this._yt.playVideo(); } catch (e) {}     /* resume full song where it left off */
         } else {
           this.play(cur2.id);                             /* chained ahead → play that song in full */
@@ -656,9 +663,13 @@
       var bar = document.getElementById('z-player');
       if (!vid || !bar) return;
       this._appleStop();
-      bar.classList.remove('apple-mode');
+      bar.classList.remove('apple-mode', 'native');
+      bar.classList.add('yt-live');
       var srcmode = document.getElementById('z-player-srcmode');
-      if (srcmode) srcmode.hidden = true;
+      if (srcmode) {
+        srcmode.hidden = false;
+        srcmode.textContent = 'গোটা গান background-ত: ⛶ → fullscreen → home swipe → Chrome Picture-in-Picture-ত চলিব';
+      }
 
       /* Reuse player if the hidden div survived a re-render; recreate otherwise */
       if (!this._yt || !vid.firstChild) {
@@ -672,6 +683,8 @@
             onReady: function (e) {
               self._ready = true;
               self._current = song;
+              var f = vid.querySelector('iframe');
+              if (f) { f.setAttribute('allowfullscreen', '1'); f.setAttribute('allow', 'autoplay; fullscreen; encrypted-media'); }
               e.target.setVolume(self._vol());
               e.target.playVideo();
               self._ui(song);
@@ -826,7 +839,7 @@
 
     close: function () {
       var bar = document.getElementById('z-player');
-      if (bar) { bar.classList.remove('open', 'apple-mode'); bar.setAttribute('aria-hidden', 'true'); }
+      if (bar) { bar.classList.remove('open', 'apple-mode', 'yt-live', 'native'); bar.setAttribute('aria-hidden', 'true'); }
       var vid = document.getElementById('z-player-vid');
       if (vid) vid.innerHTML = '';
       this._pollStop();
@@ -908,6 +921,7 @@
       var fb = document.getElementById('z-player-fb');
       var bar = document.getElementById('z-player');
       if (bar) bar.classList.add('open');
+      if (bar) bar.classList.remove('yt-live', 'native');
       if (fb) {
         fb.hidden = false;
         fb.innerHTML = 'এই গানটো ইয়াত প্লে কৰিব নোৱাৰি — বিকল্প হিচাপে ' +
@@ -928,6 +942,18 @@
     if (toggle) toggle.addEventListener('click', function () { ZP.toggle(); });
     var next = document.getElementById('z-player-next');
     if (next) next.addEventListener('click', function () { ZP.next(); });
+    /* Full-song background path: fullscreen the visible YT embed, so swiping
+       home lets Android Chrome offer Picture-in-Picture (whole song, not the
+       30s preview). */
+    var pip = document.getElementById('z-player-pip');
+    if (pip) pip.addEventListener('click', function () {
+      try {
+        if (document.fullscreenElement) { document.exitFullscreen(); return; }
+        var box = document.getElementById('z-player-vid');
+        var f = box && box.querySelector('iframe');
+        if (f && f.requestFullscreen) { var pr = f.requestFullscreen(); if (pr && pr.catch) pr.catch(function () {}); }
+      } catch (e) {}
+    });
     var prev = document.getElementById('z-player-prev');
     if (prev) prev.addEventListener('click', function () { ZP.prev(); });
     var close = document.getElementById('z-player-close');
