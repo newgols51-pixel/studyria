@@ -472,7 +472,7 @@ a:hover { color: var(--z-gold); }
   display: flex; align-items: center; gap: 14px;
 }
 .z-player-vid { display: none; }
-.z-player-info { flex: 1; min-width: 0; }
+.z-player-info { flex: 1 1 auto; min-width: 44px; }
 .z-player-title { font-size: 0.88rem; color: var(--z-cream); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 .z-player-artist { font-size: 0.72rem; color: var(--z-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .z-player-times { font-size: 0.68rem; color: var(--z-muted); font-variant-numeric: tabular-nums; margin-top: 4px; }
@@ -772,14 +772,14 @@ a:hover { color: var(--z-gold); }
 }
 .z-player-times { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 @media (max-width: 560px) {
-  /* yt-live mini video + pip button eat most of the row width on phones —
-     give .z-player-info a guaranteed minimum so the hint text truncates
-     cleanly instead of collapsing to a near-zero column and wrapping
-     character-by-character off the edge of the screen. */
-  .z-player.yt-live .z-player-vid { width: 96px; height: 54px; margin-left: 8px; }
-  .z-player.yt-live .z-player-inner { gap: 6px; }
-  .z-player.yt-live .z-pbtn { width: 34px; height: 34px; font-size: 0.82rem; }
-  .z-player.yt-live .z-pbtn.main { width: 40px; height: 40px; }
+  /* yt-live mini video + 4 pbtns + close eat most of the row width on phones —
+     shrink them further so .z-player-info keeps a real, comfortable minimum
+     instead of the text truncating to almost nothing (or, pre-fix, the whole
+     column collapsing to 0 width because flex-basis:0 got no shrink share). */
+  .z-player.yt-live .z-player-vid { width: 84px; height: 47px; margin-left: 6px; }
+  .z-player.yt-live .z-player-inner { gap: 4px; padding: 8px 8px; }
+  .z-player.yt-live .z-pbtn { width: 32px; height: 32px; font-size: 0.78rem; }
+  .z-player.yt-live .z-pbtn.main { width: 36px; height: 36px; }
 }
 #z-player-vid iframe { border: 0; }
 
