@@ -270,7 +270,8 @@
     });
     /* governance (§22) + approved practice pool (EXTRA — never unapproved) */
     dedup = dedup.filter(function (q) { return !governanceBlocks(q, sid); });
-    if (window.STUDYRIA_QB_EXTRA && BT.DB.ready) {
+    /* approvals (site_config, zero-migration) OR registry rows gate EXTRA */
+    if (window.STUDYRIA_QB_EXTRA && (BT.APPROVALS.loaded || BT.DB.ready)) {
       var ex = extraApproved(sid);
       ex.forEach(function (q) {
         var k = BT.qhash(q);
@@ -642,6 +643,14 @@
      Registry: absent hash = 'legacy' bank question (kept); explicit
      'rejected' or 'needs_review' hash NEVER enters a public test. */
   BT.DB = { blueprints: null, registry: {}, ready: false, status: 'init' }; /* status: init → not_run | no_grants | ready */
+  /* PRACTICE-SET APPROVALS (zero-migration path): stored in the EXISTING
+     site_config table (key='brainlab_practice_approvals') — production
+     RLS already gates writes to admin profiles. The owner approves each
+     practice set subject in Admin → Test Engine; absent approval row =
+     set stays locked (fail-closed, spec §22). The v3 migration and its
+     bl_question_registry remain an OPTIONAL advanced layer — never a
+     prerequisite for publishing approved practice tests. */
+  BT.APPROVALS = { loaded: false, map: {} };
 
   /* deterministic question hash — normalized text + answer key.
      SAME normalization as the admin import tool (normQ) so hashes match
@@ -705,7 +714,7 @@
   BT.dbInit = function () {
     var sb = window.supabaseClient;
     if (!sb) { if (++dbInitTries < 15) setTimeout(BT.dbInit, 1200); return; } /* capped: fail-open to JS */
-    var jobs = 2, done = 0;
+    var jobs = 3, done = 0;
     function fin() { if (done >= jobs) { BT.DB.ready = true; BT.resetPools(); var w = document.getElementById('blv8-tests'); if (w && w.classList.contains('on')) BT.renderCatalog(); } }
     sb.from('bl_test_blueprints').select('*').limit(50).then(function (r) {
       if (r && r.error) {
@@ -730,6 +739,19 @@
       }
       done++; fin();
     }).catch(function () { done++; fin(); });
+    /* practice approvals — site_config (existing table, no migration needed) */
+    sb.from('site_config').select('key,value').eq('key', 'brainlab_practice_approvals').maybeSingle().then(function (r) {
+      try {
+        var row = r && r.data;
+        if (row && row.value) {
+          var parsed = (typeof row.value === 'string') ? JSON.parse(row.value) : row.value;
+          var ap = (parsed && parsed.approvals) || parsed || {};
+          BT.APPROVALS.map = (ap && typeof ap === 'object') ? ap : {};
+        } else { BT.APPROVALS.map = {}; }
+        BT.APPROVALS.loaded = true;
+      } catch (e) { BT.APPROVALS.map = {}; BT.APPROVALS.loaded = true; }
+      done++; fin();
+    }).catch(function () { BT.APPROVALS.loaded = true; done++; fin(); });
   };
 
   /* governance filter — spec §22: only approved/legacy questions publish */
@@ -746,8 +768,12 @@
   function extraApproved(sid) {
     var out = [], ex = window.STUDYRIA_QB_EXTRA || [];
     for (var i = 0; i < ex.length; i++) {
-      var reg = BT.DB.registry[BT.qhash(ex[i])];
-      if (reg && reg.status === 'approved' && (!reg.series_id || reg.series_id === sid)) out.push(ex[i]);
+      var q = ex[i];
+      var reg = BT.DB.registry[BT.qhash(q)];
+      var regOk = !!(reg && reg.status === 'approved' && (!reg.series_id || reg.series_id === sid));
+      var ap = BT.APPROVALS.map[String(q[7] || '')];
+      var apOk = !!(ap && ap.approved_at && ap.series === sid);
+      if (regOk || apOk) out.push(q);
     }
     return out;
   }

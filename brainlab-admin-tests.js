@@ -47,10 +47,12 @@
   function extraStats() {
     var ex = window.STUDYRIA_QB_EXTRA || [];
     var reg = (BT() && BT().DB && BT().DB.registry) || {};
+    var apMap = (BT() && BT().APPROVALS && BT().APPROVALS.map) || {};
     var bySubject = {};
     ex.forEach(function (q) {
       var s = q[7] || '—';
-      if (!bySubject[s]) bySubject[s] = { total: 0, approved: 0, needs_review: 0, rejected: 0, unregistered: 0, hashes: [] };
+      if (!bySubject[s]) bySubject[s] = { total: 0, approved: 0, needs_review: 0, rejected: 0, unregistered: 0, hashes: [],
+        live: !!(apMap[s] && apMap[s].approved_at), series: (window.PRACTICE_SET_SUBJECT_SERIES || {})[s] || null };
       bySubject[s].total++;
       bySubject[s].hashes.push(qhash(q));
       var r = reg[qhash(q)];
@@ -115,13 +117,29 @@
   }
 
   /* ── admin RPC: bulk status change (governance only) ── */
+  /* ZERO-MIGRATION approval writer: practice-set approvals live in the
+     EXISTING site_config table (RLS admin-write in production). status
+     'approved' adds the subject; anything else REVOKES it (fail-closed).
+     The optional v3 registry keeps working alongside when migrated. */
   function setStatus(hashes, status, subject, cb) {
     var c = sb();
     if (!c) { cb && cb({ ok: false, reason: 'no client' }); return; }
-    var map = window.PRACTICE_SET_SUBJECT_SERIES || {};
-    var series = map[subject] || null; /* subject→series map keeps registry rows exam-scoped */
-    c.rpc('bl_registry_set_status', { p_hashes: hashes, p_status: status, p_series: series, p_subject: subject, p_notes: null })
-      .then(function (r) { cb && cb((r && r.data) || { ok: false, reason: 'rpc failed' }); })
+    var bt = BT();
+    var map = {};
+    try { map = JSON.parse(JSON.stringify((bt && bt.APPROVALS && bt.APPROVALS.map) || {})); } catch (e) { map = {}; }
+    var series = (window.PRACTICE_SET_SUBJECT_SERIES || {})[subject] || null;
+    if (status === 'approved') {
+      map[subject] = { series: series, approved_at: new Date().toISOString(), by: 'owner', kind: 'practice' };
+    } else {
+      delete map[subject]; /* reject / needs-review → approval revoked, set locks */
+    }
+    var payload = JSON.stringify({ v: 1, approvals: map, updated_at: new Date().toISOString() });
+    c.from('site_config').upsert({ key: 'brainlab_practice_approvals', value: payload }, { onConflict: 'key' })
+      .then(function (res) {
+        if (res && res.error) { cb && cb({ ok: false, reason: res.error.message }); return; }
+        if (bt && bt.APPROVALS) { bt.APPROVALS.map = map; bt.APPROVALS.loaded = true; }
+        cb && cb({ ok: true, updated: (hashes || []).length, subject: subject, status: status });
+      })
       .catch(function (e) { cb && cb({ ok: false, reason: (e && e.message) || 'error' }); });
   }
 
@@ -152,14 +170,14 @@
     };
     return '<tr>' +
       '<td style="font-weight:700">' + esc(subject) + '</td>' +
+      '<td style="opacity:.75">' + esc(st.series || '—') + '</td>' +
       '<td>' + n2(st.total) + '</td>' +
-      '<td style="color:var(--success,#34c98e)">' + n2(st.approved) + '</td>' +
-      '<td style="color:var(--warn,#c99a3c)">' + n2(st.needs_review) + '</td>' +
-      '<td style="color:var(--danger,#e55)">' + n2(st.rejected) + '</td>' +
-      '<td style="opacity:.7">' + n2(st.unregistered) + '</td>' +
+      '<td>' + (st.live
+        ? '<span style="color:var(--success,#34c98e);font-weight:700">✓ Live in tests</span>'
+        : '<span style="color:var(--warn,#c99a3c);font-weight:700">🔒 Locked</span>') + '</td>' +
+      '<td style="opacity:.7;font-size:.72rem">' + (st.approved ? n2(st.approved) + ' approved' : (st.unregistered === st.total ? 'not migrated (fine)' : n2(st.needs_review) + ' needs review')) + '</td>' +
       '<td style="text-align:right;white-space:nowrap">' +
-        b('Approve all', 'approve-subject', 'blte-go') +
-        ' ' + b('Reject all', 'reject-subject', 'blte-danger') +
+        (st.live ? b('Revoke', 'reject-subject', 'blte-danger') : b('Approve all', 'approve-subject', 'blte-go')) +
       '</td></tr>';
   }
 
@@ -176,38 +194,27 @@
       '<button class="blte-btn blte-go" id="blte-qa">▶ Run validation QA</button>' +
       '</div></div>';
 
-    /* migration status + actionable helper */
+    /* advanced DB layer — OPTIONAL now (approvals live in site_config) */
     var dbReady = bt && bt.DB && bt.DB.ready;
-    var dbStatus = (bt && bt.DB && bt.DB.status) || 'init';
     function copyBtn(id, label, url) {
-      return '<button class="blte-btn blte-go" id="' + id + '" data-url="' + url + '">' + label + '</button>';
+      return '<button class="blte-btn" id="' + id + '" data-url="' + url + '" style="font-size:.72rem">' + label + '</button>';
     }
-    if (!dbReady) {
-      var why = dbStatus === 'no_grants'
-        ? '<b>Tables exist but grants are missing</b> (42501 permission denied) — run the one-click grants fix below, it takes 2 seconds.'
-        : '<b>The v3 migration has not been run yet</b> — the governance tables (bl_test_blueprints / bl_question_registry / usage / versions) are not in the database. Everything below is read-only (JS-fallback) until then; the practice sets stay locked and nothing changes for users.';
-      html += card(
-        '<div style="font-weight:700;margin-bottom:4px">🗄️ Database migration</div>' +
-        '<p style="margin:2px 0 10px;font-size:.85rem">' + why + '</p>' +
-        '<div style="font-size:.8rem;opacity:.85;line-height:1.9">' +
-        '<b>Steps (one-time, ~2 minutes):</b><br>' +
-        '1. Open Supabase → SQL Editor → "New query"<br>' +
-        '2. Click <b>① Copy migration SQL</b> below → paste in the editor → <b>Run</b><br>' +
-        '3. Click <b>② Copy VFA seed</b> → new query → paste → Run<br>' +
-        '4. Click <b>③ Copy Driver seed</b> → new query → paste → Run<br>' +
-        (dbStatus === 'no_grants'
-          ? '<b style="color:var(--warn,#c99a3c)">Or, if you already ran the migration:</b> just run the grants fix → '
-          : '') +
-        '</div>' +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">' +
-        copyBtn('blte-copy-mig', '① Copy migration SQL', '/sql/brainlab-tests-v3-migration.sql') +
-        copyBtn('blte-copy-vfa', '② Copy VFA seed', '/sql/vfa-practice-registry-seed.sql') +
-        copyBtn('blte-copy-drv', '③ Copy Driver seed', '/sql/adre-driver-road-transport-seed.sql') +
-        copyBtn('blte-copy-fix', 'Copy grants fix (42501)', '/sql/bl3-grants-fix.sql') +
-        '<button class="blte-btn" id="blte-mig-done">↺ I ran it — recheck</button>' +
-        '</div>' +
-        '<p id="blte-copy-msg" style="font-size:.78rem;margin-top:10px;min-height:1em;opacity:.8"></p>', '14px 18px');
-    }
+    html += card(
+      '<div style="font-weight:700;margin-bottom:4px;color:var(--success,#34c98e)">✅ No SQL needed — everything works now</div>' +
+      '<p style="margin:2px 0 8px;font-size:.85rem">Practice-set approvals are stored in the existing <code>site_config</code> table (admin-only write, same production RLS as the pass system). Approve or reject below — changes go live immediately and stay fail-closed: no approval = set locked.</p>' +
+      '<details style="margin-top:8px"><summary style="cursor:pointer;font-size:.8rem;opacity:.8">Optional advanced layer (DB blueprints, verification registry, usage snapshots) — only if you want it later</summary>' +
+      '<p style="font-size:.78rem;opacity:.75;margin:8px 0">' +
+      (dbReady
+        ? 'DB layer active ✓ — blueprints and registry override the JS fallback per spec §1/§22.'
+        : 'The optional v3 tables (bl_test_blueprints / bl_question_registry / usage / versions) are not in the database — the site runs on the verified JS blueprints, which is fully functional. If you ever run the migration, remember the grants fix (SQL below) or PostgREST gets 42501 permission-denied.') +
+      '</p>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+      copyBtn('blte-copy-mig', 'Copy migration SQL', '/sql/brainlab-tests-v3-migration.sql') +
+      copyBtn('blte-copy-vfa', 'Copy VFA seed', '/sql/vfa-practice-registry-seed.sql') +
+      copyBtn('blte-copy-drv', 'Copy Driver seed', '/sql/adre-driver-road-transport-seed.sql') +
+      copyBtn('blte-copy-fix', 'Copy grants fix (42501)', '/sql/bl3-grants-fix.sql') +
+      '</div></details>' +
+      '<p id="blte-copy-msg" style="font-size:.78rem;margin-top:10px;min-height:1em;opacity:.8"></p>', '14px 18px');
 
     /* §25 blueprint table — DB rows when present, JS fallback otherwise */
     html += '<h3 style="margin:18px 0 4px;font-size:.95rem">① Test Blueprints (per exam)</h3>';
@@ -243,9 +250,9 @@
     var hasExtra = Object.keys(stats).length > 0;
     if (hasExtra) {
       html += '<h3 style="margin:20px 0 4px;font-size:.95rem">③ Review Queue — Practice Sets <span style="opacity:.6;font-weight:400">(practice questions, never PYQ; AI-authored, human-approved only)</span></h3>' +
-        '<p style="margin:2px 0 6px;font-size:.8rem;opacity:.7">Each subject maps to its exam series (Biology/Chemistry/Physics → VFA · Road Transport → ADRE Driver). Approving moves questions into that series\' pool immediately (published tests recompute honestly). Nothing publishes while status is needs_review.</p>' + 
+        '<p style="margin:2px 0 6px;font-size:.8rem;opacity:.7">Each subject maps to its exam series (Biology/Chemistry/Physics → VFA · Road Transport → ADRE Driver). <b>Approve</b> publishes the set into that series immediately (tests recompute honestly); <b>Revoke</b> locks it again. No SQL needed — approvals persist in site_config (admin-only writes).</p>' + 
         '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.8rem">' +
-        '<thead><tr style="opacity:.6;text-align:left"><th style="padding:6px 8px">Subject</th><th>Total</th><th>Approved</th><th>Needs review</th><th>Rejected</th><th>Unregistered</th><th style="text-align:right">Bulk actions</th></tr></thead><tbody>' +
+        '<thead><tr style="opacity:.6;text-align:left"><th style="padding:6px 8px">Subject</th><th>Series</th><th>Total</th><th>Live state</th><th>DB registry (optional)</th><th style="text-align:right">Bulk actions</th></tr></thead><tbody>' +
         Object.keys(stats).map(function (k) { return renderRegistryRow(k, stats[k]); }).join('') +
         '</tbody></table></div>' +
         '<p id="blte-action-msg" style="font-size:.8rem;margin-top:8px;min-height:1em"></p>';
@@ -339,7 +346,7 @@
           if (bt && bt.dbInit) bt.dbInit();
           setTimeout(function () { window.renderBrainLabTestEngine(main); }, 900);
         } else {
-          if (msg) msg.innerHTML = '<span class="blte-fail">✗ ' + esc((res && res.reason) || 'failed') + ' — admin session / RPC required (run the v3 migration first).</span>';
+          if (msg) msg.innerHTML = '<span class="blte-fail">✗ ' + esc((res && res.reason) || 'failed') + ' — sign in as admin, then retry (site_config writes are admin-only by RLS).</span>';
         }
       });
     };
