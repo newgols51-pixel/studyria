@@ -572,11 +572,26 @@
         + '</button>';
     }
     if (i.pending > 0) {
-      var shortfall = 0;
+      /* §19/§28 honest per-test status: never claim a test that does not
+         pass validation. Tests beyond `published` are NOT real tests yet —
+         they show exactly which verified content is missing, per subject,
+         from real engine counts (no hardcoded numbers). */
+      var bind = [];
       if (i.s.bp && BT.BLUEPRINTS[i.s.bp].dist) {
-        BT.BLUEPRINTS[i.s.bp].dist.forEach(function (sec, ix) { shortfall = Math.max(shortfall, sec.n * s.target - (i.subjects[ix] ? i.subjects[ix].pool : 0)); });
+        BT.BLUEPRINTS[i.s.bp].dist.forEach(function (sec, ix) {
+          var pool = i.subjects[ix] ? i.subjects[ix].pool : 0;
+          var need = sec.n * s.target;
+          if (pool < need) bind.push({ k: sec.k, pool: pool, need: need, more: need - pool });
+        });
       }
-      h += '<div class="blt-pending-note">' + i.pending + ' more test' + (i.pending > 1 ? 's are' : ' is') + ' coming — more verified questions are being added to this series' + (shortfall > 0 ? ' (≈' + n2(shortfall) + ' more approved questions needed across sections).' : '.') + '</div>';
+      h += '<div class="blt-pending-note">';
+      if (i.published >= 1) h += 'Test ' + (i.published + 1) + '–' + s.target + ': Preparing — verified questions being added';
+      else h += 'Tests 1–' + s.target + ': Preparing — verified questions being added';
+      if (bind.length) {
+        h += '. Binding sections (verified pool / needed for all ' + s.target + ' tests): '
+          + bind.map(function (b) { return esc(b.k) + ' ' + n2(b.pool) + '/' + n2(b.need) + ' — needs ' + n2(b.more) + ' more'; }).join(' · ') + '.';
+      } else h += '.';
+      h += '</div>';
     }
     h += '</div>';
     body.innerHTML = h;

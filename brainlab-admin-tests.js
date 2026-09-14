@@ -238,9 +238,12 @@
     rep.forEach(function (r) {
       if (!r.subjects.length) return;
       html += card('<div style="font-weight:700;margin-bottom:8px">' + esc(r.name) + ' — ' + n2(r.pool) + ' scoped questions' + (r.note ? ' · <span style="opacity:.7;font-weight:400">' + esc(r.note) + '</span>' : '') + '</div>' +
-        '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.78rem"><thead><tr style="opacity:.6;text-align:left"><th style="padding:4px 8px">Subject</th><th>Required/test</th><th>Verified pool</th><th>Tests possible</th><th>Unused after publishing</th></tr></thead><tbody>' +
+        '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.78rem"><thead><tr style="opacity:.6;text-align:left"><th style="padding:4px 8px">Subject</th><th>Required/test</th><th>Verified unique pool</th><th>Used (in published tests)</th><th>Unused</th><th>Required for all ' + r.target + ' tests</th><th>Shortfall</th></tr></thead><tbody>' +
         r.subjects.map(function (x) {
-          return '<tr style="border-top:1px solid rgba(255,255,255,.06)"><td style="padding:5px 8px">' + esc(x.name) + '</td><td style="padding:5px 8px">' + esc(x.required) + '</td><td style="padding:5px 8px">' + n2(x.pool) + '</td><td style="padding:5px 8px">' + esc(x.tests) + '</td><td style="padding:5px 8px">' + n2(x.unused) + '</td></tr>';
+          var used = x.required * r.published;
+          var reqTotal = x.required * r.target;
+          var short = Math.max(0, reqTotal - x.pool);
+          return '<tr style="border-top:1px solid rgba(255,255,255,.06)"><td style="padding:5px 8px">' + esc(x.name) + '</td><td style="padding:5px 8px">' + esc(x.required) + '</td><td style="padding:5px 8px">' + n2(x.pool) + '</td><td style="padding:5px 8px">' + n2(used) + '</td><td style="padding:5px 8px">' + n2(Math.max(0, x.pool - used)) + '</td><td style="padding:5px 8px">' + n2(reqTotal) + '</td><td style="padding:5px 8px;font-weight:700;color:' + (short > 0 ? 'var(--warn,#c99a3c)' : 'var(--success,#34c98e)') + '">' + (short > 0 ? n2(short) : '0 ✓') + '</td></tr>';
         }).join('') +
         '</tbody></table></div>');
     });
