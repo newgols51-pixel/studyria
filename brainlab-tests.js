@@ -182,12 +182,23 @@
     var s = BT.find(sid);
     var out = { sections: [], open: null, total: 0 };
     if (!s || !s.bp) { BT._poolCache[sid] = out; return out; }
-    var bp = BT.BLUEPRINTS[s.bp];
+    var bp = (BT.DB.blueprints && BT.DB.blueprints[sid] !== undefined)
+      ? BT.DB.blueprints[sid] : BT.BLUEPRINTS[s.bp];
+    if (!bp) { BT._poolCache[sid] = out; return out; } /* DB: unverified → no pool */
     var seen = {}, dedup = [];
     (window.STUDYRIA_QB || []).forEach(function (q) {
       var k = String(String(q[0]).slice(0, 60) + q[5]);
       if (!seen[k]) { seen[k] = 1; dedup.push(q); }
     });
+    /* governance (§22) + approved practice pool (EXTRA — never unapproved) */
+    dedup = dedup.filter(function (q) { return !governanceBlocks(q, sid); });
+    if (window.STUDYRIA_QB_EXTRA && BT.DB.ready) {
+      var ex = extraApproved(sid);
+      ex.forEach(function (q) {
+        var k = String(String(q[0]).slice(0, 60) + q[5]);
+        if (!seen[k]) { seen[k] = 1; dedup.push(q); }
+      });
+    }
     if (bp.dist) {
       bp.dist.forEach(function (sec) { out.sections.push({ k: sec.k, n: sec.n, match: sec.match, qs: [] }); });
       dedup.forEach(function (q) {
@@ -213,7 +224,13 @@
         minPerTest: 0, durationMin: 0, needsVerification: true,
         subjects: [], status: 'needs_verification' };
     }
-    var bp = BT.BLUEPRINTS[s.bp], p = seriesPools(sid);
+    var bp = (BT.DB.blueprints && BT.DB.blueprints[sid] !== undefined)
+      ? BT.DB.blueprints[sid] : BT.BLUEPRINTS[s.bp];
+    if (!bp) { /* DB: unverified — same honest needs_verification state */
+      return { s: s, poolCount: 0, perTest: 0, published: 0, mcqs: 0, pending: s.target,
+        minPerTest: 0, durationMin: 0, needsVerification: true, subjects: [], status: 'needs_verification' };
+    }
+    var p = seriesPools(sid);
     var published = s.target, cap = 0;
     if (bp.dist) {
       bp.dist.forEach(function (sec, i) {
@@ -294,7 +311,11 @@
     if (!i || !i.s.bp || i.published < 1) return null;
     n = parseInt(n, 10) || 1;
     if (n < 1 || n > i.published) return null;
-    var bp = BT.BLUEPRINTS[i.s.bp], qs = [];
+    var bp;
+    if (BT.DB.blueprints && BT.DB.blueprints[sid] !== undefined) bp = BT.DB.blueprints[sid] || null;
+    else bp = BT.BLUEPRINTS[i.s.bp];
+    if (!bp) return null;
+    var qs = [];
     if (bp.dist) {
       var blocks = bp.dist.map(function (sec) {
         var arr = sectionShuffled(sid, sec.k);
@@ -312,6 +333,7 @@
     }
     if (qs.length !== bp.total) return null;
     if (!validateTest(sid, qs)) return null; /* §12F: invalid → not a test */
+    BT.recordVersion(sid, n, qs);
     return { n: n, qs: qs };
   };
 
@@ -532,6 +554,137 @@
     });
   };
 
+  /* ═══════════════════ V3 DB GOVERNANCE LAYER (supabase-driven) ═══════════════════
+     Architecture: question CONTENT lives in the version-controlled bank
+     files; the DATABASE owns governance — verified blueprints
+     (bl_test_blueprints), per-question verification overrides
+     (bl_question_registry), usage + test snapshots. DB rows OVERRIDE the
+     JS fallback (spec §1: blueprint rules are database-driven). Fail-open:
+     migration not run / fetch error → v2 JS behavior, unchanged.
+     Registry: absent hash = 'legacy' bank question (kept); explicit
+     'rejected' or 'needs_review' hash NEVER enters a public test. */
+  BT.DB = { blueprints: null, registry: {}, ready: false };
+
+  /* deterministic question hash — normalized text + answer key.
+     SAME normalization as the admin import tool (normQ) so hashes match
+     across catalog, admin panel and QA scripts. */
+  function normQ(t) { return String(t || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 120); }
+  function djb2(str) {
+    var h = 5381;
+    for (var i = 0; i < str.length; i++) { h = ((h << 5) + h + str.charCodeAt(i)) >>> 0; }
+    return h.toString(16).padStart(8, '0');
+  }
+  BT.qhash = function (q) { return djb2(normQ(q[0]) + '|' + String(q[5] || '').toLowerCase()); };
+
+  /* section-name → matcher registry (built from the verified JS blueprints'
+     exact section keys, so a DB subject_dist maps 1:1 onto the verified
+     subject scopes; unknown section names fall back to exact subject match) */
+  var SECTION_MATCHERS = {};
+  Object.keys(BT.BLUEPRINTS).forEach(function (k) {
+    var bp = BT.BLUEPRINTS[k];
+    (bp.dist || []).forEach(function (sec) { SECTION_MATCHERS[sec.k] = sec.match; });
+  });
+
+  /* apply a DB blueprint row over the JS one (verified DB rows win) */
+  function applyDbBlueprint(sid, row) {
+    var jsBp = BT.BLUEPRINTS[sid];
+    if (!row) return jsBp;
+    if (row.status !== 'verified') {
+      /* DB says unverified → this exam is NOT publishable (JS fallback
+         ignored; spec §12C: unverified pattern must never publish) */
+      BT.BLUEPRINTS[sid] = null;
+      return null;
+    }
+    var dist = [];
+    try { dist = JSON.parse(row.subject_dist || '[]'); } catch (e) { dist = []; }
+    var out = {
+      cycle: row.exam_cycle || (jsBp && jsBp.cycle) || '',
+      total: row.total_questions || (jsBp && jsBp.total) || 0,
+      durationMin: row.duration_minutes || (jsBp && jsBp.durationMin) || 0,
+      marks: row.total_marks != null ? Number(row.total_marks) : (jsBp && jsBp.marks),
+      neg: row.negative_marking != null ? Number(row.negative_marking) : (jsBp && jsBp.neg) || 0,
+      source: row.pattern_source || row.official_source || (jsBp && jsBp.source) || '',
+      verifiedAt: row.verified_at || null
+    };
+    if (Array.isArray(dist) && dist.length) {
+      out.dist = dist.map(function (d) {
+        return {
+          k: d.k, n: d.n,
+          match: SECTION_MATCHERS[d.k] || (function (name) {
+            return function (q) { return String(q[7]) === name || String(q[8]) === name; };
+          })(d.k)
+        };
+      });
+    } else {
+      /* open pool (APSC-style) — keep the JS open matcher if it exists */
+      out.open = (jsBp && jsBp.open) || function () { return false; };
+    }
+    return out;
+  }
+
+  /* fetch the governance layer (public reads; fail-open) */
+  var dbInitTries = 0;
+  BT.dbInit = function () {
+    var sb = window.supabaseClient;
+    if (!sb) { if (++dbInitTries < 15) setTimeout(BT.dbInit, 1200); return; } /* capped: fail-open to JS */
+    var jobs = 2, done = 0;
+    function fin() { if (done >= jobs) { BT.DB.ready = true; BT.resetPools(); var w = document.getElementById('blv8-tests'); if (w && w.classList.contains('on')) BT.renderCatalog(); } }
+    sb.from('bl_test_blueprints').select('*').limit(50).then(function (r) {
+      if (!(r && r.error)) {
+        BT.DB.blueprints = {};
+        ((r && r.data) || []).forEach(function (row) {
+          var bp = applyDbBlueprint(row.series_id, row);
+          if (bp) BT.DB.blueprints[row.series_id] = bp;
+          else BT.DB.blueprints[row.series_id] = null; /* DB says unverified */
+        });
+      }
+      done++; fin();
+    }).catch(function () { done++; fin(); });
+    sb.from('bl_question_registry').select('qhash,series_id,subject,status,source,is_pyq,exam_year,paper_reference').limit(10000).then(function (r) {
+      if (!(r && r.error)) {
+        BT.DB.registry = {};
+        ((r && r.data) || []).forEach(function (row) { BT.DB.registry[row.qhash] = row; });
+      }
+      done++; fin();
+    }).catch(function () { done++; fin(); });
+  };
+
+  /* governance filter — spec §22: only approved/legacy questions publish */
+  function governanceBlocks(q, sid) {
+    var reg = BT.DB.registry[BT.qhash(q)];
+    if (!reg) return false;                       /* absent = legacy bank q */
+    if (reg.status === 'rejected' || reg.status === 'needs_review') return true;
+    /* exam-scoped registry row (series_id set) only governs that series */
+    return false;
+  }
+
+  /* VFA practice pool (window.STUDYRIA_QB_EXTRA) — practice questions
+     enter ONLY after the owner approves their hash in the registry */
+  function extraApproved(sid) {
+    var out = [], ex = window.STUDYRIA_QB_EXTRA || [];
+    for (var i = 0; i < ex.length; i++) {
+      var reg = BT.DB.registry[BT.qhash(ex[i])];
+      if (reg && reg.status === 'approved' && (!reg.series_id || reg.series_id === sid)) out.push(ex[i]);
+    }
+    return out;
+  }
+
+  /* record the exact question set of a generated test (spec §20/§28) —
+     signed-in users only, fail-open, idempotent server-side */
+  BT.recordVersion = function (sid, n, qs) {
+    try {
+      var sb = window.supabaseClient;
+      if (!sb || !sb.auth || !qs || !qs.length) return;
+      sb.auth.getSession().then(function (r) {
+        if (!r || !r.data || !r.data.session) return; /* anon: skip telemetry */
+        var hashes = qs.map(function (q) { return BT.qhash(q); });
+        var bp = (BT.info(sid) || {}).s || null;
+        sb.rpc('bl_test_version_record', { p_series: sid, p_test_n: n, p_version: 1,
+          p_blueprint_hash: djb2(JSON.stringify(bp && (BT.BLUEPRINTS[bp.bp] || {}))), p_qhashes: hashes });
+      }).catch(function () {});
+    } catch (e) {}
+  };
+
   /* pools may grow as imports warm — drop caches on demand (kept: same
      platform pattern as v1; euLive import warming preserved) */
   BT.resetPools = function () { BT._poolCache = {}; BT._shuffled = {}; };
@@ -539,6 +692,7 @@
   BT.boot = function () {
     if (impWarm) return;
     impWarm = true;
+    try { BT.dbInit(); } catch (e) {}
     var u = window.BrainLabUniverse || {};
     if (u.fetchImported) {
       try {

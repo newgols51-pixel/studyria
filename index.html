@@ -314,10 +314,10 @@ window.__blReady = function (fn) {
   })();
 };
 window.ROUTE_SCRIPTS = {
-  brainlab:      ['question-bank.js?v=20260816exp3', 'brainlab-icons.js?v=20260901gs', 'brainlab.js?v=20260914a', 'brainlab-ext.js?v=20260910a', 'arena.js?v=20260903fix2', 'brainlab-v7.js?v=20260910b', 'brainlab-pages.js?v=20260911a', 'brainlab-exams.js?v=20260910f', 'brainlab-mock.js?v=20260914a', 'brainlab-testpage.js?v=20260914a', 'brainlab-activity.js?v=20260910b', 'brainlab-tr-server.js?v=20260910b', 'brainlab-tests.js?v=20260914a'],
+  brainlab:      ['question-bank.js?v=20260816exp3', 'vfa-practice-pool.js?v=1', 'brainlab-icons.js?v=20260901gs', 'brainlab.js?v=20260914a', 'brainlab-ext.js?v=20260910a', 'arena.js?v=20260903fix2', 'brainlab-v7.js?v=20260910b', 'brainlab-pages.js?v=20260911a', 'brainlab-exams.js?v=20260910f', 'brainlab-mock.js?v=20260914a', 'brainlab-testpage.js?v=20260914a', 'brainlab-activity.js?v=20260910b', 'brainlab-tr-server.js?v=20260910b', 'brainlab-tests.js?v=20260914b'],
   campus:        ['campus.js?v=20260731a', 'campus-admin.js?v=20260914a'],
   'adre-papers': ['adre-papers-data.js?v=20260827d', 'adre-papers-config.js?v=20260827d', 'adre-paper1-data.js?v=20260827d', 'adre-paper2-data.js?v=20260827d', 'adre-paper5-data.js?v=20260827d', 'adre-paper1-2022-data.js?v=20260827d', 'adre-paper2-2022-data.js?v=20260827d', 'adre-paper3-2022-data.js?v=20260827d', 'adre-paper4-2022-data.js?v=20260827d', 'adre-paper5-2022-data.js?v=20260827d', 'adre-exam.js?v=20260828a'],
-  admin:         ['brainlab-exam-import.js?v=20260910e', 'smart-publish-manager.js', 'pdf-classification-refactor.js?v=20260912a', 'premium-edit-pdf-ui.js', 'admin-membership-manager.js', 'pwa-admin-v32.js', 'library-expansion-uploader.js', 'campus-admin.js?v=20260914a', 'zubeen-legacy-admin.js?v=20260912c'],
+  admin:         ['brainlab-exam-import.js?v=20260910e', 'smart-publish-manager.js', 'pdf-classification-refactor.js?v=20260912a', 'premium-edit-pdf-ui.js', 'admin-membership-manager.js', 'pwa-admin-v32.js', 'library-expansion-uploader.js', 'campus-admin.js?v=20260914a', 'zubeen-legacy-admin.js?v=20260912c', 'vfa-practice-pool.js?v=1', 'brainlab-admin-tests.js?v=1'],
   upload:        ['smart-publish-manager.js', 'pdf-classification-refactor.js?v=20260912a', 'premium-edit-pdf-ui.js'],
   'ai-notes':    ['ai-notes-studio.js']
 };
@@ -15442,6 +15442,12 @@ body.light .me-stat-val { filter:none; }
           <span class="admin-nav-badge" style="background:rgba(201,154,60,0.12);color:#c99a3c;border-color:rgba(201,154,60,0.3)">New</span>
         </button>
 
+        <div class="admin-nav-section-label" style="margin-top:16px">🧪 EXAM TEST ENGINE</div>
+        <button class="admin-nav-item" data-atab="brainlab-test-engine" onclick="switchAdminTab('brainlab-test-engine')" style="background:linear-gradient(90deg,rgba(147,2,5,0.12),rgba(201,154,60,0.08));border-left:2px solid #c99a3c">
+          🧪 Test Engine
+          <span class="admin-nav-badge" style="background:rgba(201,154,60,0.12);color:#c99a3c;border-color:rgba(201,154,60,0.3)">New</span>
+        </button>
+
         <div class="admin-nav-section-label" style="margin-top:16px">🏆 ENGAGEMENT</div>
         <button class="admin-nav-item" data-atab="testimonials" onclick="switchAdminTab('testimonials')">
           <svg width="16" height="16"><use href="#ic-star"/></svg>Testimonials
@@ -26492,7 +26498,7 @@ function switchAdminTab(tab) {
     'pdf-manager-pro':'Advanced PDF Manager', 'category-manager-pro':'Advanced Category Manager', 'homepage-manager':'Homepage Manager', 'header-manager':'Header Manager', 'nav-manager':'Navigation Manager', 'customization':'Website Customization', 'users-pro':'User Management Pro',
     'finance':'Sales & Finance Center', 'coupons':'Coupons & Offers', 'blog':'Blog Manager', 'announcements':'Announcement Center', 'live-feed':'Live Feed Notifications', 'testimonials':'Testimonials', 'achievements':'Achievement System', 'notifications-pro':'Notification Center',
     'seo-manager':'SEO Manager', 'live-analytics':'Live Analytics Center', 'ai-center':'AI Control Center', 'security':'Security Center', 'system-advanced':'Advanced System Settings',
-    'pwa-control':'🚀 PWA Control Center','library-manager':'📚 Library Experience Manager', 'career-hub-manager':'💼 Career Hub Manager', 'community-manager':'🌐 Community Manager', 'whatsapp-community':'📱 WhatsApp Community', 'pass-management':'👑 Pass Management', 'campus-manager':'🏫 Campus Manager', 'brainlab-manager':'🧠 BrainLab Manager', 'cloud-storage':'☁️ Studyria Cloud', 'zubeen-legacy':'🕯️ Zubeen Da Legacy' };
+    'pwa-control':'🚀 PWA Control Center','library-manager':'📚 Library Experience Manager', 'career-hub-manager':'💼 Career Hub Manager', 'community-manager':'🌐 Community Manager', 'whatsapp-community':'📱 WhatsApp Community', 'pass-management':'👑 Pass Management', 'campus-manager':'🏫 Campus Manager', 'brainlab-manager':'🧠 BrainLab Manager', 'cloud-storage':'☁️ Studyria Cloud', 'zubeen-legacy':'🕯️ Zubeen Da Legacy', 'brainlab-test-engine':'🧪 Test Engine (Exam Blueprints)' };
   if (bc) bc.textContent = tabNames[tab] || tab;
 
   const main = document.getElementById('adminMain');
@@ -26556,6 +26562,7 @@ function switchAdminTab(tab) {
     case 'pwa-control':            _safeRender(window.renderPWAdmin32,              'PWA Control Center'); break;
     case 'library-manager':       _safeRender(renderAdminLibraryManager,          'Library Manager'); break;
     case 'zubeen-legacy':         _safeRender(window.renderZubeenLegacyAdmin,     'Zubeen Da Legacy'); break;
+    case 'brainlab-test-engine':  _safeRender(window.renderBrainLabTestEngine,     'Test Engine (Exam Blueprints)'); break;
     case 'career-hub-manager':    _safeRender(renderAdminCareerHubManager,        'Career Hub Manager'); break;
     case 'community-manager':     _safeRender(renderAdminCommunityManager,        'Community Manager'); break;
     case 'whatsapp-community':    _safeRender(renderAdminWhatsAppCommunity,       'WhatsApp Community'); break;
