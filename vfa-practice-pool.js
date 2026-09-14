@@ -237,3 +237,12 @@ window.STUDYRIA_QB_EXTRA = [
 ['A kilowatt-hour (unit) is a unit of:','Power','Energy','Current','Charge','b','kWh measures energy (1 kWh = 3.6 × 10^6 J).','Physics','Electricity','medium','VFA'],
 ['One horsepower equals approximately:','546 watts','746 watts','1000 watts','86 watts','b','1 hp ≈ 746 W.','Physics','Work and Power','medium','VFA'],
 ];
+
+/* series mapping for the Admin Test Engine review queue (governance) */
+(function () {
+  'use strict';
+  window.PRACTICE_SET_SUBJECT_SERIES = window.PRACTICE_SET_SUBJECT_SERIES || {};
+  ['Biology', 'Chemistry', 'Physics'].forEach(function (sub) {
+    window.PRACTICE_SET_SUBJECT_SERIES[sub] = 'vfa';
+  });
+})();

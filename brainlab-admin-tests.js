@@ -109,7 +109,9 @@
   function setStatus(hashes, status, subject, cb) {
     var c = sb();
     if (!c) { cb && cb({ ok: false, reason: 'no client' }); return; }
-    c.rpc('bl_registry_set_status', { p_hashes: hashes, p_status: status, p_series: 'vfa', p_subject: subject, p_notes: null })
+    var map = window.PRACTICE_SET_SUBJECT_SERIES || {};
+    var series = map[subject] || null; /* subject→series map keeps registry rows exam-scoped */
+    c.rpc('bl_registry_set_status', { p_hashes: hashes, p_status: status, p_series: series, p_subject: subject, p_notes: null })
       .then(function (r) { cb && cb((r && r.data) || { ok: false, reason: 'rpc failed' }); })
       .catch(function (e) { cb && cb({ ok: false, reason: (e && e.message) || 'error' }); });
   }
@@ -206,8 +208,8 @@
     var stats = extraStats();
     var hasExtra = Object.keys(stats).length > 0;
     if (hasExtra) {
-      html += '<h3 style="margin:20px 0 4px;font-size:.95rem">③ Review Queue — VFA Practice Set 1 <span style="opacity:.6;font-weight:400">(practice questions, never PYQ; AI-authored, human-approved only)</span></h3>' +
-        '<p style="margin:2px 0 6px;font-size:.8rem;opacity:.7">Approving moves questions into the VFA pool immediately (published tests recompute honestly). Nothing publishes while status is needs_review.</p>' +
+      html += '<h3 style="margin:20px 0 4px;font-size:.95rem">③ Review Queue — Practice Sets <span style="opacity:.6;font-weight:400">(practice questions, never PYQ; AI-authored, human-approved only)</span></h3>' +
+        '<p style="margin:2px 0 6px;font-size:.8rem;opacity:.7">Each subject maps to its exam series (Biology/Chemistry/Physics → VFA · Road Transport → ADRE Driver). Approving moves questions into that series\' pool immediately (published tests recompute honestly). Nothing publishes while status is needs_review.</p>' + 
         '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.8rem">' +
         '<thead><tr style="opacity:.6;text-align:left"><th style="padding:6px 8px">Subject</th><th>Total</th><th>Approved</th><th>Needs review</th><th>Rejected</th><th>Unregistered</th><th style="text-align:right">Bulk actions</th></tr></thead><tbody>' +
         Object.keys(stats).map(function (k) { return renderRegistryRow(k, stats[k]); }).join('') +

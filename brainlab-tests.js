@@ -126,7 +126,7 @@
         { k: 'Mental Ability & Logical Reasoning', n: 20, match: function (q) { return hasAny(REASONING, q); } },
         { k: 'General English', n: 30, match: function (q) { return hasAny(ENGLISH, q); } },
         { k: 'General Mathematics', n: 30, match: function (q) { return hasAny(MATH, q); } },
-        { k: 'Road Transport & Road Safety', n: 20, match: function (q) { return false; } }
+        { k: 'Road Transport & Road Safety', n: 20, match: function (q) { return String(q[7]) === 'Road Transport' || String(q[8]) === 'Road Transport'; } }
       ]
     },
     /* ADRE 2.0 — Grade-IV HSLC/Class X (Paper I/II): 135 Q / 135 marks /
