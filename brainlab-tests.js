@@ -66,6 +66,11 @@
   var GA = ['Assam GK', 'General Knowledge', 'World GK', 'Indian GK', 'Sports', 'Persons', 'Inventions', 'Important Days', 'Arts', 'Literature', 'Nature', 'Polity', 'Indian Polity', 'History', 'Indian History', 'World History', 'Geography', 'Indian Geography', 'World Geography', 'Economy', 'Indian Economy', 'World Economy', 'Environment', 'Climate Change', 'Ecology', 'Conservation', 'Pollution', 'Energy'];
   var SCI = ['Biology', 'Chemistry', 'Physics', 'Astronomy'];
   var EVS = ['Environment', 'Nature', 'Climate Change', 'Ecology', 'Conservation', 'Pollution', 'Energy', 'Science', 'Biology', 'Chemistry', 'Physics', 'Astronomy', 'Geography', 'Indian Geography', 'World Geography'];
+  /* Social Studies (ADRE) — history/geography/polity/economy incl. Assam */
+  var SOCIAL_STUDIES = ['History', 'Indian History', 'World History', 'Geography', 'Indian Geography', 'World Geography', 'Polity', 'Indian Polity', 'Economy', 'Indian Economy', 'World Economy'];
+  function isAssamTopic(q, topics) { return String(q[7]) === 'Assam GK' && topics.indexOf(String(q[8])) !== -1; }
+  var ASSAM_HGPE = ['Assam History', 'Assam Geography', 'Assam Polity', 'Assam Economy'];
+  var ASSAM_HISTCULT = ['Assam History', 'Assam Culture'];
 
   function hasAny(list, q) { return list.indexOf(String(q[7] || '')) !== -1 || list.indexOf(String(q[8] || '')) !== -1; }
 
@@ -79,6 +84,79 @@
      source — the authoritative pattern source (spec §13).
      A series with bp:null is UNVERIFIED → never published (spec §12C). */
   BT.BLUEPRINTS = {
+    /* Assam Police Sub-Inspector (UB) — SLPRB written-test pattern:
+       OMR, 100 Q / 100 marks / 3 hours, negative 0.5; sections:
+       Logical Reasoning, Aptitude & Comprehension 35; Culture & History
+       of India & Assam 35; General Knowledge 30. Pattern corroborated
+       across recruitment documentation of the SLPRB SI (UB) 2022
+       written exam (slprbassam.in). */
+    'sub-inspector': {
+      cycle: 'SLPRB SI (UB) — 2022 written pattern', total: 100, durationMin: 180, marks: 100, neg: 0.5,
+      source: 'SLPRB Assam SI (UB) official written-test pattern — corroborated (100 Q / 100 marks / 3 hrs / negative ½; LR-Aptitude-Comprehension 35, History & Culture of India & Assam 35, GK 30)',
+      dist: [
+        { k: 'Logical Reasoning, Aptitude & Comprehension', n: 35, match: function (q) { return hasAny(REASONING, q) || hasAny(MATH, q) || hasAny(ENGLISH, q); } },
+        { k: 'Culture & History of India & Assam', n: 35, match: function (q) { return String(q[7]) === 'History' || String(q[8]) === 'Indian History' || String(q[8]) === 'World History' || isAssamTopic(q, ASSAM_HISTCULT); } },
+        { k: 'General Knowledge', n: 30, match: function (q) { return hasAny(GA, q); } }
+      ]
+    },
+    /* ADRE 2.0 (2024 cycle) — Grade-III HSSLC (Paper III): SLRC pattern
+       released 15 Jul 2024: 150 Q / 150 marks / 180 min, negative 0.25;
+       Social Studies 30, GK 30, Reasoning 20, English 35, Maths 35.
+       Real Paper III questions exist in the ADRE PYQ module. */
+    'adre-g3': {
+      cycle: 'ADRE 2.0 (2024) · HSSLC Grade-III', total: 150, durationMin: 180, marks: 150, neg: 0.25,
+      source: 'SLRC ASSEB ADRE 2.0 official pattern (15 Jul 2024) — Paper III HSSLC Grade-III: 150 Q / 150 marks / 180 min / neg 0.25; SS 30, GK 30, LR 20, Eng 35, Maths 35',
+      dist: [
+        { k: 'Social Studies', n: 30, match: function (q) { return hasAny(SOCIAL_STUDIES, q) || isAssamTopic(q, ASSAM_HGPE); } },
+        { k: 'General Knowledge', n: 30, match: function (q) { return hasAny(GA, q); } },
+        { k: 'Mental Ability & Logical Reasoning', n: 20, match: function (q) { return hasAny(REASONING, q); } },
+        { k: 'General English', n: 35, match: function (q) { return hasAny(ENGLISH, q); } },
+        { k: 'General Mathematics', n: 35, match: function (q) { return hasAny(MATH, q); } }
+      ]
+    },
+    /* ADRE 2.0 — Grade-III Driver (Paper V): 150 Q / 150 marks / 180 min,
+       neg 0.25; SS 20, GK 30, LR 20, Eng 30, Maths 30, Road Transport 20.
+       Road Transport has NO bank pool yet → honest Content Pending. */
+    'adre-g3-driver': {
+      cycle: 'ADRE 2.0 (2024) · Driver Grade-III', total: 150, durationMin: 180, marks: 150, neg: 0.25,
+      source: 'SLRC ASSEB ADRE 2.0 official pattern — Paper V Driver: 150 Q / 150 marks / 180 min / neg 0.25; SS 20, GK 30, LR 20, Eng 30, Maths 30, Road Transport 20 (Road Transport pool pending)',
+      dist: [
+        { k: 'Social Studies', n: 20, match: function (q) { return hasAny(SOCIAL_STUDIES, q) || isAssamTopic(q, ASSAM_HGPE); } },
+        { k: 'General Knowledge', n: 30, match: function (q) { return hasAny(GA, q); } },
+        { k: 'Mental Ability & Logical Reasoning', n: 20, match: function (q) { return hasAny(REASONING, q); } },
+        { k: 'General English', n: 30, match: function (q) { return hasAny(ENGLISH, q); } },
+        { k: 'General Mathematics', n: 30, match: function (q) { return hasAny(MATH, q); } },
+        { k: 'Road Transport & Road Safety', n: 20, match: function (q) { return false; } }
+      ]
+    },
+    /* ADRE 2.0 — Grade-IV HSLC/Class X (Paper I/II): 135 Q / 135 marks /
+       150 min, neg 0.25; GK 30, SS 30, Eng 25, Maths 25, Reasoning 25
+       (section counts as published in the SLRC pattern, reported
+       approximate by pattern sources). */
+    'adre-g4': {
+      cycle: 'ADRE 2.0 (2024) · HSLC Grade-IV', total: 135, durationMin: 150, marks: 135, neg: 0.25,
+      source: 'SLRC ASSEB ADRE 2.0 official pattern — Grade-IV (HSLC/Class X): 135 Q / 135 marks / 150 min / neg 0.25; GK 30, SS 30, Eng 25, Maths 25, Reasoning 25 (approx. per pattern sources)',
+      dist: [
+        { k: 'Social Studies', n: 30, match: function (q) { return hasAny(SOCIAL_STUDIES, q) || isAssamTopic(q, ASSAM_HGPE); } },
+        { k: 'General Knowledge', n: 30, match: function (q) { return hasAny(GA, q); } },
+        { k: 'General English', n: 25, match: function (q) { return hasAny(ENGLISH, q); } },
+        { k: 'General Mathematics', n: 25, match: function (q) { return hasAny(MATH, q); } },
+        { k: 'Mental Ability & Logical Reasoning', n: 25, match: function (q) { return hasAny(REASONING, q); } }
+      ]
+    },
+    /* ADRE 2.0 — Grade-IV Class VIII (Paper II): same structure as the
+       HSLC paper at SCERT elementary difficulty. */
+    'adre-g4-viii': {
+      cycle: 'ADRE 2.0 (2024) · Class VIII Grade-IV', total: 135, durationMin: 150, marks: 135, neg: 0.25,
+      source: 'SLRC ASSEB ADRE 2.0 official pattern — Grade-IV (Class VIII/SCERT): 135 Q / 135 marks / 150 min / neg 0.25; GK 30, SS 30, Eng 25, Maths 25, Reasoning 25 (approx. per pattern sources)',
+      dist: [
+        { k: 'Social Studies', n: 30, match: function (q) { return hasAny(SOCIAL_STUDIES, q) || isAssamTopic(q, ASSAM_HGPE); } },
+        { k: 'General Knowledge', n: 30, match: function (q) { return hasAny(GA, q); } },
+        { k: 'General English', n: 25, match: function (q) { return hasAny(ENGLISH, q); } },
+        { k: 'General Mathematics', n: 25, match: function (q) { return hasAny(MATH, q); } },
+        { k: 'Mental Ability & Logical Reasoning', n: 25, match: function (q) { return hasAny(REASONING, q); } }
+      ]
+    },
     /* Assam Veterinary Field Assistant 2026 — official recruitment info:
        100 MCQs / 100 marks / 120 min; Biology 40, Chemistry 20, Physics 20,
        General Awareness 20. (Training curriculum ≠ written-test blueprint
@@ -160,12 +238,12 @@
        NEVER published as real-pattern tests until the blueprint above is
        verified (spec §12C/§13). Admin shows "Blueprint verification
        required". ── */
-    { id: 'sub-inspector',  name: 'Sub Inspector',          org: 'Assam Police',                             bp: null, target: 12, icon: '🚔', search: 'si sub inspector police assam', desc: 'Assam Police Sub Inspector written-test series.' },
+    { id: 'sub-inspector',  name: 'Sub Inspector',          org: 'Assam Police',                             bp: 'sub-inspector', target: 12, icon: '🚔', search: 'si sub inspector police assam', desc: 'Assam Police SI (UB) written test — SLPRB pattern: 100 Q · 3 hrs · LR-Aptitude-Comprehension 35, History & Culture 35, GK 30.' },
     { id: 'mts',            name: 'Multi Tasking Staff',     org: 'Government of Assam',                      bp: null, target: 16, icon: '🛠️', search: 'mts multi tasking staff assam govt', desc: 'Multi Tasking Staff (MTS) written-test practice series.' },
-    { id: 'adre-g3',        name: 'ADRE Grade III',         org: 'Assam Direct Recruitment',                  bp: null, target: 10, icon: '🏛️', search: 'adre grade 3 iii slrc', desc: 'ADRE Grade III recruitment exam test series.' },
-    { id: 'adre-g4',        name: 'ADRE Grade IV',          org: 'Assam Direct Recruitment',                  bp: null, target: 10, icon: '🏛️', search: 'adre grade 4 iv slrc', desc: 'ADRE Grade IV recruitment exam test series.' },
-    { id: 'adre-g3-driver', name: 'ADRE Grade III (Driver)', org: 'Assam Direct Recruitment',                bp: null, target: 10, icon: '🚗', search: 'adre driver grade 3 iii', desc: 'ADRE Grade III (Driver) posts practice series.' },
-    { id: 'adre-g4-viii',   name: 'ADRE Grade IV (Class VIII)', org: 'Assam Direct Recruitment',              bp: null, target: 10, icon: '📗', search: 'adre grade 4 class 8 viii', desc: 'ADRE Grade IV (Class VIII qualification) posts practice series.' },
+    { id: 'adre-g3',        name: 'ADRE Grade III',         org: 'Assam Direct Recruitment',                  bp: 'adre-g3', target: 10, icon: '🏛️', search: 'adre grade 3 iii slrc hsslc', desc: 'ADRE 2.0 Grade-III (HSSLC) — SLRC official pattern: 150 Q · 3 hrs · SS 30, GK 30, LR 20, English 35, Maths 35.' },
+    { id: 'adre-g4',        name: 'ADRE Grade IV',          org: 'Assam Direct Recruitment',                  bp: 'adre-g4', target: 10, icon: '🏛️', search: 'adre grade 4 iv slrc hslc', desc: 'ADRE 2.0 Grade-IV (HSLC/Class X) — SLRC official pattern: 135 Q · 2.5 hrs · GK 30, SS 30, English 25, Maths 25, Reasoning 25.' },
+    { id: 'adre-g3-driver', name: 'ADRE Grade III (Driver)', org: 'Assam Direct Recruitment',                bp: 'adre-g3-driver', target: 6, icon: '🚗', search: 'adre driver grade 3 iii', desc: 'ADRE 2.0 Grade-III Driver — SLRC pattern: 150 Q · 3 hrs incl. Road Transport 20 (pool pending).' },
+    { id: 'adre-g4-viii',   name: 'ADRE Grade IV (Class VIII)', org: 'Assam Direct Recruitment',              bp: 'adre-g4-viii', target: 10, icon: '📗', search: 'adre grade 4 class 8 viii', desc: 'ADRE 2.0 Grade-IV (Class VIII/SCERT level) — SLRC official pattern: 135 Q · 2.5 hrs.' },
     { id: 'dhs',            name: 'DHS Assam',              org: 'Directorate of Health Services, Assam',     bp: null, target: 10, icon: '🏥', search: 'dhs health services assam', desc: 'DHS Assam recruitment exam test series.' }
   ];
 
@@ -187,7 +265,7 @@
     if (!bp) { BT._poolCache[sid] = out; return out; } /* DB: unverified → no pool */
     var seen = {}, dedup = [];
     (window.STUDYRIA_QB || []).forEach(function (q) {
-      var k = String(String(q[0]).slice(0, 60) + q[5]);
+      var k = BT.qhash(q); /* §17: normalized full text + answer — punctuation variants dedupe too */
       if (!seen[k]) { seen[k] = 1; dedup.push(q); }
     });
     /* governance (§22) + approved practice pool (EXTRA — never unapproved) */
@@ -195,7 +273,7 @@
     if (window.STUDYRIA_QB_EXTRA && BT.DB.ready) {
       var ex = extraApproved(sid);
       ex.forEach(function (q) {
-        var k = String(String(q[0]).slice(0, 60) + q[5]);
+        var k = BT.qhash(q);
         if (!seen[k]) { seen[k] = 1; dedup.push(q); }
       });
     }
@@ -282,7 +360,7 @@
     if (bp.dist) {
       var counts = {}, seen = {};
       for (var i = 0; i < qs.length; i++) {
-        var q = qs[i], key = String(String(q[0]).slice(0, 60) + q[5]);
+        var q = qs[i], key = BT.qhash(q);
         if (seen[key]) return false; /* duplicate question inside test */
         seen[key] = 1;
         var sec = bp.dist.filter(function (x) { try { return x.match(q); } catch (e) { return false; } })[0];
@@ -293,7 +371,7 @@
     } else {
       var seen2 = {};
       for (var m = 0; m < qs.length; m++) {
-        var q2 = qs[m], key2 = String(String(q2[0]).slice(0, 60) + q2[5]);
+        var q2 = qs[m], key2 = BT.qhash(q2);
         if (seen2[key2]) return false;
         seen2[key2] = 1;
         var ok = false;

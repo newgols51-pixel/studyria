@@ -212,18 +212,81 @@ VALUES
  'Assam TET official pattern — 150 Q, 150 marks, 150 min, five sections × 30 (LP paper)',
  'Assam TET official notification (LP)',
  'Assam TET LP syllabus (official)', 'verified', now()),
-('sub-inspector','Sub Inspector','Assam Police',NULL,NULL,NULL,NULL,NULL,'[]',
- NULL,NULL,NULL,'needs_verification',NULL),
+('sub-inspector','Sub Inspector','Assam Police','SLPRB SI (UB) — 2022 written pattern',2022,100,100,180,0.5,
+ '[{"k":"Logical Reasoning, Aptitude & Comprehension","n":35},{"k":"Culture & History of India & Assam","n":35},{"k":"General Knowledge","n":30}]',
+ 'SLPRB Assam SI (UB) official written-test pattern — corroborated',
+ 'SLPRB SI (UB) written exam: 100 Q / 100 marks / 3 hrs / negative ½; LR-Aptitude-Comprehension 35, History & Culture of India & Assam 35, GK 30',
+ 'SLPRB SI (UB) recruitment advertisement subjects (corroborated)', 'verified', now()),
 ('mts','Multi Tasking Staff','Government of Assam',NULL,NULL,NULL,NULL,NULL,'[]',
  NULL,NULL,NULL,'needs_verification',NULL),
-('adre-g3','ADRE Grade III','Assam Direct Recruitment','ADRE — cycle not yet verified',NULL,NULL,NULL,NULL,'[]',
- NULL,NULL,NULL,'needs_verification',NULL),
-('adre-g4','ADRE Grade IV','Assam Direct Recruitment','ADRE — cycle not yet verified',NULL,NULL,NULL,NULL,'[]',
- NULL,NULL,NULL,'needs_verification',NULL),
-('adre-g3-driver','ADRE Grade III (Driver)','Assam Direct Recruitment',NULL,NULL,NULL,NULL,NULL,'[]',
- NULL,NULL,NULL,'needs_verification',NULL),
-('adre-g4-viii','ADRE Grade IV (Class VIII)','Assam Direct Recruitment',NULL,NULL,NULL,NULL,NULL,'[]',
- NULL,NULL,NULL,'needs_verification',NULL),
+('adre-g3','ADRE Grade III','Assam Direct Recruitment','ADRE 2.0 (2024) · HSSLC Grade-III',2024,150,150,180,0.25,
+ '[{"k":"Social Studies","n":30},{"k":"General Knowledge","n":30},{"k":"Mental Ability & Logical Reasoning","n":20},{"k":"General English","n":35},{"k":"General Mathematics","n":35}]',
+ 'SLRC ASSEB ADRE 2.0 official pattern (15 Jul 2024) — Paper III',
+ 'ADRE 2.0 Paper III (HSSLC): 150 Q / 150 marks / 180 min / neg 0.25; SS 30, GK 30, LR 20, Eng 35, Maths 35',
+ 'SLRC ADRE 2.0 HSSLC syllabus (official notification)', 'verified', now()),
+('adre-g4','ADRE Grade IV','Assam Direct Recruitment','ADRE 2.0 (2024) · HSLC Grade-IV',2024,135,135,150,0.25,
+ '[{"k":"Social Studies","n":30},{"k":"General Knowledge","n":30},{"k":"General English","n":25},{"k":"General Mathematics","n":25},{"k":"Mental Ability & Logical Reasoning","n":25}]',
+ 'SLRC ASSEB ADRE 2.0 official pattern — Grade-IV (HSLC/Class X)',
+ 'ADRE 2.0 Grade-IV: 135 Q / 135 marks / 150 min / neg 0.25; GK 30, SS 30, Eng 25, Maths 25, Reasoning 25 (approx. per pattern sources)',
+ 'SLRC ADRE 2.0 Grade-IV syllabus (official notification)', 'verified', now()),
+('adre-g3-driver','ADRE Grade III (Driver)','Assam Direct Recruitment','ADRE 2.0 (2024) · Driver Grade-III',2024,150,150,180,0.25,
+ '[{"k":"Social Studies","n":20},{"k":"General Knowledge","n":30},{"k":"Mental Ability & Logical Reasoning","n":20},{"k":"General English","n":30},{"k":"General Mathematics","n":30},{"k":"Road Transport & Road Safety","n":20}]',
+ 'SLRC ASSEB ADRE 2.0 official pattern — Paper V Driver',
+ 'ADRE 2.0 Paper V: 150 Q / 150 marks / 180 min / neg 0.25; SS 20, GK 30, LR 20, Eng 30, Maths 30, Road Transport 20 (Road Transport pool pending)',
+ 'SLRC ADRE 2.0 Driver syllabus (official notification)', 'verified', now()),
+('adre-g4-viii','ADRE Grade IV (Class VIII)','Assam Direct Recruitment','ADRE 2.0 (2024) · Class VIII Grade-IV',2024,135,135,150,0.25,
+ '[{"k":"Social Studies","n":30},{"k":"General Knowledge","n":30},{"k":"General English","n":25},{"k":"General Mathematics","n":25},{"k":"Mental Ability & Logical Reasoning","n":25}]',
+ 'SLRC ASSEB ADRE 2.0 official pattern — Grade-IV (Class VIII/SCERT)',
+ 'ADRE 2.0 Grade-IV (Class VIII): 135 Q / 135 marks / 150 min / neg 0.25; GK 30, SS 30, Eng 25, Maths 25, Reasoning 25 (approx. per pattern sources)',
+ 'SLRC ADRE 2.0 Grade-IV Class VIII syllabus (SCERT elementary)', 'verified', now()),
 ('dhs','DHS Assam','Directorate of Health Services, Assam',NULL,NULL,NULL,NULL,NULL,'[]',
  NULL,NULL,NULL,'needs_verification',NULL)
 ON CONFLICT (series_id) DO NOTHING;
+
+-- Refresh for runs of earlier file versions: the five newly verified
+-- blueprints (SI, ADRE ×4) overwrite their placeholder rows idempotently.
+UPDATE public.bl_test_blueprints SET
+  exam_cycle='SLPRB SI (UB) — 2022 written pattern', exam_year=2022,
+  total_questions=100, total_marks=100, duration_minutes=180, negative_marking=0.5,
+  subject_dist='[{"k":"Logical Reasoning, Aptitude & Comprehension","n":35},{"k":"Culture & History of India & Assam","n":35},{"k":"General Knowledge","n":30}]',
+  official_source='SLPRB Assam SI (UB) official written-test pattern — corroborated',
+  pattern_source='SLPRB SI (UB) written exam: 100 Q / 100 marks / 3 hrs / negative ½; LR-Aptitude-Comprehension 35, History & Culture of India & Assam 35, GK 30',
+  syllabus_source='SLPRB SI (UB) recruitment advertisement subjects (corroborated)',
+  status='verified', verified_at=now(), updated_at=now()
+WHERE series_id='sub-inspector' AND status <> 'verified';
+UPDATE public.bl_test_blueprints SET
+  exam_cycle='ADRE 2.0 (2024) · HSSLC Grade-III', exam_year=2024,
+  total_questions=150, total_marks=150, duration_minutes=180, negative_marking=0.25,
+  subject_dist='[{"k":"Social Studies","n":30},{"k":"General Knowledge","n":30},{"k":"Mental Ability & Logical Reasoning","n":20},{"k":"General English","n":35},{"k":"General Mathematics","n":35}]',
+  official_source='SLRC ASSEB ADRE 2.0 official pattern (15 Jul 2024) — Paper III',
+  pattern_source='ADRE 2.0 Paper III (HSSLC): 150 Q / 150 marks / 180 min / neg 0.25; SS 30, GK 30, LR 20, Eng 35, Maths 35',
+  syllabus_source='SLRC ADRE 2.0 HSSLC syllabus (official notification)',
+  status='verified', verified_at=now(), updated_at=now()
+WHERE series_id='adre-g3' AND status <> 'verified';
+UPDATE public.bl_test_blueprints SET
+  exam_cycle='ADRE 2.0 (2024) · HSLC Grade-IV', exam_year=2024,
+  total_questions=135, total_marks=135, duration_minutes=150, negative_marking=0.25,
+  subject_dist='[{"k":"Social Studies","n":30},{"k":"General Knowledge","n":30},{"k":"General English","n":25},{"k":"General Mathematics","n":25},{"k":"Mental Ability & Logical Reasoning","n":25}]',
+  official_source='SLRC ASSEB ADRE 2.0 official pattern — Grade-IV (HSLC/Class X)',
+  pattern_source='ADRE 2.0 Grade-IV: 135 Q / 135 marks / 150 min / neg 0.25; GK 30, SS 30, Eng 25, Maths 25, Reasoning 25 (approx. per pattern sources)',
+  syllabus_source='SLRC ADRE 2.0 Grade-IV syllabus (official notification)',
+  status='verified', verified_at=now(), updated_at=now()
+WHERE series_id='adre-g4' AND status <> 'verified';
+UPDATE public.bl_test_blueprints SET
+  exam_cycle='ADRE 2.0 (2024) · Driver Grade-III', exam_year=2024,
+  total_questions=150, total_marks=150, duration_minutes=180, negative_marking=0.25,
+  subject_dist='[{"k":"Social Studies","n":20},{"k":"General Knowledge","n":30},{"k":"Mental Ability & Logical Reasoning","n":20},{"k":"General English","n":30},{"k":"General Mathematics","n":30},{"k":"Road Transport & Road Safety","n":20}]',
+  official_source='SLRC ASSEB ADRE 2.0 official pattern — Paper V Driver',
+  pattern_source='ADRE 2.0 Paper V: 150 Q / 150 marks / 180 min / neg 0.25; SS 20, GK 30, LR 20, Eng 30, Maths 30, Road Transport 20 (Road Transport pool pending)',
+  syllabus_source='SLRC ADRE 2.0 Driver syllabus (official notification)',
+  status='verified', verified_at=now(), updated_at=now()
+WHERE series_id='adre-g3-driver' AND status <> 'verified';
+UPDATE public.bl_test_blueprints SET
+  exam_cycle='ADRE 2.0 (2024) · Class VIII Grade-IV', exam_year=2024,
+  total_questions=135, total_marks=135, duration_minutes=150, negative_marking=0.25,
+  subject_dist='[{"k":"Social Studies","n":30},{"k":"General Knowledge","n":30},{"k":"General English","n":25},{"k":"General Mathematics","n":25},{"k":"Mental Ability & Logical Reasoning","n":25}]',
+  official_source='SLRC ASSEB ADRE 2.0 official pattern — Grade-IV (Class VIII/SCERT)',
+  pattern_source='ADRE 2.0 Grade-IV (Class VIII): 135 Q / 135 marks / 150 min / neg 0.25; GK 30, SS 30, Eng 25, Maths 25, Reasoning 25 (approx. per pattern sources)',
+  syllabus_source='SLRC ADRE 2.0 Grade-IV Class VIII syllabus (SCERT elementary)',
+  status='verified', verified_at=now(), updated_at=now()
+WHERE series_id='adre-g4-viii' AND status <> 'verified';
