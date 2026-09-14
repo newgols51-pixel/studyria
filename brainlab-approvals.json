@@ -1,7 +1,7 @@
 {
   "_comment": "STUDYRIA BrainLab practice-set approvals — PUBLIC MIRROR. Why this exists: site_config has no public SELECT policy in production (owner hasn't run the one-time read-policy SQL), so anonymous students cannot read approvals from the database. This file is served statically (readable by everyone) and is synced from site_config by the agent (Solene) whenever the owner approves/revoke a subject in Admin → Test Engine. The engine prefers site_config when it returns rows (e.g. after the SQL is run); this mirror is the anon fallback. Fail-closed: a subject absent here = locked for students.",
   "v": 1,
-  "updated_at": "2026-09-14T18:16:00+05:30",
+  "updated_at": "2026-09-14T18:25:00+05:30",
   "approvals": {
     "Biology": {
       "series": "vfa",
@@ -17,6 +17,11 @@
       "series": "vfa",
       "approved_at": "2026-09-14T18:10:00+05:30",
       "note": "Owner-approved in Admin → Test Engine. Covers batch-1 (68) and batch-2 (40) Physics practice questions."
+    },
+    "Road Transport": {
+      "series": "adre-g3-driver",
+      "approved_at": "2026-09-14T18:20:00+05:30",
+      "note": "Owner-approved in Admin → Test Engine. Covers the ADRE Driver road-transport practice pool (138 questions)."
     }
   }
 }
