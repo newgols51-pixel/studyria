@@ -29,6 +29,15 @@
     });
   }
   function n2(n) { return (n || 0).toLocaleString('en-IN'); }
+  function fallbackCopy(txt) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch (e) {}
+  }
   function normQ(t) { return String(t || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 120); }
   function djb2(str) { var h = 5381; for (var i = 0; i < str.length; i++) { h = ((h << 5) + h + str.charCodeAt(i)) >>> 0; } return h.toString(16).padStart(8, '0'); }
   function qhash(q) { return djb2(normQ(q[0]) + '|' + String(q[5] || '').toLowerCase()); }
@@ -167,12 +176,37 @@
       '<button class="blte-btn blte-go" id="blte-qa">▶ Run validation QA</button>' +
       '</div></div>';
 
-    /* migration status */
+    /* migration status + actionable helper */
     var dbReady = bt && bt.DB && bt.DB.ready;
+    var dbStatus = (bt && bt.DB && bt.DB.status) || 'init';
+    function copyBtn(id, label, url) {
+      return '<button class="blte-btn blte-go" id="' + id + '" data-url="' + url + '">' + label + '</button>';
+    }
     if (!dbReady) {
-      html += card('<b>Migration not active yet.</b> The governance layer (bl_test_blueprints / bl_question_registry / usage / versions) was not found. ' +
-        'Run <code>sql/brainlab-tests-v3-migration.sql</code> in Supabase SQL Editor, then <code>sql/vfa-practice-registry-seed.sql</code>, and reopen this tab. ' +
-        'Until then everything below is read-only, computed from the JS-fallback blueprint.', '14px 18px');
+      var why = dbStatus === 'no_grants'
+        ? '<b>Tables exist but grants are missing</b> (42501 permission denied) — run the one-click grants fix below, it takes 2 seconds.'
+        : '<b>The v3 migration has not been run yet</b> — the governance tables (bl_test_blueprints / bl_question_registry / usage / versions) are not in the database. Everything below is read-only (JS-fallback) until then; the practice sets stay locked and nothing changes for users.';
+      html += card(
+        '<div style="font-weight:700;margin-bottom:4px">🗄️ Database migration</div>' +
+        '<p style="margin:2px 0 10px;font-size:.85rem">' + why + '</p>' +
+        '<div style="font-size:.8rem;opacity:.85;line-height:1.9">' +
+        '<b>Steps (one-time, ~2 minutes):</b><br>' +
+        '1. Open Supabase → SQL Editor → "New query"<br>' +
+        '2. Click <b>① Copy migration SQL</b> below → paste in the editor → <b>Run</b><br>' +
+        '3. Click <b>② Copy VFA seed</b> → new query → paste → Run<br>' +
+        '4. Click <b>③ Copy Driver seed</b> → new query → paste → Run<br>' +
+        (dbStatus === 'no_grants'
+          ? '<b style="color:var(--warn,#c99a3c)">Or, if you already ran the migration:</b> just run the grants fix → '
+          : '') +
+        '</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">' +
+        copyBtn('blte-copy-mig', '① Copy migration SQL', '/sql/brainlab-tests-v3-migration.sql') +
+        copyBtn('blte-copy-vfa', '② Copy VFA seed', '/sql/vfa-practice-registry-seed.sql') +
+        copyBtn('blte-copy-drv', '③ Copy Driver seed', '/sql/adre-driver-road-transport-seed.sql') +
+        copyBtn('blte-copy-fix', 'Copy grants fix (42501)', '/sql/bl3-grants-fix.sql') +
+        '<button class="blte-btn" id="blte-mig-done">↺ I ran it — recheck</button>' +
+        '</div>' +
+        '<p id="blte-copy-msg" style="font-size:.78rem;margin-top:10px;min-height:1em;opacity:.8"></p>', '14px 18px');
     }
 
     /* §25 blueprint table — DB rows when present, JS fallback otherwise */
@@ -234,6 +268,33 @@
     }
 
     /* wire */
+    ['blte-copy-mig', 'blte-copy-vfa', 'blte-copy-drv', 'blte-copy-fix'].forEach(function (id) {
+      var b = document.getElementById(id);
+      if (!b) return;
+      b.onclick = function () {
+        var msg = document.getElementById('blte-copy-msg');
+        if (msg) msg.textContent = 'Copying…';
+        fetch(b.getAttribute('data-url')).then(function (r) { return r.text(); }).then(function (txt) {
+          function okMsg() {
+            if (msg) msg.innerHTML = '<span class="blte-pass">✓ Copied. Now paste it in the Supabase SQL Editor and press Run.</span>';
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt).then(okMsg, function () { fallbackCopy(txt); okMsg(); });
+          } else { fallbackCopy(txt); okMsg(); }
+        }).catch(function () {
+          if (msg) msg.innerHTML = '<span class="blte-fail">✗ Could not fetch the SQL file — download it from the repo /sql folder instead.</span>';
+        });
+      };
+    });
+    var migDone = document.getElementById('blte-mig-done');
+    if (migDone) migDone.onclick = function () {
+      if (bt && bt.dbInit) { bt.DB.status = 'init'; bt.dbInit(); }
+      var btn = this;
+      btn.textContent = '… checking';
+      setTimeout(function () {
+        window.renderBrainLabTestEngine(main);
+      }, 2500);
+    };
     var refresh = document.getElementById('blte-refresh');
     if (refresh) refresh.onclick = function () {
       if (bt && bt.dbInit) bt.dbInit();

@@ -641,7 +641,7 @@
      migration not run / fetch error → v2 JS behavior, unchanged.
      Registry: absent hash = 'legacy' bank question (kept); explicit
      'rejected' or 'needs_review' hash NEVER enters a public test. */
-  BT.DB = { blueprints: null, registry: {}, ready: false };
+  BT.DB = { blueprints: null, registry: {}, ready: false, status: 'init' }; /* status: init → not_run | no_grants | ready */
 
   /* deterministic question hash — normalized text + answer key.
      SAME normalization as the admin import tool (normQ) so hashes match
@@ -708,6 +708,11 @@
     var jobs = 2, done = 0;
     function fin() { if (done >= jobs) { BT.DB.ready = true; BT.resetPools(); var w = document.getElementById('blv8-tests'); if (w && w.classList.contains('on')) BT.renderCatalog(); } }
     sb.from('bl_test_blueprints').select('*').limit(50).then(function (r) {
+      if (r && r.error) {
+        var code = (r.error && (r.error.code || r.error.message)) || '';
+        if (String(code).indexOf('42501') !== -1 || /permission/i.test(String(code))) BT.DB.status = 'no_grants';
+        else BT.DB.status = 'not_run';
+      } else if (BT.DB.status !== 'no_grants') { BT.DB.status = 'ready'; }
       if (!(r && r.error)) {
         BT.DB.blueprints = {};
         ((r && r.data) || []).forEach(function (row) {

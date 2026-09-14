@@ -243,6 +243,20 @@ VALUES
  NULL,NULL,NULL,'needs_verification',NULL)
 ON CONFLICT (series_id) DO NOTHING;
 
+-- ═════════════════════════════════════════════════════════════
+-- TABLE GRANTS (essential) — Supabase PostgREST runs as anon/
+-- authenticated; WITHOUT these grants the site gets 42501 permission
+-- denied even with the RLS read policies above, and the panel would
+-- keep saying "migration not active". Idempotent — safe to re-run.
+-- ═════════════════════════════════════════════════════════════
+GRANT SELECT ON TABLE public.bl_test_blueprints TO anon, authenticated;
+GRANT SELECT ON TABLE public.bl_question_registry TO anon, authenticated;
+GRANT INSERT, SELECT ON TABLE public.bl_question_usage TO authenticated;
+GRANT INSERT, SELECT ON TABLE public.bl_test_versions TO authenticated;
+
+-- Reload the PostgREST schema cache so the new tables are served immediately
+NOTIFY pgrst, 'reload schema';
+
 -- Refresh for runs of earlier file versions: the five newly verified
 -- blueprints (SI, ADRE ×4) overwrite their placeholder rows idempotently.
 UPDATE public.bl_test_blueprints SET
