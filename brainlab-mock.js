@@ -235,7 +235,8 @@
       M.reset();
       if (opts && (opts.mode === 'mock' || opts.mode === 'test')) { /* 'test' = BrainLab Tests module — same engine, own activity_type (spec §10) */
         M.active = true;
-        M.duration = Math.max(1, (opts.questions || []).length) * 60; /* 1 min/question */
+        /* duration: blueprint official duration if provided (BrainLab Tests), else 1 min/question convention */
+        M.duration = Math.max(1, (opts.durationMin ? parseInt(opts.durationMin, 10) : (opts.questions || []).length)) * 60;
         M.endAt = Date.now() + M.duration * 1000;
       }
       var r = oStart.apply(this, arguments);

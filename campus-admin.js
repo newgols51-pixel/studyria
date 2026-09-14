@@ -672,6 +672,7 @@
       rows.forEach(function (r) {
         var badge = r.status === 'Published' ? 'background:rgba(34,197,94,0.15);color:#22c55e'
           : r.status === 'Partially Published' ? 'background:rgba(251,191,36,0.15);color:#fbbf24'
+          : r.status === 'Needs Verification' ? 'background:rgba(139,92,246,0.15);color:#a78bfa'
           : 'background:rgba(239,68,68,0.15);color:#ef4444';
         h += '<div style="border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;background:rgba(255,255,255,0.02)">' +
           '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
@@ -683,10 +684,16 @@
           '</div>' +
           '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:0.72rem;color:var(--text-secondary,#94a3b8)">' +
             '<span>Real pool: <b style="color:inherit">' + r.pool.toLocaleString('en-IN') + ' Qs</b></span>' +
-            '<span>Config: <b style="color:inherit">' + r.perTest + ' Qs / test · ' + r.perTest + ' min</b></span>' +
+            (r.status === 'Needs Verification'
+              ? '<span style="color:#a78bfa">⚠️ <b>Blueprint verification required</b> — official exam pattern not verified; series not published (hidden from users).</span>'
+              : '<span>Config: <b style="color:inherit">' + r.perTest + ' Qs / test · ' + (r.durationMin || r.perTest) + ' min' + (r.marks ? ' · ' + r.marks + ' marks' : '') + (r.neg ? ' · neg −' + r.neg : '') + '</b></span>' +
             '<span>Published: <b style="color:inherit">' + r.published + ' / ' + r.target + ' tests</b></span>' +
             '<span>Allocated: <b style="color:inherit">' + r.mcqs.toLocaleString('en-IN') + ' MCQ slots</b></span>' +
-            (r.pending > 0 ? '<span style="color:#fbbf24">Missing: <b>' + (r.pending * r.perTest).toLocaleString('en-IN') + ' verified questions</b> for ' + r.pending + ' more test(s)</span>' : '') +
+            (r.pending > 0 ? '<span style="color:#fbbf24">Missing: <b>' + (r.pending * r.perTest).toLocaleString('en-IN') + ' verified questions</b> for ' + r.pending + ' more test(s)</span>' : '')) +
+            (r.subjects && r.subjects.length ? '<div style="width:100%;margin-top:6px;display:flex;gap:10px;flex-wrap:wrap">' + r.subjects.map(function (sb) {
+              var okc = sb.pool >= sb.required * Math.max(1, r.published);
+              return '<span style="padding:2px 10px;border-radius:8px;font-size:0.68rem;' + (okc ? 'background:rgba(34,197,94,0.10);color:#22c55e' : 'background:rgba(251,191,36,0.12);color:#fbbf24') + '">' + escape(sb.name) + ': ' + sb.pool.toLocaleString('en-IN') + ' approved · ' + sb.required + '/test' + (sb.unused != null ? ' · ' + sb.unused.toLocaleString('en-IN') + ' unused' : '') + '</span>';
+            }).join('') + '</div>' : '') +
           '</div>' +
           '<div id="ts-x-' + r.id + '" style="display:none;margin-top:10px"></div>' +
         '</div>';
@@ -703,14 +710,25 @@
       var BT = window.BrainLabTests;
       var info = BT && BT.info ? BT.info(sid) : null;
       if (!info) { x.style.display = 'block'; x.innerHTML = '<div style="color:#ef4444;font-size:0.75rem">Series not found.</div>'; return; }
-      var h = '<div style="font-size:0.68rem;font-weight:800;letter-spacing:.06em;color:var(--text-secondary,#94a3b8);margin-bottom:6px">TEST ALLOCATION — ' + info.published + ' PUBLISHED TEST' + (info.published === 1 ? '' : 'S') + ' · ' + info.perTest + ' REAL QUESTIONS EACH (disjoint — never reused inside this pool group)</div>';
+      if (info.needsVerification) {
+        x.style.display = 'block';
+        x.innerHTML = '<div style="padding:10px 12px;border-radius:10px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);font-size:0.74rem;color:#a78bfa">⚠️ <b>Blueprint verification required.</b> The official exam pattern (subjects, distribution, duration, marks) for this series has not been verified from authoritative sources, so no real-pattern test is published. Verify the official notification, add a verified entry to <b>BT.BLUEPRINTS</b> in brainlab-tests.js, then this series publishes automatically from the approved pool.</div>';
+        return;
+      }
+      var h = '<div style="font-size:0.68rem;font-weight:800;letter-spacing:.06em;color:var(--text-secondary,#94a3b8);margin-bottom:6px">BLUEPRINT: ' + (info.cycle || '') + ' · ' + info.perTest + ' Q / ' + info.durationMin + ' min' + (info.marks ? ' · ' + info.marks + ' marks' : '') + (info.neg ? ' · neg −' + info.neg : '') + ' — ' + info.published + ' PUBLISHED TEST' + (info.published === 1 ? '' : 'S') + ' · DISJOINT real questions (never reused inside this series)</div>';
+      if (info.subjects && info.subjects.length) {
+        h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">' + info.subjects.map(function (sb) {
+          return '<span style="padding:3px 10px;border-radius:8px;font-size:0.68rem;background:rgba(61,142,248,0.12);color:#3d8ef8">' + escape(sb.name) + ' — required ' + sb.required + '/test · pool ' + sb.pool.toLocaleString('en-IN') + '</span>';
+        }).join('') + '</div>';
+      }
+      if (info.source) h += '<div style="font-size:0.68rem;color:var(--text-secondary,#94a3b8);margin-bottom:8px">Pattern source: ' + escape(info.source) + '</div>';
       h += '<div style="display:flex;flex-direction:column;gap:4px;max-height:320px;overflow-y:auto">';
       for (var n = 1; n <= info.published; n++) {
         var t = BT.test(sid, n);
         var ok = !!(t && t.qs.length === info.perTest);
         h += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,0.03);font-size:0.74rem">' +
           '<span style="font-weight:700">' + escape(info.s.name) + ' — Test ' + n + '</span>' +
-          '<span style="color:var(--text-secondary,#94a3b8)">' + (t ? t.qs.length : 0) + ' MCQs · ' + info.perTest + ' min</span>' +
+          '<span style="color:var(--text-secondary,#94a3b8)">' + (t ? t.qs.length : 0) + ' MCQs · ' + (info.durationMin || info.perTest) + ' min</span>' +
           '<span style="margin-left:auto;padding:2px 10px;border-radius:999px;font-size:0.66rem;font-weight:700;' + (ok ? 'background:rgba(34,197,94,0.15);color:#22c55e">Complete' : 'background:rgba(239,68,68,0.15);color:#ef4444">Incomplete') + '</span>' +
           '<button onclick="BrainLabAdmin.tsPreview(\'' + sid + '\',' + n + ')" style="padding:3px 10px;border-radius:7px;background:rgba(61,142,248,0.15);color:#3d8ef8;border:none;cursor:pointer;font-size:0.68rem;font-weight:600">Preview Qs</button>' +
         '</div>';

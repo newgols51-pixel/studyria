@@ -240,3 +240,17 @@
   .blt-card, .blt-test { transition: none; }
   .blt-card:active { transform: none; }
 }
+
+/* ── v2 (Sep 14, 2026): official exam-pattern block on the series page ── */
+.blt-pattern { margin: 14px 0 4px; padding: 14px 16px; border-radius: 14px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); }
+.blt-pattern-title { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em;
+  color: #c99a3c; margin-bottom: 10px; }
+.blt-pattern-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; }
+.blt-pattern-row { display: flex; justify-content: space-between; gap: 8px; padding: 7px 10px;
+  border-radius: 8px; background: rgba(255,255,255,0.03); font-size: 0.76rem; }
+.blt-pattern-subj { color: var(--text-secondary, #94a3b8); }
+.blt-pattern-n { font-weight: 700; white-space: nowrap; }
+.blt-pattern-meta { margin-top: 10px; font-size: 0.78rem; }
+.blt-pattern-note { color: #fbbf24; font-size: 0.7rem; }
+.blt-pattern-src { margin-top: 6px; font-size: 0.66rem; color: var(--text-secondary, #94a3b8); opacity: 0.85; }

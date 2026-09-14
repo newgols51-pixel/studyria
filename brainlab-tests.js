@@ -1,52 +1,51 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   brainlab-tests.js — STUDYRIA BRAINLAB "TESTS" MODULE (additive layer)
+   brainlab-tests.js — STUDYRIA BRAINLAB "TESTS" MODULE (blueprint engine)
    ═══════════════════════════════════════════════════════════════════════
-   A dedicated first-class Tests section for BrainLab:
+   v2 (Sep 14, 2026) — EXAM TEST BLUEPRINT SYSTEM (content-correctness fix).
 
-   BrainLab → Tests (#brainlab/tests) → Test Series page
-   (#brainlab/tests/<seriesId>) → dedicated full-screen Test Attempt page
-   (#brainlab/tests/<seriesId>/<n>).
+   ROOT CAUSE this rewrite fixes: v1 drew EVERY series from a shared
+   generic pool ("gsts": Assam GK/GK/English/Maths/Reasoning/Science) and
+   computed per-test size from pool arithmetic — so e.g. Assam VFA tests
+   contained random Maths/English/Reasoning questions, per-test counts were
+   invented (never the official 100), and no series followed its real
+   exam pattern.
 
-   ARCHITECTURE (mirrors the existing Exam Universe pattern — config as
-   data, deterministic generation, zero new engine):
-   • SERIES registry — like EXAM_HUB/ORGS: adding a series = registry
-     entry, not new engine code. Series definition, organization,
-     target count and pool mapping live HERE (config-as-code, same
-     pattern the platform already uses for exams and orgs).
-   • REAL TESTS ONLY (spec §6/§26): every test's questions are
-     deterministic seeded non-overlapping blocks taken from the REAL
-     verified question pool (STUDYRIA_QB + verified euLive imports).
-     Published test count = min(target, floor(pool / perTest)) computed
-     LIVE from actual question records — nothing is hardcoded, no
-     placeholder questions, no duplicated sets, no fake counters.
-     If a pool cannot support the target, the remainder is shown
-     honestly as Content Pending (Admin).
-   • Shared allocation groups: series that draw from the same real
-     pool get DISJOINT slices of ONE seeded shuffle → zero question
-     reuse within a pool group (spec §7/§20).
-   • Engine reuse (spec §10/§11): attempts run through the SAME
-     mock engine + dedicated test page (BrainLabTestPage) with a
-     distinct activity_type mode='test' — no second engine, no fake
-     success. Session recording / results / review / mistakes /
-     streaks all flow through the original _finishQuiz.
-   • Search / filters / sort are real client-side operations over
-     the registry + live pool metadata. No fabricated popularity data.
+   THE SYSTEM NOW (spec-compliant generation pipeline):
+   • BT.BLUEPRINTS — per-exam VERIFIED official configuration: subject
+     distribution (or officially-subject-only open pool), total questions,
+     duration, marks, negative marking, source. Nothing is invented: every
+     blueprint cites its authoritative source; exams whose pattern could
+     NOT be verified are bp:null → needs_verification → NEVER published,
+     shown only in Admin as "Blueprint verification required".
+   • Exam-scoped question pools: each series classifies the REAL dedup'd
+     bank (STUDYRIA_QB) through its blueprint's subject lists — one
+     question belongs to exactly ONE section of that exam (hard isolation;
+     no cross-subject or cross-section leakage inside a test).
+   • Generation: per-section deterministic seeded slices, DISJOINT across
+     tests of the same series (no question reuse while the pool allows),
+     published = min(target, floor(pool/required)) per section — computed
+     live. Insufficient pool → honestly fewer tests (Content Pending).
+   • §12F validation on EVERY test before it can open: exact per-section
+     counts, subject membership re-check, zero duplicate questions, exact
+     total. A test failing any check is not published (openTest refuses).
+   • Engine reuse (unchanged): same BrainLabTestPage + mock engine,
+     activity_type mode='test'; blueprint duration (e.g. VFA 120 min)
+     threads through to the attempt timer via durationMin.
 
-   ZERO changes to: existing BrainLab modules, mock tests, quizzes,
-   MCQs, PYQs, flashcards, current affairs, mistake book, arena,
-   translation system, auth, payment, PDF checkout. Additive only.
+   ZERO changes to: existing BrainLab modules, mock engine scoring,
+   quizzes, MCQs, PYQs, flashcards, current affairs, exam hub, mistake
+   book, arena, translation, auth, payment, PDF checkout. Additive only.
    ═══════════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
   var BT = window.BrainLabTests = { _q: '', _f: 'all', _sort: 'rec' };
 
   function B() { return window.BrainLab; }
-  function U() { return window.BrainLabUniverse || {}; }
   function TP() { return window.BrainLabTestPage || {}; }
   function esc(s) { var bl = B(); return bl && bl.escape ? bl.escape(s) : String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
   function n2(n) { return (n || 0).toLocaleString('en-IN'); }
 
-  /* ── deterministic seeded shuffle — identical algorithm to
+  /* deterministic seeded shuffle — identical algorithm to
      brainlab-exams.js seedShuffle (stable test sets across reloads) ── */
   function seedShuffle(arr, seedStr) {
     var h = 1779033703 ^ seedStr.length;
@@ -57,122 +56,262 @@
     return a;
   }
 
-  /* ═══════════════════ SERIES REGISTRY (config-as-code) ═══════════════════
-     org       — the real recruiting authority (never invented)
-     pool      — universe exam id the series honestly draws from
-                 ('own:<key>' → custom real subject pool, see SUBJECTS)
-     group     — shared real-pool allocation group → disjoint slices
-     target    — content target; published = min(target, floor(pool/perTest))
-     search    — extra real search terms (exam/organization keywords)
-     Do NOT raise a target above what the real pool can fill. */
-  BT.SUBJECTS = {
-    /* VFA (Veterinary Field Assistant, Govt of Assam) & MTS (Multi
-       Tasking Staff, Govt of Assam) written tests are HSLC-level
-       general-studies papers — Assam GK, GK, English, Elementary
-       Maths, Reasoning, General Science. Same real subject pool. */
-    gsts: ['Assam GK', 'General Knowledge', 'English', 'Mathematics', 'Reasoning', 'Science']
+  /* ═══════════════════ SUBJECT LIST CONSTANTS (bank q[7]/q[8] names) ═══════════════════
+     These are the EXACT subject/category/topic names used in
+     question-bank.js. A question enters a section only when q[7] or q[8]
+     matches the section's list — never inferred from question text. */
+  var MATH = ['Mathematics', 'Arithmetic', 'Algebra', 'Geometry', 'Number Theory', 'Percentage', 'Time and Distance', 'Simple Interest', 'Compound Interest', 'Profit and Loss', 'Ratio and Proportion', 'Average', 'Time and Work'];
+  var ENGLISH = ['English', 'Vocabulary', 'Spelling', 'Grammar'];
+  var REASONING = ['Reasoning', 'Series', 'Coding-Decoding', 'Classification', 'Number Logic', 'Calendar', 'Blood Relations', 'Direction Sense', 'Ranking'];
+  var GA = ['Assam GK', 'General Knowledge', 'World GK', 'Indian GK', 'Sports', 'Persons', 'Inventions', 'Important Days', 'Arts', 'Literature', 'Nature', 'Polity', 'Indian Polity', 'History', 'Indian History', 'World History', 'Geography', 'Indian Geography', 'World Geography', 'Economy', 'Indian Economy', 'World Economy', 'Environment', 'Climate Change', 'Ecology', 'Conservation', 'Pollution', 'Energy'];
+  var SCI = ['Biology', 'Chemistry', 'Physics', 'Astronomy'];
+  var EVS = ['Environment', 'Nature', 'Climate Change', 'Ecology', 'Conservation', 'Pollution', 'Energy', 'Science', 'Biology', 'Chemistry', 'Physics', 'Astronomy', 'Geography', 'Indian Geography', 'World Geography'];
+
+  function hasAny(list, q) { return list.indexOf(String(q[7] || '')) !== -1 || list.indexOf(String(q[8] || '')) !== -1; }
+
+  /* ═══════════════════ EXAM TEST BLUEPRINTS (verified sources only) ═══════════════════
+     dist: officially verified subject→question distribution. Each section:
+       { k: display name, n: questions per test, match(q): section scope }
+     open: official subjects WITHOUT an official per-subject count (APSC) —
+       balanced subject-scoped pool, never presented as official weightage.
+     durationMin/marks/neg/total — official values; durationConvention
+     flags a practice-convention duration (official duration unconfirmed).
+     source — the authoritative pattern source (spec §13).
+     A series with bp:null is UNVERIFIED → never published (spec §12C). */
+  BT.BLUEPRINTS = {
+    /* Assam Veterinary Field Assistant 2026 — official recruitment info:
+       100 MCQs / 100 marks / 120 min; Biology 40, Chemistry 20, Physics 20,
+       General Awareness 20. (Training curriculum ≠ written-test blueprint
+       — kept separate, spec §10.) */
+    vfa: {
+      cycle: 'VFA 2026', total: 100, durationMin: 120, marks: 100, neg: 0,
+      source: 'Official VFA 2026 recruitment information (assam.gov.in recruitment notice, verified Sep 2026)',
+      dist: [
+        { k: 'Biology', n: 40, match: function (q) { return String(q[7]) === 'Biology' || String(q[8]) === 'Biology'; } },
+        { k: 'Chemistry', n: 20, match: function (q) { return String(q[7]) === 'Chemistry' || String(q[8]) === 'Chemistry'; } },
+        { k: 'Physics', n: 20, match: function (q) { return String(q[7]) === 'Physics' || String(q[8]) === 'Physics'; } },
+        { k: 'General Awareness', n: 20, match: function (q) { return hasAny(GA, q); } }
+      ]
+    },
+    /* Assam Police Constable (AB/UB) — SLPRB official: written test 100 MCQs
+       / 50 marks (0.5 per question), OMR; sections per SLPRB pattern:
+       Elementary Arithmetic 20, General English 20, Logical Reasoning 20,
+       Assam History-Geography-Polity-Economy 20, GK & Awareness 20. */
+    'constable-abub': {
+      cycle: 'Constable AB/UB', total: 100, durationMin: 100, durationConvention: true, marks: 50, neg: 0,
+      source: 'SLPRB Assam Constable (AB/UB) official advertisement + pattern (100 Q / 50 marks); official duration not stated in sources — practice convention 1 min/question',
+      dist: [
+        { k: 'Elementary Arithmetic', n: 20, match: function (q) { return hasAny(MATH, q); } },
+        { k: 'General English', n: 20, match: function (q) { return hasAny(ENGLISH, q); } },
+        { k: 'Logical Reasoning', n: 20, match: function (q) { return hasAny(REASONING, q); } },
+        { k: 'Assam History, Geography, Polity & Economy', n: 20, match: function (q) { var s = String(q[7]), t = String(q[8]); return s === 'Assam GK' && ['Assam History', 'Assam Geography', 'Assam Polity', 'Assam Economy'].indexOf(t) !== -1; } },
+        { k: 'General Knowledge & Awareness', n: 20, match: function (q) { return hasAny(GA, q); } }
+      ]
+    },
+    /* APSC CCE Prelims — General Studies Paper I (official apsc.nic.in):
+       100 objective questions, 200 marks, 2 hours, negative 1/4th of the
+       mark per question; GS subjects incl. 30–35% Assam-related. No
+       official per-subject count → open subject-scoped pool (spec §12E). */
+    'apsc-cce': {
+      cycle: 'CCE Prelims · GS Paper I', total: 100, durationMin: 120, marks: 200, neg: 0.5,
+      source: 'APSC CCE Prelims General Studies Paper I — official apsc.nic.in (100 Q, 200 marks, 2 hrs, negative 1/4th)',
+      open: function (q) { return hasAny(GA, q) || hasAny(SCI, q) || String(q[7]) === 'Science' || String(q[7]) === 'Computer'; }
+    },
+    /* Assam TET (Lower Primary) — official pattern: 150 MCQs / 150 marks /
+       150 min, five sections × 30: CDP, Language I, Language II (English),
+       Mathematics, EVS. No negative marking. */
+    'assam-tet': {
+      cycle: 'Assam TET (LP)', total: 150, durationMin: 150, marks: 150, neg: 0,
+      source: 'Assam TET official pattern — 150 Q, 150 marks, 150 min, five sections × 30 (LP paper)',
+      dist: [
+        { k: 'Child Development & Pedagogy', n: 30, match: function (q) { return false; } },
+        { k: 'Language I (Mother Tongue)', n: 30, match: function (q) { return false; } },
+        { k: 'Language II (English)', n: 30, match: function (q) { return hasAny(ENGLISH, q); } },
+        { k: 'Mathematics', n: 30, match: function (q) { return hasAny(MATH, q); } },
+        { k: 'Environmental Studies', n: 30, match: function (q) { return hasAny(EVS, q); } }
+      ]
+    },
+    /* SSC GD Constable CBE — official notification: 80 Q / 160 marks /
+       60 min, four sections × 20 Q × 2 marks (Reasoning, GK & General
+       Awareness, Elementary Mathematics, English); negative 0.25. */
+    'ssc-gd': {
+      cycle: 'SSC GD CBE', total: 80, durationMin: 60, marks: 160, neg: 0.25,
+      source: 'SSC GD Constable official notification — 80 Q, 160 marks, 60 min, 4 sections × 20, negative 0.25',
+      dist: [
+        { k: 'General Intelligence & Reasoning', n: 20, match: function (q) { return hasAny(REASONING, q); } },
+        { k: 'General Knowledge & General Awareness', n: 20, match: function (q) { return hasAny(GA, q); } },
+        { k: 'Elementary Mathematics', n: 20, match: function (q) { return hasAny(MATH, q); } },
+        { k: 'English', n: 20, match: function (q) { return hasAny(ENGLISH, q); } }
+      ]
+    }
   };
 
+  /* ═══════════════════ SERIES REGISTRY (config-as-code) ═══════════════════
+     bp — verified blueprint key (BT.BLUEPRINTS), or null → the exam's
+     real pattern could NOT be verified → needs_verification → hidden from
+     the app catalog, visible in Admin only (spec §12C). */
   BT.SERIES = [
-    { id: 'vfa',            name: 'Assam VFA Exam',           org: 'Government of Assam',                pool: 'own:gsts', group: 'gsts',  target: 21, icon: '🐄', search: 'vfa veterinary field assistant assam', desc: 'Prepare for the Assam VFA (Veterinary Field Assistant) recruitment exam.' },
-    { id: 'constable-abub', name: 'Constable (AB/UB)',        org: 'Assam Police',                       pool: 'police',   group: 'police', target: 12, icon: '👮', search: 'constable ab ub police assam', desc: 'Assam Police Constable (AB/UB) written-test practice series.' },
-    { id: 'sub-inspector',  name: 'Sub Inspector',           org: 'Assam Police',                       pool: 'police',   group: 'police', target: 12, icon: '🚔', search: 'si sub inspector police assam', desc: 'Assam Police Sub Inspector written-test practice series.' },
-    { id: 'mts',            name: 'Multi Tasking Staff',     org: 'Government of Assam',                pool: 'own:gsts', group: 'gsts',  target: 16, icon: '🛠️', search: 'mts multi tasking staff assam govt', desc: 'Multi Tasking Staff (MTS) written-test practice series.' },
-    { id: 'adre-g3',        name: 'ADRE Grade III',          org: 'Assam Direct Recruitment',           pool: 'adre',     group: 'adre',  target: 10, icon: '🏛️', search: 'adre grade 3 iii slrc', desc: 'ADRE Grade III recruitment exam test series.' },
-    { id: 'adre-g4',        name: 'ADRE Grade IV',           org: 'Assam Direct Recruitment',           pool: 'adre4',    group: 'adre4', target: 10, icon: '🏛️', search: 'adre grade 4 iv slrc', desc: 'ADRE Grade IV recruitment exam test series.' },
-    { id: 'adre-g3-driver', name: 'ADRE Grade III (Driver)', org: 'Assam Direct Recruitment',           pool: 'adre',     group: 'adre',  target: 10, icon: '🚗', search: 'adre driver grade 3 iii', desc: 'ADRE Grade III (Driver) posts practice series.' },
-    { id: 'adre-g4-viii',   name: 'ADRE Grade IV (Class VIII)', org: 'Assam Direct Recruitment',         pool: 'adre4',    group: 'adre4', target: 10, icon: '📗', search: 'adre grade 4 class 8 viii', desc: 'ADRE Grade IV (Class VIII qualification) posts practice series.' },
-    { id: 'apsc-cce',       name: 'APSC CCE Prelims',        org: 'APSC',                               pool: 'apsc',     group: 'apsc',  target: 10, icon: '🎓', search: 'apsc cce prelims civil service assam', desc: 'APSC Combined Competitive (Prelims) test series.' },
-    { id: 'assam-tet',      name: 'Assam TET / GT-PGT',      org: 'Assam TET Authority',                pool: 'tet',      group: 'tet',   target: 10, icon: '🏫', search: 'tet gt pgt teacher assam', desc: 'Assam TET / GT-PGT eligibility test series.' },
-    { id: 'dhs',            name: 'DHS Assam',               org: 'Directorate of Health Services, Assam', pool: 'dhs',    group: 'dhs',   target: 10, icon: '🏥', search: 'dhs health services assam', desc: 'DHS Assam recruitment exam test series.' },
-    { id: 'ssc-gd',         name: 'SSC GD',                  org: 'Staff Selection Commission',         pool: 'ssc',      group: 'ssc',   target: 10, icon: '🛡️', search: 'ssc gd general duty constable', desc: 'SSC GD (General Duty) test series.' }
+    { id: 'vfa',            name: 'Assam VFA Exam',           org: 'Government of Assam',                      bp: 'vfa',            target: 20, icon: '🐄', search: 'vfa veterinary field assistant assam', desc: 'Assam VFA (Veterinary Field Assistant) recruitment exam — official pattern: Biology 40 · Chemistry 20 · Physics 20 · General Awareness 20.' },
+    { id: 'constable-abub', name: 'Constable (AB/UB)',        org: 'Assam Police',                             bp: 'constable-abub', target: 12, icon: '👮', search: 'constable ab ub police assam', desc: 'Assam Police Constable (AB/UB) written-test series — SLPRB pattern: 100 Q · Arithmetic, English, Reasoning, Assam HGPE, GK.' },
+    { id: 'apsc-cce',       name: 'APSC CCE Prelims',        org: 'APSC',                                     bp: 'apsc-cce',      target: 10, icon: '🎓', search: 'apsc cce prelims civil service assam', desc: 'APSC Combined Competitive (Prelims) General Studies Paper I — 100 Q · 120 min.' },
+    { id: 'ssc-gd',         name: 'SSC GD',                  org: 'Staff Selection Commission',                bp: 'ssc-gd',        target: 10, icon: '🛡️', search: 'ssc gd general duty constable', desc: 'SSC GD (General Duty) CBE — official pattern: 80 Q · 60 min · 4 sections × 20.' },
+    { id: 'assam-tet',      name: 'Assam TET (LP)',          org: 'Assam TET Authority',                       bp: 'assam-tet',     target: 10, icon: '🏫', search: 'tet lp lower primary teacher assam', desc: 'Assam TET Lower Primary — official pattern: 150 Q · 150 min · five sections × 30.' },
+    /* ── needs_verification — real official pattern not yet verified.
+       NEVER published as real-pattern tests until the blueprint above is
+       verified (spec §12C/§13). Admin shows "Blueprint verification
+       required". ── */
+    { id: 'sub-inspector',  name: 'Sub Inspector',          org: 'Assam Police',                             bp: null, target: 12, icon: '🚔', search: 'si sub inspector police assam', desc: 'Assam Police Sub Inspector written-test series.' },
+    { id: 'mts',            name: 'Multi Tasking Staff',     org: 'Government of Assam',                      bp: null, target: 16, icon: '🛠️', search: 'mts multi tasking staff assam govt', desc: 'Multi Tasking Staff (MTS) written-test practice series.' },
+    { id: 'adre-g3',        name: 'ADRE Grade III',         org: 'Assam Direct Recruitment',                  bp: null, target: 10, icon: '🏛️', search: 'adre grade 3 iii slrc', desc: 'ADRE Grade III recruitment exam test series.' },
+    { id: 'adre-g4',        name: 'ADRE Grade IV',          org: 'Assam Direct Recruitment',                  bp: null, target: 10, icon: '🏛️', search: 'adre grade 4 iv slrc', desc: 'ADRE Grade IV recruitment exam test series.' },
+    { id: 'adre-g3-driver', name: 'ADRE Grade III (Driver)', org: 'Assam Direct Recruitment',                bp: null, target: 10, icon: '🚗', search: 'adre driver grade 3 iii', desc: 'ADRE Grade III (Driver) posts practice series.' },
+    { id: 'adre-g4-viii',   name: 'ADRE Grade IV (Class VIII)', org: 'Assam Direct Recruitment',              bp: null, target: 10, icon: '📗', search: 'adre grade 4 class 8 viii', desc: 'ADRE Grade IV (Class VIII qualification) posts practice series.' },
+    { id: 'dhs',            name: 'DHS Assam',              org: 'Directorate of Health Services, Assam',     bp: null, target: 10, icon: '🏥', search: 'dhs health services assam', desc: 'DHS Assam recruitment exam test series.' }
   ];
 
   BT.find = function (sid) { return BT.SERIES.filter(function (s) { return s.id === sid; })[0] || null; };
 
-  /* ── REAL POOLS — identical matching rules to the Exam Universe ── */
-  BT._groupPoolCache = {};
-  function groupPoolRaw(group) {
-    if (BT._groupPoolCache[group]) return BT._groupPoolCache[group];
-    var pool = null;
-    var g0 = (BT.SERIES.filter(function (s) { return s.group === group; })[0]) || null;
-    if (!g0) return [];
-    if (g0.pool.indexOf('own:') === 0) {
-      /* custom subject pool — same matching logic as U.pool on a pseudo exam */
-      var u = U();
-      var pseudo = { id: 'bl-tests-' + group, subjects: BT.SUBJECTS[g0.pool.slice(4)] || [] };
-      if (u.pool) { try { pool = u.pool(pseudo); } catch (e) { pool = null; } }
-      if (!pool) { pool = localPool(pseudo.subjects, 'GENERAL'); }
-    } else {
-      var u2 = U(), ex = u2.findExam ? u2.findExam(g0.pool) : null;
-      if (ex && u2.pool) { try { pool = u2.pool(ex); } catch (e) { pool = null; } }
-      if (!pool) {
-        /* fallback: universe not loaded yet — same real subjects from the
-           EXAM_HUB registry, same matching rules, still REAL data only */
-        var hub = ((window.BrainLabV7 || {}).EXAM_HUB || []).filter(function (h) { return h.id === g0.pool; })[0] || null;
-        var keyMap = { adre: 'ADRE', adre4: 'ADRE', apsc: 'APSC', police: 'ASSAM POLICE', tet: 'ASSAM TET', ssc: 'SSC', dhs: 'GENERAL', other: 'GENERAL' };
-        if (hub) pool = localPool(hub.subjects, keyMap[g0.pool] || 'GENERAL');
-      }
-    }
-    pool = pool || [];
-    BT._groupPoolCache[group] = pool;
-    return pool;
-  }
-  /* local fallback pool builder (kept byte-compatible with U.pool rules) */
-  function localPool(subjects, tagKey) {
-    var QB = window.STUDYRIA_QB || [], seen = {}, out = [];
-    QB.forEach(function (q) {
+  /* ═══════════════════ EXAM-SCOPED POOLS (hard subject isolation) ═══════════════════
+     One pass over the REAL dedup'd bank; each question is classified into
+     exactly ONE blueprint section (first matching section wins) → a
+     question can never appear in two sections of the same exam, and can
+     never enter a section whose subject it does not belong to. */
+  BT._poolCache = {};
+  function seriesPools(sid) {
+    if (BT._poolCache[sid]) return BT._poolCache[sid];
+    var s = BT.find(sid);
+    var out = { sections: [], open: null, total: 0 };
+    if (!s || !s.bp) { BT._poolCache[sid] = out; return out; }
+    var bp = BT.BLUEPRINTS[s.bp];
+    var seen = {}, dedup = [];
+    (window.STUDYRIA_QB || []).forEach(function (q) {
       var k = String(String(q[0]).slice(0, 60) + q[5]);
-      if (seen[k]) return;
-      var tags = String(q[10] || '').toUpperCase();
-      if (tags.indexOf(tagKey) !== -1 || subjects.indexOf(q[7]) !== -1 || subjects.indexOf(q[8]) !== -1) { seen[k] = 1; out.push(q); }
+      if (!seen[k]) { seen[k] = 1; dedup.push(q); }
     });
+    if (bp.dist) {
+      bp.dist.forEach(function (sec) { out.sections.push({ k: sec.k, n: sec.n, match: sec.match, qs: [] }); });
+      dedup.forEach(function (q) {
+        for (var i = 0; i < out.sections.length; i++) {
+          try { if (out.sections[i].match(q)) { out.sections[i].qs.push(q); return; } } catch (e) {}
+        }
+      });
+      out.sections.forEach(function (sec) { out.total += sec.qs.length; });
+    } else {
+      var pool = [];
+      dedup.forEach(function (q) { try { if (bp.open(q)) pool.push(q); } catch (e) {} });
+      out.open = pool; out.total = pool.length;
+    }
+    BT._poolCache[sid] = out;
     return out;
   }
 
   /* ── per-test size + published count — ALWAYS computed, never hardcoded ── */
   BT.info = function (sid) {
     var s = BT.find(sid); if (!s) return null;
-    var group = groupPoolRaw(s.group);
-    var per = Math.min(100, Math.max(10, Math.floor(group.length / s.target)));
-    var published = group.length < 10 ? 0 : Math.min(s.target, Math.floor(group.length / per));
+    if (!s.bp) {
+      return { s: s, poolCount: 0, perTest: 0, published: 0, mcqs: 0, pending: s.target,
+        minPerTest: 0, durationMin: 0, needsVerification: true,
+        subjects: [], status: 'needs_verification' };
+    }
+    var bp = BT.BLUEPRINTS[s.bp], p = seriesPools(sid);
+    var published = s.target, cap = 0;
+    if (bp.dist) {
+      bp.dist.forEach(function (sec, i) {
+        var pool = p.sections[i].qs.length;
+        cap = i === 0 ? Math.floor(pool / sec.n) : Math.min(cap, Math.floor(pool / sec.n));
+      });
+      published = cap < 1 ? 0 : Math.min(s.target, cap);
+    } else {
+      cap = Math.floor((p.open || []).length / bp.total);
+      published = cap < 1 ? 0 : Math.min(s.target, cap);
+    }
+    var subjects = (bp.dist || [{ k: 'General Studies (official subjects)', n: bp.total, qs: p.open || [] }]).map(function (sec, i) {
+      var pool = bp.dist ? p.sections[i].qs.length : (p.open || []).length;
+      return { name: sec.k, required: sec.n, pool: pool, tests: Math.floor(pool / sec.n) };
+    });
     return {
-      s: s, poolCount: group.length, perTest: per, published: published,
-      mcqs: published * per, pending: Math.max(0, s.target - published),
-      minPerTest: per /* 1 min/question — engine convention */
+      s: s, poolCount: p.total, perTest: bp.total, published: published,
+      mcqs: published * bp.total, pending: Math.max(0, s.target - published),
+      minPerTest: bp.durationMin, durationMin: bp.durationMin,
+      durationConvention: !!bp.durationConvention, marks: bp.marks, neg: bp.neg,
+      cycle: bp.cycle, source: bp.source,
+      subjects: subjects,
+      status: published >= s.target ? 'published' : (published > 0 ? 'partial' : 'pending')
     };
   };
 
-  /* ── DISJOINT allocation inside a pool group (spec §7/§20) ──
-     One seeded shuffle per group; series take consecutive slices in
-     registry order → a real question is never reused across tests of
-     the same pool group. */
+  /* ── DISJOINT allocation (spec §7/§17): one seeded shuffle per series
+     section; test n takes slice [(n-1)*n … n*n) → a question is never
+     reused across tests of the same series while the pool allows. ── */
   BT._shuffled = {};
-  function groupShuffled(group) {
-    if (!BT._shuffled[group]) BT._shuffled[group] = seedShuffle(groupPoolRaw(group), 'testseries:' + group);
-    return BT._shuffled[group];
-  }
-  function groupOffset(sid) {
-    var s = BT.find(sid); if (!s) return 0;
-    var off = 0;
-    /* registry order: every series BEFORE this one in the array */
-    for (var i = 0; i < BT.SERIES.length; i++) {
-      var x = BT.SERIES[i];
-      if (x.id === s.id) break;
-      if (x.group === s.group) { var inf = BT.info(x.id); off += inf ? (inf.published * inf.perTest) : 0; }
+  function sectionShuffled(sid, k) {
+    var key = sid + '::' + k;
+    if (!BT._shuffled[key]) {
+      var p = seriesPools(sid), sec = p.sections.filter(function (x) { return x.k === k; })[0];
+      BT._shuffled[key] = seedShuffle(sec ? sec.qs : [], 'tsbp2:' + sid + ':' + k);
     }
-    return off;
+    return BT._shuffled[key];
+  }
+  function openShuffled(sid) {
+    if (!BT._shuffled[sid]) BT._shuffled[sid] = seedShuffle(seriesPools(sid).open || [], 'tsbp2:' + sid + ':open');
+    return BT._shuffled[sid];
   }
 
-  /* deterministic question set for series `sid`, test number `n` (1-based) */
+  /* ── §12F/§15 HARD VALIDATION: exact section counts, subject membership,
+     zero duplicates, exact total. Fail → the test does not exist. ── */
+  function validateTest(sid, qs) {
+    var s = BT.find(sid), bp = s && s.bp ? BT.BLUEPRINTS[s.bp] : null;
+    if (!bp || !qs || qs.length !== bp.total) return false;
+    if (bp.dist) {
+      var counts = {}, seen = {};
+      for (var i = 0; i < qs.length; i++) {
+        var q = qs[i], key = String(String(q[0]).slice(0, 60) + q[5]);
+        if (seen[key]) return false; /* duplicate question inside test */
+        seen[key] = 1;
+        var sec = bp.dist.filter(function (x) { try { return x.match(q); } catch (e) { return false; } })[0];
+        if (!sec) return false; /* unrelated subject/question */
+        counts[sec.k] = (counts[sec.k] || 0) + 1;
+      }
+      for (var j = 0; j < bp.dist.length; j++) if (counts[bp.dist[j].k] !== bp.dist[j].n) return false;
+    } else {
+      var seen2 = {};
+      for (var m = 0; m < qs.length; m++) {
+        var q2 = qs[m], key2 = String(String(q2[0]).slice(0, 60) + q2[5]);
+        if (seen2[key2]) return false;
+        seen2[key2] = 1;
+        var ok = false;
+        try { ok = bp.open(q2); } catch (e) { ok = false; }
+        if (!ok) return false;
+      }
+    }
+    return true;
+  }
+
+  /* deterministic question set for series `sid`, test number `n` (1-based).
+     Interleaves sections round-robin so the paper mixes subjects evenly. */
   BT.test = function (sid, n) {
-    var i = BT.info(sid); if (!i || i.published < 1) return null;
+    var i = BT.info(sid);
+    if (!i || !i.s.bp || i.published < 1) return null;
     n = parseInt(n, 10) || 1;
     if (n < 1 || n > i.published) return null;
-    var arr = groupShuffled(i.s.group);
-    var off = groupOffset(sid) + (n - 1) * i.perTest;
-    var qs = arr.slice(off, off + i.perTest);
-    if (qs.length < i.perTest) return null; /* honest: incomplete → not a test */
+    var bp = BT.BLUEPRINTS[i.s.bp], qs = [];
+    if (bp.dist) {
+      var blocks = bp.dist.map(function (sec) {
+        var arr = sectionShuffled(sid, sec.k);
+        return arr.slice((n - 1) * sec.n, n * sec.n);
+      });
+      if (blocks.some(function (b) { return b.length < 1; })) return null;
+      var more = true;
+      while (more) {
+        more = false;
+        for (var b = 0; b < blocks.length; b++) if (blocks[b].length) { qs.push(blocks[b].shift()); more = true; }
+      }
+    } else {
+      var arr2 = openShuffled(sid);
+      qs = arr2.slice((n - 1) * bp.total, n * bp.total);
+    }
+    if (qs.length !== bp.total) return null;
+    if (!validateTest(sid, qs)) return null; /* §12F: invalid → not a test */
     return { n: n, qs: qs };
   };
 
@@ -194,7 +333,7 @@
 
     var h = '<div class="blt-hero">'
       + '<div class="blt-hero-title">📝 Tests</div>'
-      + '<div class="blt-hero-sub">Practice real exam-pattern test series for Assam competitive exams.</div>'
+      + '<div class="blt-hero-sub">Real exam-pattern test series — verified official blueprints only. Every test follows its exam\'s actual subjects, distribution and duration.</div>'
       + '<div class="blt-stats">'
       + '<div class="blt-stat"><span class="blt-stat-n">' + nSeries + '</span><span class="blt-stat-l">Test Series</span></div>'
       + '<div class="blt-stat"><span class="blt-stat-n">' + n2(nTests) + '</span><span class="blt-stat-l">Tests</span></div>'
@@ -217,11 +356,12 @@
       return '<button class="blt-chip' + on + '" onclick="BrainLabTests.setFilter(\'' + f.id + '\')">' + f.label + '</button>';
     }).join('') + '</div>';
 
-    /* series cards */
+    /* series cards — verified blueprints with ≥1 publishable test only
+       (needs_verification series are never shown in the app, spec §12C) */
     var rows = BT._visible();
     h += '<div class="blt-grid">';
     if (!rows.length) {
-      h += '<div class="blt-empty">No test series match "' + esc(BT._q) + '". Try another exam — e.g. VFA, Police, ADRE, APSC, SSC.</div>';
+      h += '<div class="blt-empty">No test series match "' + esc(BT._q) + '". Try another exam — e.g. VFA, Police, APSC, SSC.</div>';
     }
     rows.forEach(function (i) {
       var s = i.s;
@@ -241,10 +381,8 @@
     { id: 'all', label: 'All', org: null },
     { id: 'assam-govt', label: 'Assam Govt', org: 'Government of Assam' },
     { id: 'police', label: 'Assam Police', org: 'Assam Police' },
-    { id: 'adre', label: 'ADRE', org: 'Assam Direct Recruitment' },
     { id: 'apsc', label: 'APSC', org: 'APSC' },
     { id: 'tet', label: 'TET', org: 'Assam TET Authority' },
-    { id: 'dhs', label: 'DHS', org: 'Directorate of Health Services, Assam' },
     { id: 'ssc', label: 'SSC', org: 'Staff Selection Commission' }
   ];
 
@@ -272,6 +410,30 @@
   BT.setFilter = function (f) { BT._f = f; BT.renderCatalog(); };
   BT.setSort = function (s) { BT._sort = s; BT.renderCatalog(); };
 
+  /* ── official exam-pattern block for the series page (spec §22) ── */
+  function patternHTML(i) {
+    var s = i.s, bp = BT.BLUEPRINTS[s.bp];
+    if (!bp) return '';
+    var h = '<div class="blt-pattern">'
+      + '<div class="blt-pattern-title">📋 Exam Pattern — ' + esc(bp.cycle) + '</div>'
+      + '<div class="blt-pattern-grid">';
+    if (bp.dist) {
+      bp.dist.forEach(function (sec) {
+        h += '<div class="blt-pattern-row"><span class="blt-pattern-subj">' + esc(sec.k) + '</span><span class="blt-pattern-n">' + sec.n + ' Q</span></div>';
+      });
+    } else {
+      h += '<div class="blt-pattern-row"><span class="blt-pattern-subj">General Studies — official subjects (History · Polity · Geography · Economy · Science &amp; Tech · Environment · Assam ~30–35%)</span><span class="blt-pattern-n">' + bp.total + ' Q</span></div>';
+    }
+    h += '</div>'
+      + '<div class="blt-pattern-meta"><b>' + bp.total + ' Questions</b> · <b>' + bp.durationMin + ' Minutes</b> · <b>' + bp.marks + ' Marks</b>'
+      + (bp.neg ? ' · Negative marking: <b>−' + bp.neg + '</b>' : '')
+      + (i.durationConvention ? ' · <span class="blt-pattern-note">duration = practice convention (official duration not published)</span>' : '')
+      + '</div>'
+      + '<div class="blt-pattern-src">Pattern source: ' + esc(bp.source) + '</div>'
+      + '</div>';
+    return h;
+  }
+
   /* ═══════════════════ TEST SERIES PAGE (#brainlab/tests/<sid>) ═══════════════════ */
   BT.openSeries = function (sid, push) {
     if (push !== false) { location.hash = '#brainlab/tests/' + sid; return; } /* hashchange → syncFromHash → openSeries(sid,false) */
@@ -291,9 +453,11 @@
       + '<div class="blt-stats blt-stats-series">'
       + '<div class="blt-stat"><span class="blt-stat-n">' + i.published + '</span><span class="blt-stat-l">Tests</span></div>'
       + '<div class="blt-stat"><span class="blt-stat-n">' + n2(i.mcqs) + '</span><span class="blt-stat-l">Questions</span></div>'
-      + '<div class="blt-stat"><span class="blt-stat-n">' + i.minPerTest + '</span><span class="blt-stat-l">Min/Test</span></div>'
+      + '<div class="blt-stat"><span class="blt-stat-n">' + i.durationMin + '</span><span class="blt-stat-l">Min/Test</span></div>'
       + '<div class="blt-stat"><span class="blt-stat-n blt-stat-lang">অসমীয়া | English</span><span class="blt-stat-l">Language</span></div>'
       + '</div></div>';
+
+    h += patternHTML(i);
 
     h += '<div class="blt-choose">CHOOSE A TEST</div><div class="blt-tests">';
     for (var n = 1; n <= i.published; n++) {
@@ -302,12 +466,16 @@
       h += '<button class="blt-test' + (resumable ? ' has-resume' : '') + '" onclick="BrainLabTests.openTest(\'' + sid + '\',' + n + ')">'
         + '<span class="blt-test-no">' + n + '</span>'
         + '<span class="blt-test-main"><span class="blt-test-title">' + esc(s.name) + ' — Test ' + n + '</span>'
-        + '<span class="blt-test-meta">' + i.minPerTest + ' Minutes · ' + i.perTest + ' MCQs</span></span>'
+        + '<span class="blt-test-meta">' + i.durationMin + ' Minutes · ' + i.perTest + ' MCQs · ' + i.marks + ' Marks</span></span>'
         + (resumable ? '<span class="blt-test-resume">Resume</span>' : '<span class="blt-test-go">Start ›</span>')
         + '</button>';
     }
     if (i.pending > 0) {
-      h += '<div class="blt-pending-note">' + i.pending + ' more test' + (i.pending > 1 ? 's are' : ' is') + ' coming — more verified questions are being added to this series.</div>';
+      var shortfall = 0;
+      if (i.s.bp && BT.BLUEPRINTS[i.s.bp].dist) {
+        BT.BLUEPRINTS[i.s.bp].dist.forEach(function (sec, ix) { shortfall = Math.max(shortfall, sec.n * s.target - (i.subjects[ix] ? i.subjects[ix].pool : 0)); });
+      }
+      h += '<div class="blt-pending-note">' + i.pending + ' more test' + (i.pending > 1 ? 's are' : ' is') + ' coming — more verified questions are being added to this series' + (shortfall > 0 ? ' (≈' + n2(shortfall) + ' more approved questions needed across sections).' : '.') + '</div>';
     }
     h += '</div>';
     body.innerHTML = h;
@@ -316,7 +484,8 @@
 
   /* ═══════════════════ TEST ATTEMPT (#brainlab/tests/<sid>/<n>) ═══════════════════
      Opens the DEDICATED full-screen attempt page — same engine + page
-     system as exam mocks (BrainLabTestPage), activity_type='test'. */
+     system as exam mocks (BrainLabTestPage), activity_type='test'. The
+     blueprint duration threads to the attempt timer via durationMin. */
   BT.openTest = function (sid, n, push) {
     if (push !== false) { location.hash = '#brainlab/tests/' + sid + '/' + n; return; }
     var i = BT.info(sid), t = i ? BT.test(sid, n) : null;
@@ -330,32 +499,51 @@
     tp.openCustom({
       exam: sid, n: t.n,
       name: i.s.name,
-      qs: t.qs
+      qs: t.qs,
+      durationMin: i.durationMin
     });
   };
 
-  /* public API for Admin (real data only) */
+  /* public API for Admin (real data only — spec §27 pool-health report) */
   BT.adminReport = function () {
     return BT.SERIES.map(function (s) {
       var i = BT.info(s.id);
+      if (i.needsVerification) {
+        return { id: s.id, name: s.name, org: s.org, pool: 0, perTest: 0, published: 0,
+          target: s.target, mcqs: 0, pending: s.target, subjects: [],
+          status: 'Needs Verification', note: 'Blueprint verification required — official exam pattern not yet verified; series is not published.' };
+      }
       return {
         id: s.id, name: s.name, org: s.org, pool: i.poolCount,
         perTest: i.perTest, published: i.published, target: s.target,
-        mcqs: i.mcqs, pending: i.pending, status: i.published >= s.target ? 'Published' : (i.published > 0 ? 'Partially Published' : 'Content Pending')
+        mcqs: i.mcqs, pending: i.pending,
+        durationMin: i.durationMin, durationConvention: i.durationConvention,
+        marks: i.marks, neg: i.neg, cycle: i.cycle, source: i.source,
+        subjects: i.subjects.map(function (x) {
+          return { name: x.name, required: x.required, pool: x.pool,
+            tests: Math.min(x.tests, i.published > 0 ? i.published : 0),
+            unused: Math.max(0, x.pool - x.required * i.published) };
+        }),
+        status: i.published >= s.target ? 'Published' : (i.published > 0 ? 'Partially Published' : 'Content Pending'),
+        note: i.published < s.target
+          ? 'Section shortfall limits publication — see per-subject pool below.'
+          : ''
       };
     });
   };
 
-  /* warm euLive imports once, then re-render (existing platform pattern) */
+  /* pools may grow as imports warm — drop caches on demand (kept: same
+     platform pattern as v1; euLive import warming preserved) */
+  BT.resetPools = function () { BT._poolCache = {}; BT._shuffled = {}; };
   var impWarm = false;
   BT.boot = function () {
     if (impWarm) return;
     impWarm = true;
-    var u = U();
-    if (u && u.fetchImported) {
+    var u = window.BrainLabUniverse || {};
+    if (u.fetchImported) {
       try {
         u.fetchImported(function () {
-          BT._groupPoolCache = {}; BT._shuffled = {}; /* pools may have grown */
+          BT.resetPools();
           var w = document.getElementById('blv8-tests');
           if (w && w.classList.contains('on')) BT.renderCatalog();
         });

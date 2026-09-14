@@ -84,7 +84,7 @@
       + '<button class="bl-tp-back" id="bl-tp-back" aria-label="Exit test">←</button>'
       + '<div class="bl-tp-twrap">'
       + '<div class="bl-tp-title">' + esc((bl._currentQuiz && bl._currentQuiz.title) || 'Mock Test') + '</div>'
-      + '<div class="bl-tp-sub">' + esc(e.name) + ' · ' + m.qs.length + ' MCQs · ' + m.qs.length + ' min</div>'
+      + '<div class="bl-tp-sub">' + esc(e.name) + ' · ' + m.qs.length + ' MCQs · ' + (m.durationMin || m.qs.length) + ' min</div>'
       + '</div>'
       + '<div class="bl-tp-lang">'
       + '<button id="bl-tp-en" class="bl-tp-lbtn' + (bl._lang === 'as' ? '' : ' on') + '" onclick="BrainLabTestPage.setLang(\'en\')">EN</button>'
@@ -239,12 +239,13 @@
         title: cfg.name + ' — Test ' + cfg.n,
         questions: cfg.qs.length,
         exam: cfg.name,
-        pool: cfg.qs
+        pool: cfg.qs,
+        durationMin: cfg.durationMin
       });
     } finally { TP._fixedOrder = false; TP._fromTP = false; }
     var M = window.BrainLabMock;
     if (!M || !M.active) { TP.active = false; return; }
-    TP.mount({ name: cfg.name }, { qs: cfg.qs });
+    TP.mount({ name: cfg.name }, { qs: cfg.qs, durationMin: cfg.durationMin });
     TP.active = true;
     /* resume a saved attempt for THIS test (refresh/back-button path) */
     var sv = TP.saved(cfg.exam, cfg.n);
@@ -411,4 +412,21 @@
     setTimeout(function () { try { TP._bootResume(); } catch (e) { } }, 1500);
   }
   boot();
+
+  /* ── one-time clear of stale test-attempt resume states (blueprint v2,
+     Sep 14 2026: series composition changed; a saved mid-attempt would
+     resume with misaligned answers). Finished-attempt history (sessions)
+     is stored separately and is preserved. ── */
+  try {
+    if (localStorage.getItem('bl_tp_bpver') !== '2') {
+      var rm = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf('bl_tp_') === 0 && /^bl_tp_[a-z0-9-]+_\d+$/.test(k)) rm.push(k);
+      }
+      rm.forEach(function (k) { localStorage.removeItem(k); });
+      localStorage.setItem('bl_tp_bpver', '2');
+    }
+  } catch (e) { }
+
 })();
