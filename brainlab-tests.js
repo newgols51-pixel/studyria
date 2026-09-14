@@ -754,19 +754,42 @@
       }
       done++; fin();
     }).catch(function () { done++; fin(); });
-    /* practice approvals — site_config (existing table, no migration needed) */
+    /* practice approvals — site_config (existing table, no migration needed).
+       ANON FALLBACK (2026-09-14): site_config has no public SELECT policy in
+       production yet (one-time read-policy SQL not run), so anonymous
+       students read zero rows and approvals would silently vanish for the
+       exact audience they exist for. Until that SQL runs, approvals are ALSO
+       mirrored in the version-controlled public file /brainlab-approvals.json
+       (synced from site_config by the agent on owner approve/revoke). If
+       site_config returns rows it still WINS; the mirror is only the
+       fallback. Fail-closed either way: no approval anywhere = locked. */
+    function approvalsFinish(map, src) {
+      BT.APPROVALS.map = (map && typeof map === 'object') ? map : {};
+      BT.APPROVALS.source = src || 'none';
+      BT.APPROVALS.loaded = true;
+      done++; fin();
+    }
+    function approvalsFromMirror() {
+      try {
+        fetch('/brainlab-approvals.json?v=' + Date.now(), { cache: 'no-store' })
+          .then(function (fr) { return fr.ok ? fr.json() : null; })
+          .then(function (j) {
+            approvalsFinish((j && j.approvals) || {}, j ? 'mirror' : 'none');
+          })
+          .catch(function () { approvalsFinish({}, 'none'); });
+      } catch (e) { approvalsFinish({}, 'none'); }
+    }
     sb.from('site_config').select('key,value').eq('key', 'brainlab_practice_approvals').maybeSingle().then(function (r) {
       try {
         var row = r && r.data;
         if (row && row.value) {
           var parsed = (typeof row.value === 'string') ? JSON.parse(row.value) : row.value;
           var ap = (parsed && parsed.approvals) || parsed || {};
-          BT.APPROVALS.map = (ap && typeof ap === 'object') ? ap : {};
-        } else { BT.APPROVALS.map = {}; }
-        BT.APPROVALS.loaded = true;
-      } catch (e) { BT.APPROVALS.map = {}; BT.APPROVALS.loaded = true; }
-      done++; fin();
-    }).catch(function () { BT.APPROVALS.loaded = true; done++; fin(); });
+          if (ap && typeof ap === 'object' && Object.keys(ap).length) { approvalsFinish(ap, 'site_config'); return; }
+        }
+        approvalsFromMirror();
+      } catch (e) { approvalsFromMirror(); }
+    }).catch(function () { approvalsFromMirror(); });
   };
 
   /* governance filter — spec §22: only approved/legacy questions publish */

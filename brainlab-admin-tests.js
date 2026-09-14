@@ -259,6 +259,11 @@
         Object.keys(stats).map(function (k) { return renderRegistryRow(k, stats[k]); }).join('') +
         '</tbody></table></div>' +
         '<p id="blte-action-msg" style="font-size:.8rem;margin-top:8px;min-height:1em"></p>';
+        /* Public-mirror sync status: site_config is admin-readable but (until
+           the one-time public-read SQL runs) NOT anonymous-readable, so the
+           student-facing state comes from /brainlab-approvals.json. Show the
+           owner exactly what students see and what is out of sync. */
+        html += '<p id="blte-mirror-sync" style="font-size:.78rem;margin-top:6px;min-height:1em;opacity:.85"></p>';
     }
 
     /* QA section */
@@ -266,6 +271,40 @@
     html += '<div id="blte-qa-out">' + card('<span style="opacity:.7;font-size:.83rem">Run the QA button to validate every published test: exact blueprint counts, subject membership, zero duplicates, and cross-exam leakage (registry-scoped questions must never appear in another exam\'s tests).</span>') + '</div>';
 
     host.innerHTML = html;
+
+    /* mirror-sync status — compare admin approvals vs the public mirror */
+    (function () {
+      var el = document.getElementById('blte-mirror-sync');
+      if (!el) return;
+      var fmt = function (j) {
+        var mirror = (j && j.approvals) || {};
+        var live = BT.APPROVALS.map || {};
+        var mismatch = [], students = [];
+        Object.keys(stats).forEach(function (k) {
+          var lv = !!(live[k] && live[k].approved_at);
+          var mr = !!(mirror[k] && mirror[k].approved_at);
+          if (mr) students.push(k);
+          if (lv !== mr) mismatch.push(k + (lv ? ' (approved here, NOT visible to students yet)' : ' (visible to students but revoked here)'));
+        });
+        var when = j && j.updated_at ? new Date(j.updated_at).toLocaleString() : '?';
+        if (mismatch.length) {
+          el.innerHTML = '⚠ <b>Public mirror out of sync</b> — students currently see approved: ' +
+            (students.length ? '<b>' + students.join(', ') + '</b>' : 'none') +
+            '. Out of sync: ' + mismatch.join(' · ') +
+            '. <i>Ask Solene to sync the public approvals file</i> (or run the one-time site_config read-policy SQL for full automation). Mirror last updated: ' + when;
+        } else {
+          el.innerHTML = '✓ Public mirror synced — students see approved: ' +
+            (students.length ? '<b>' + students.join(', ') + '</b>' : 'none') +
+            '. Mirror last updated: ' + when + '.';
+        }
+      };
+      try {
+        fetch('/brainlab-approvals.json?v=' + Date.now(), { cache: 'no-store' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(fmt)
+          .catch(function () { if (el) el.textContent = '⚠ Public approvals mirror unreadable — students cannot see any practice approvals.'; });
+      } catch (e) { if (el) el.textContent = ''; }
+    })();
 
     /* styles once */
     if (!document.getElementById('blte-styles')) {
