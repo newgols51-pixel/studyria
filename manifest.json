@@ -242,6 +242,45 @@
           "type": "image/png"
         }
       ]
+    },
+    {
+      "name": "BrainLab",
+      "short_name": "BrainLab",
+      "description": "Practice tests, quizzes, PYQs and current affairs",
+      "url": "/?source=shortcut#brainlab",
+      "icons": [
+        {
+          "src": "icon-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Mock Tests",
+      "short_name": "Mocks",
+      "description": "Full-length mock tests for Assam exams",
+      "url": "/?source=shortcut#brainlab/mock-tests",
+      "icons": [
+        {
+          "src": "icon-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Current Affairs",
+      "short_name": "Affairs",
+      "description": "Daily current affairs for exam preparation",
+      "url": "/?source=shortcut#brainlab/current-affairs",
+      "icons": [
+        {
+          "src": "icon-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
     }
   ],
   "share_target": {

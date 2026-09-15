@@ -604,6 +604,259 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  // § 8a. V7 SMART APP CENTER HELPERS — real signals only, no fake data.
+  // Every helper here reads actual browser/PWA/backend state. If a signal
+  // is unavailable, the helper returns an honest unknown — never invents.
+  // ═══════════════════════════════════════════════════════════════════
+
+  // Real app version — the canonical version lives in the production
+  // update system (pwa-update.js). PWA32.VERSION is only this module's
+  // internal version; user-facing version = update system's version.
+  function _appVersion() {
+    if (window.studyriaUpdate && typeof window.studyriaUpdate.getVersion === 'function') {
+      try { var v = window.studyriaUpdate.getVersion(); if (v && v.version) return v; } catch (e) {}
+    }
+    return { version: PWA32.VERSION, build: '' };
+  }
+
+  // Connectivity — real: navigator.onLine + NetworkInformation.effectiveType.
+  function _smartConnectivity() {
+    if (!navigator.onLine) return { level: 'off', label: 'Offline', note: 'Showing available cached content.', cls: 'off' };
+    var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    var et = c && c.effectiveType;
+    if (et === 'slow-2g' || et === '2g' || et === '3g') return { level: 'slow', label: 'Slow Connection', note: 'On ' + et + ' — loading essential content first.', cls: 'warn' };
+    return { level: 'on', label: 'Online', note: et ? 'Connected (' + et + ').' : 'Connected.', cls: 'ok' };
+  }
+
+  // Notifications — real SN.push.status() mapping. Never fabricates a state.
+  function _notifSmartStatus(st) {
+    // st: { supported, permission, subscribed, channelType, ... } (real)
+    if (!st) return { label: 'Unknown', note: 'Notification state not reported by this browser.', cls: 'warn', canEnable: false };
+    if (!st.supported) return { label: 'Unsupported', note: 'This browser does not support web notifications.', cls: 'off', canEnable: false };
+    if (st.permission === 'denied') return { label: 'Blocked', note: 'Notifications are blocked by your browser/device settings.', cls: 'off', canEnable: false };
+    if (st.permission === 'granted' && st.subscribed) {
+      var ch = st.channelType === 'pwa' ? 'installed app (PWA)' : 'this browser';
+      return { label: 'On', note: 'Subscription active via the ' + ch + '.', cls: 'ok', canEnable: false };
+    }
+    if (st.permission === 'granted') return { label: 'Setup Incomplete', note: 'Permission granted — finish push setup.', cls: 'warn', canEnable: true };
+    return { label: 'Off', note: 'Enable notifications to get study & career alerts.', cls: 'warn', canEnable: true };
+  }
+
+  // Offline readiness — real: SW controlling this page + actual Cache Storage keys.
+  async function _offlineReadiness() {
+    if (!('serviceWorker' in navigator)) return { level: 'none', label: 'Not Ready', note: 'This browser does not support offline app mode.', cls: 'off', caches: 0 };
+    var controlled = !!(navigator.serviceWorker.controller);
+    var cacheCount = 0;
+    try {
+      if (window.caches) { var keys = await caches.keys(); cacheCount = keys.length; }
+    } catch (e) {}
+    if (controlled && cacheCount > 0) return { level: 'ready', label: 'Ready', note: 'App shell and visited pages are cached for offline study.', cls: 'ok', caches: cacheCount };
+    if (controlled) return { level: 'partial', label: 'Partially Ready', note: 'App shell active — offline cache builds up as you browse.', cls: 'warn', caches: cacheCount };
+    return { level: 'none', label: 'Not Ready', note: 'Offline mode is not active on this page yet.', cls: 'off', caches: cacheCount };
+  }
+
+  // Update center — real: production update system + the browser's own
+  // waiting-service-worker signal. lastCheck is a real timestamp recorded
+  // every time the user actually runs a check (never fabricated).
+  async function _updateCenterState() {
+    var v = _appVersion();
+    var lastCheck = _ls('pwa7_last_update_check');
+    var waiting = null;
+    try {
+      if ('serviceWorker' in navigator) {
+        var reg = await navigator.serviceWorker.ready;
+        waiting = !!(reg && reg.waiting);
+      }
+    } catch (e) {}
+    return {
+      version: v.version, build: v.build,
+      lastChecked: lastCheck,         // ISO string or null — honest "not checked yet"
+      updateAvailable: waiting === true,
+      updateUnknown: waiting === null
+    };
+  }
+
+  // Storage breakdown — real: navigator.storage.estimate() totals +
+  // per-cache ENTRY counts from Cache Storage. Byte-per-category would
+  // require refetching every cached response, so counts are the honest
+  // lightweight metric. Cloud storage is never mixed in here.
+  async function _storageBreakdown(totalEstimate) {
+    var cats = [];
+    try {
+      if (window.caches) {
+        var keys = await caches.keys();
+        for (var i = 0; i < keys.length; i++) {
+          var cnt = 0;
+          try { var c = await caches.open(keys[i]); cnt = (await c.keys()).length; } catch (e) {}
+          cats.push({ name: keys[i], entries: cnt });
+        }
+      }
+    } catch (e) {}
+    return { total: totalEstimate, caches: cats };
+  }
+
+  // Continue Learning — real local activity only: download history,
+  // saved reading progress, tracked navigation. No fabricated progress.
+  function _continueLearningData() {
+    var items = [];
+    var hist = _lsJSON('dl_history', []);
+    var prog = _lsJSON('offline_progress', {});
+    var nav  = _lsJSON('nav_history', []);
+    if (hist.length) {
+      var last = hist[hist.length - 1];
+      items.push({ icon: '📖', label: last.title || 'Downloaded study PDF', note: 'Recently downloaded', action: "navigate('library')" });
+    }
+    var pKeys = Object.keys(prog);
+    if (pKeys.length) {
+      items.push({ icon: '📑', label: pKeys.length + ' PDF' + (pKeys.length > 1 ? 's' : '') + ' with saved reading progress', note: 'Pick up where you left off', action: "navigate('library')" });
+    }
+    var friendly = { 'library': 'PDF Library', 'brainlab': 'BrainLab', 'career-hub': 'Career Hub', 'my-library': 'My Library', 'free-materials': 'Free Materials', 'premium': 'Premium Notes', 'dashboard': 'Dashboard' };
+    for (var i = nav.length - 1; i >= 0 && items.length < 4; i--) {
+      var f = friendly[nav[i]];
+      if (f && !items.some(function (it) { return it.label === f; })) {
+        items.push({ icon: '📚', label: f, note: 'Recently visited', action: "navigate('" + nav[i] + "')" });
+      }
+    }
+    return items;
+  }
+
+  // "What should I study today?" — deterministic REAL-CONTENT suggestions.
+  // Uses only existing routes and real local state; no invented progress
+  // or fabricated recommendations.
+  function _todayStudy() {
+    var items = [
+      { icon: '📰', label: "Read today's Current Affairs", note: 'Fresh updates for Assam exam prep', action: "navigate('brainlab');__blReady(function(){BrainLab.switchTab('affairs');})" },
+      { icon: '🧩', label: 'Quick practice quiz', note: 'Keep your accuracy sharp in BrainLab', action: "navigate('brainlab');__blReady(function(){BrainLab.switchTab('quiz');})" }
+    ];
+    var pKeys = Object.keys(_lsJSON('offline_progress', {}));
+    if (pKeys.length) {
+      items.splice(1, 0, { icon: '📑', label: 'Continue your saved reading progress', note: pKeys.length + ' PDF' + (pKeys.length > 1 ? 's' : '') + ' where you left off', action: "navigate('library')" });
+    }
+    return items;
+  }
+
+  // Safe cache actions — page-side Cache Storage ops only. These NEVER
+  // touch cloud data, accounts, purchases or Supabase. Image cache names
+  // follow the production SW convention (studyria-img-*) — matched, never
+  // guessed beyond the prefix, and only Cache Storage entries are deleted.
+  async function _clearImageCache() {
+    if (!window.caches) { showToast && showToast('Cache storage is not available in this browser.', 'info'); return; }
+    try {
+      var keys = await caches.keys();
+      var imgKeys = keys.filter(function (k) { return k.indexOf('studyria-img-') === 0; });
+      for (var i = 0; i < imgKeys.length; i++) await caches.delete(imgKeys[i]);
+      showToast && showToast('Image cache cleared (' + imgKeys.length + ' cache' + (imgKeys.length === 1 ? '' : 's') + ').', 'success');
+      renderPWAPage();
+    } catch (e) { showToast && showToast('Could not clear the image cache on this browser.', 'error'); }
+  }
+
+  function _clearTempCache() {
+    // Existing production SW message — wipes browser Cache Storage only
+    // (no localStorage, no cloud data), then a clean reload.
+    if (!confirm('Clear temporary app cache? Cached pages will re-download on next visit. Your account, downloads and settings are not affected.')) return;
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
+      showToast && showToast('Cache cleared. Refreshing…', 'success');
+      setTimeout(function () { location.reload(); }, 1200);
+    } else {
+      showToast && showToast('Offline cache is not active on this page.', 'info');
+    }
+  }
+
+  function _confirmClearAll() {
+    if (!confirm('Clear ALL local browser cache for Studyria?\n\nThis only frees device storage — your account, purchased PDFs, progress and settings are stored in the cloud and are NOT affected.')) return;
+    _clearTempCache();
+  }
+
+  function _runUpdateCheck() {
+    _ls('pwa7_last_update_check', new Date().toISOString());
+    if (window.studyriaUpdate && typeof window.studyriaUpdate.checkForUpdates === 'function') {
+      window.studyriaUpdate.checkForUpdates().then(function () { renderPWAPage(); });
+    } else if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(function (reg) { return reg.update(); }).then(function () { renderPWAPage(); });
+      showToast && showToast('Checking for updates…', 'info');
+    } else {
+      showToast && showToast('Service worker not active — update check unavailable.', 'info');
+    }
+  }
+
+  function _applyUpdate() {
+    if (window.studyriaUpdate && typeof window.studyriaUpdate.applyUpdate === 'function') {
+      window.studyriaUpdate.applyUpdate();
+    } else {
+      showToast && showToast('No pending update found.', 'info');
+    }
+  }
+
+  // App Diagnostics — expandable, renders on demand (page stays fast).
+  // Whitelist-only: never dumps raw diagnostics objects (no device
+  // identifiers, no endpoint URLs, no tokens of any kind).
+  async function _renderDiagnostics() {
+    var body = document.getElementById('pwa7DiagBody');
+    if (!body) return;
+    body.innerHTML = '<div class="pwa7-empty">Collecting real diagnostics…</div>';
+    var rows = [];
+    function add(k, v) { rows.push('<div class="pwa7-diag-item"><span class="pwa7-diag-k">' + _escHtml(k) + '</span><span class="pwa7-diag-v">' + _escHtml(String(v)) + '</span></div>'); }
+
+    var st = (window.PWA && typeof PWA.installState === 'function') ? PWA.installState() : null;
+    add('PWA Installed', st ? (st.installed ? 'Yes' : 'No') : 'Unknown');
+    add('Standalone Mode', st ? (st.standalone ? 'Yes' : 'No') : 'Unknown');
+    if (st) {
+      add('Display Mode', st.displayMode || 'unknown');
+      add('Browser', (st.browser || 'unknown') + (st.inAppBrowser ? ' (in-app)' : ''));
+      add('Platform', st.platform || 'unknown');
+      add('Install Prompt', st.promptAvailable ? 'Captured & ready' : (st.promptSeen ? 'Seen (consumed)' : 'Not offered'));
+      add('Related-Apps Check', st.relatedAppInstalled === null ? 'Not confirmed' : (st.relatedAppInstalled ? 'Installed (confirmed)' : 'Not installed'));
+    }
+    add('Service Worker', 'serviceWorker' in navigator ? 'Supported' : 'Unsupported');
+    add('HTTPS', location.protocol === 'https:' ? 'Yes' : 'No');
+    try {
+      if ('serviceWorker' in navigator) {
+        var reg = await navigator.serviceWorker.ready;
+        add('SW Update State', reg.waiting ? 'Update available (waiting)' : 'Active & current');
+        // Real SW version via the production GET_VERSION message channel
+        await new Promise(function (resolve) {
+          try {
+            var mc = new MessageChannel();
+            mc.port1.onmessage = function (e) { if (e.data && e.data.version) add('SW Version', e.data.version); resolve(); };
+            if (navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ type: 'GET_VERSION' }, [mc.port2]);
+            else resolve();
+            setTimeout(resolve, 2500);
+          } catch (e) { resolve(); }
+        });
+      }
+    } catch (e) {}
+    add('Manifest', (function () { var l = document.querySelector('link[rel="manifest"]'); return l ? (l.href.indexOf('manifest.json') >= 0 ? 'Linked' : 'Custom') : 'Missing'; })());
+    try {
+      if (window.SN && SN.push && typeof SN.push.status === 'function') {
+        var ps = await SN.push.status();
+        add('Push Permission', ps.permission || 'unknown');
+        add('Push Subscription', ps.subscribed ? 'Active' : 'Inactive');
+      } else { add('Push System', 'Not loaded'); }
+    } catch (e) { add('Push System', 'Status unavailable'); }
+    add('Online Status', navigator.onLine ? 'Online' : 'Offline');
+    try { if (window.caches) { var ck = await caches.keys(); add('Cache Status', ck.length ? ck.length + ' active cache' + (ck.length === 1 ? '' : 's') : 'Empty'); } } catch (e) {}
+    var v = _appVersion();
+    add('Current Version', 'v' + v.version + (v.build ? ' (build ' + v.build + ')' : ''));
+
+    body.innerHTML = '<div class="pwa7-diag">' + rows.join('') + '</div>'
+      + '<div class="pwa7-row-note" style="margin-top:10px">All values are read live from this browser. No account or device identifiers are shown.</div>';
+  }
+
+  function _toggleDiag() {
+    var box = document.getElementById('pwa7Diag');
+    if (!box) return;
+    var open = box.classList.toggle('open');
+    document.getElementById('pwa7DiagHead').setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) _renderDiagnostics();
+  }
+
+  function _scrollToExplore() {
+    var el = document.getElementById('pwa7Quick');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
   // § 8. USER PWA PAGE — Clean status overview (no technical info)
   // ═══════════════════════════════════════════════════════════════════
 
@@ -611,151 +864,234 @@
     var pageEl = document.getElementById('page-pwa');
     if (!pageEl) return;
 
+    // ── Gather REAL state (same sources as V5/V6 — no new systems) ──
     var isInstalled = (window.PWA && typeof window.PWA.isInstalled === 'function') ? window.PWA.isInstalled() : (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true);
+    var stInfo = (window.PWA && typeof PWA.installState === 'function') ? PWA.installState() : null;
+    var standalone = !!(stInfo && stInfo.standalone); // real display-mode signal from the canonical install manager
     var notifPermission = Notification.permission;
-    // [Studyria Push Migration fix] Browser permission alone doesn't mean a
-    // push subscription actually exists in the backend — check the real
-    // SN.push subscription status so this card can't show a false "On".
-    var notifSubscribed = false;
+    var pushStatus = null;
     try {
-      if (notifPermission === 'granted' && window.SN && SN.push && typeof SN.push.status === 'function') {
-        var _st = await SN.push.status();
-        notifSubscribed = !!(_st && _st.subscribed);
-      }
+      if (window.SN && SN.push && typeof SN.push.status === 'function') pushStatus = await SN.push.status();
     } catch (e) {}
-    var isOnline = navigator.onLine;
+    var notifSmart = _notifSmartStatus(pushStatus);
+    var notifSubscribed = !!(pushStatus && pushStatus.subscribed);
+    var conn = _smartConnectivity();
+    var offlineReady = await _offlineReadiness();
+    var upd = await _updateCenterState();
     var storageUsage = await _estimateStorage();
-
-    // Fetch release notes
+    var storageData = await _storageBreakdown(storageUsage);
+    var contItems = _continueLearningData();
+    var todayItems = _todayStudy();
     var releaseNotes = await _fetchReleaseNotes();
     var unreadCount = _getUnreadCount(releaseNotes);
 
-    var html = '<div class="pwa32-page">';
-
-    // Hero
-    html += '<div class="pwa32-hero">';
-    html += '<div class="pwa32-hero-icon">📱</div>';
-    html += '<h1>Studyria App</h1>';
-    html += '<p>Version ' + PWA32.VERSION + ' · Released ' + _formatDate(PWA32.RELEASE_DATE) + '</p>';
-    html += '</div>';
-
-    // Status Cards
-    html += '<div class="pwa32-section"><div class="pwa32-section-title">App Status</div>';
-
-    // Install status — P34 clear states, NEVER "App Installed · No".
-    // Real signals only: standalone detection (app.js) + the real
-    // beforeinstallprompt event + real SW support. No localStorage flags.
-    var stInfo = (window.PWA && typeof PWA.installState === 'function') ? PWA.installState() : null;
+    // Install CTA state — EXACTLY the V5/V6 decision tree, restyled only.
     var nativePromptReady = !!(window._pwaInstallPrompt || (window.PWA && PWA._deferredPrompt));
     var swSupported = 'serviceWorker' in navigator;
-    // V4: 'no-prompt' is split by real browser capability — a Chromium-family
-    // browser that hasn't offered the prompt YET is NOT routed to the manual
-    // modal; only browsers with no native install flow are 'unsupported'.
     var chromiumWaiting = swSupported && !nativePromptReady && stInfo && stInfo.promptAvailable === false && !stInfo.unsupported;
-    var installState = isInstalled ? 'installed'
-      : nativePromptReady ? 'ready'
-      : chromiumWaiting ? 'no-prompt' 
-      : swSupported ? 'no-prompt' : 'unsupported';
-    var stMap = {
-      installed:   { icon: '✅', label: 'Studyria App',    value: 'Studyria is installed on this device — you are using the installed app.', badge: 'Installed',    cls: 'pwa32-badge-ok' },
-      ready:       { icon: '📲', label: 'App Installation', value: 'Native install available — tap Install App to open the browser install dialog.', badge: 'Native install available', cls: 'pwa32-badge-ok' },
-      'no-prompt': { icon: '📲', label: 'Install Studyria', value: (chromiumWaiting ? 'Waiting for browser install capability — tap Install App and the browser install dialog will open from your tap.' : 'Install Studyria for a faster, app-like study experience.'), badge: 'Waiting for browser', cls: 'pwa32-badge-warn' },
-      unsupported: { icon: '🚫', label: 'Install Studyria', value: 'PWA installation is not supported by this browser. Follow the manual install steps.', badge: 'Unsupported/manual',  cls: 'pwa32-badge-off' }
-    };
-    var st = stMap[installState];
-    html += '<div class="pwa32-card" style="margin-bottom:10px"><div class="pwa32-card-icon">' + st.icon + '</div><div class="pwa32-card-body"><div class="pwa32-card-label">' + st.label + '</div><div class="pwa32-card-value">' + st.value + '</div></div><span class="pwa32-card-badge ' + st.cls + '">' + st.badge + '</span></div>';
+    var installState = isInstalled ? 'installed' : nativePromptReady ? 'ready' : (stInfo && stInfo.unsupported) ? 'unsupported' : 'no-prompt';
 
-    // Version
-    html += '<div class="pwa32-card" style="margin-bottom:10px"><div class="pwa32-card-icon">🔄</div><div class="pwa32-card-body"><div class="pwa32-card-label">Current Version</div><div class="pwa32-card-value">Released ' + _formatDate(PWA32.RELEASE_DATE) + '</div></div><span class="pwa32-card-badge pwa32-badge-info">v' + PWA32.VERSION + '</span></div>';
+    var html = '<div class="pwa7-page">';
 
-    // Check for updates
-    html += '<div class="pwa32-card" style="margin-bottom:10px"><div class="pwa32-card-icon">⬇️</div><div class="pwa32-card-body"><div class="pwa32-card-label">Check For Updates</div><div class="pwa32-card-value">Verify you have the latest version</div></div><button class="pwa32-btn pwa32-btn-sm" onclick="window.PWA32._checkUpdate()">Check Now</button></div>';
-
-    // Notification status — 3 real states: Not enabled / Half Setup (permission
-    // granted but no push subscription yet) / Enabled (actually subscribed).
-    var notifFullyOn = notifPermission === 'granted' && notifSubscribed;
-    var notifHalfSetup = notifPermission === 'granted' && !notifSubscribed;
-    var notifBadge = notifFullyOn ? 'pwa32-badge-ok' : notifPermission === 'denied' ? 'pwa32-badge-off' : 'pwa32-badge-warn';
-    var notifValueText = notifFullyOn ? 'Notifications enabled'
-      : notifHalfSetup ? 'Permission granted — tap Complete Setup to finish'
-      : notifPermission === 'denied' ? 'Blocked — enable in browser settings'
-      : 'Not enabled yet';
-    html += '<div class="pwa32-card" style="margin-bottom:10px"><div class="pwa32-card-icon">🔔</div><div class="pwa32-card-body"><div class="pwa32-card-label">Notifications</div><div class="pwa32-card-value">' + notifValueText + '</div></div>';
-    if (notifFullyOn) {
-      html += '<span class="pwa32-card-badge ' + notifBadge + '">On</span>';
-    } else if (notifHalfSetup) {
-      html += '<button class="pwa32-btn pwa32-btn-sm" onclick="window.PWA32._enableNotif()">Complete Setup</button>';
-    } else {
-      html += '<button class="pwa32-btn pwa32-btn-sm" onclick="window.PWA32._enableNotif()">Enable</button>';
-    }
-    html += '</div>';
-
-    // Offline ready
-    html += '<div class="pwa32-card" style="margin-bottom:10px"><div class="pwa32-card-icon">' + (isOnline ? '🌐' : '📴') + '</div><div class="pwa32-card-body"><div class="pwa32-card-label">Offline Ready</div><div class="pwa32-card-value">' + (isOnline ? 'Online — content cached for offline use' : 'Offline — reading cached content') + '</div></div><span class="pwa32-card-badge ' + (isOnline ? 'pwa32-badge-ok' : 'pwa32-badge-warn') + '">' + (isOnline ? 'Online' : 'Offline') + '</span></div>';
-
-    // Storage usage
-    html += '<div class="pwa32-card"><div class="pwa32-card-icon">💾</div><div class="pwa32-card-body"><div class="pwa32-card-label">Storage Usage</div><div class="pwa32-card-value">' + storageUsage.text + '</div>' + (storageUsage.real ? '<div class="pwa32-storage-bar"><div class="pwa32-storage-fill" style="width:' + storageUsage.percent + '%"></div></div>' : '') + '</div></div>';
-
-    html += '</div>';
-
-    // Install CTA — P23/P24: real native prompt when available, honest
-    // platform instructions otherwise; installed users see NO install CTA.
-    html += '<div style="margin-bottom:24px;text-align:center">';
-    if (isInstalled) {
-      html += '<div style="font-size:.8rem;color:var(--text2,#8d99ad);margin-bottom:8px">✓ Installed · ✓ Home-screen shortcut · Push notifications follow the notification settings on this page</div>';
-      html += '<button class="pwa32-btn pwa32-btn-ghost" onclick="window.PWA32._clearCache()">Clear Cache & Refresh</button>';
+    // ═══ 1. PREMIUM HERO ═══
+    html += '<div class="pwa7-hero" role="region" aria-label="Studyria App hero">';
+    html += '<div class="pwa7-hero-inner">';
+    html += '<div>';
+    html += '<div class="pwa7-hero-eyebrow">Studyria App</div>';
+    html += '<h1>Your Study Universe.<br>Now <span class="pwa7-hero-accent">in Your Pocket.</span></h1>';
+    html += '<p class="pwa7-hero-sub">Learn smarter, practice faster and stay connected with Studyria — anytime, anywhere.</p>';
+    html += '<ul class="pwa7-hero-feats">';
+    html += '<li>Faster Access</li><li>Offline Ready</li><li>Smart Notifications</li><li>Exam Preparation</li>';
+    html += '</ul>';
+    html += '<div class="pwa7-hero-cta">';
+    if (installState === 'installed') {
+      // Honest installed state. There is no web API to launch an installed
+      // WebAPK from a browser tab, so the secondary action explores the app
+      // (spec §39: never claim an action the browser can't perform).
+      html += '<span class="pwa7-btn pwa7-btn-installed" aria-label="Studyria is installed">✓ ' + (standalone ? 'Running as App' : 'Installed') + '</span>';
+      html += '<button class="pwa7-btn pwa7-btn-ghost" onclick="window.PWA32._scrollToExplore()">Explore App</button>';
     } else if (installState === 'ready') {
-      html += '<div style="font-size:.8rem;color:var(--text2,#8d99ad);margin-bottom:8px">Faster access · App-like experience · Home-screen shortcut · Push notifications</div>';
-      html += '<button class="pwa32-btn" style="min-height:44px" onclick="window.PWA32._triggerInstall()">📲 Install App</button>';
+      html += '<button class="pwa7-btn" style="min-height:48px" onclick="window.PWA32._triggerInstall()">📲 Install App</button>';
+      html += '<button class="pwa7-btn pwa7-btn-ghost" onclick="window.PWA32._scrollToExplore()">Explore App</button>';
     } else if (installState === 'no-prompt') {
-      // Chromium-family without the prompt captured YET — tapping runs the
-      // ACTIVE attempt (PWA.installClick nudges Chrome's installability
-      // re-check and opens the REAL native dialog if the event arrives
-      // within the user-gesture window). Manual steps stay a clearly
-      // secondary, honest option — never the primary path on Chrome.
-      html += '<div style="font-size:.8rem;color:var(--text2,#8d99ad);margin-bottom:8px">Faster access · App-like experience · Home-screen shortcut · Push notifications</div>';
-      html += '<div style="display:flex;flex-direction:column;gap:8px;max-width:300px;margin:0 auto">';
-      html += '<button class="pwa32-btn" style="min-height:44px" onclick="window.PWA32._triggerInstall()">📲 Install App</button>';
-      html += '<button class="pwa32-btn pwa32-btn-ghost" style="min-height:44px" onclick="window.PWA32._installHelp()">📖 How to Install</button>';
-      html += '</div>';
+      // Chromium waiting for the browser install capability — the SAME
+      // proven active-attempt path (real prompt from a real tap); manual
+      // steps stay clearly secondary, never primary on Chrome.
+      html += '<button class="pwa7-btn" style="min-height:48px" onclick="window.PWA32._triggerInstall()">📲 Install App</button>';
+      html += '<button class="pwa7-btn pwa7-btn-ghost" onclick="window.PWA32._installHelp()">📖 How to Install</button>';
     } else {
-      // Genuinely unsupported browser — honest manual steps are the primary
-      // action, because no native flow exists to offer.
-      html += '<div style="font-size:.8rem;color:var(--text2,#8d99ad);margin-bottom:8px">This browser doesn\'t offer app installation — follow the steps to add Studyria to your home screen.</div>';
-      html += '<button class="pwa32-btn" style="min-height:44px" onclick="window.PWA32._installHelp()">📖 How to Install</button>';
+      // Genuinely unsupported browser — honest manual steps are primary.
+      html += '<button class="pwa7-btn pwa7-btn-gold" style="min-height:48px" onclick="window.PWA32._installHelp()">📖 How to Install</button>';
     }
     html += '</div>';
-
-    // What's New Center
-    html += '<div class="pwa32-section"><div class="pwa32-section-title">What\'s New' + (unreadCount > 0 ? ' <span style="background:#930205;color:#fff;font-size:.66rem;padding:2px 8px;border-radius:10px">' + unreadCount + '</span>' : '') + '</div>';
-    html += '<div id="pwa32WhatsNew"></div>';
+    if (installState === 'no-prompt' && chromiumWaiting) {
+      html += '<div class="pwa7-hero-sub" style="margin-top:12px;font-size:.72rem">Waiting for browser install capability — tap Install App and the real browser install dialog opens from your tap.</div>';
+    }
     html += '</div>';
+    // Hero visual — CSS phone frame + CURRENT approved logo asset only.
+    html += '<div class="pwa7-hero-visual" aria-hidden="true">';
+    html += '<div class="pwa7-phone">';
+    html += '<div class="pwa7-phone-notch"></div>';
+    html += '<img class="pwa7-phone-logo" src="icon-192.png?v=logo" alt="" width="64" height="64" loading="lazy" decoding="async">';
+    html += '<div class="pwa7-phone-chip">STUDYRIA</div>';
+    html += '<div class="pwa7-phone-chip">LEARN • GROW • ACHIEVE</div>';
+    html += '</div>';
+    html += '</div>';
+    html += '</div></div>';
 
+    // ═══ 2. APP STATUS ═══
+    html += '<div class="pwa7-section"><div class="pwa7-section-title">App Status</div><div class="pwa7-grid">';
+    // Installation
+    var instLabel = installState === 'installed' ? (standalone ? 'Running as App' : 'Installed')
+      : installState === 'ready' ? 'Install Available'
+      : installState === 'unsupported' ? 'Manual Installation'
+      : 'Waiting for Browser';
+    var instNote = installState === 'installed' ? 'Studyria is on this device.'
+      : installState === 'ready' ? 'Native browser install available.'
+      : installState === 'unsupported' ? 'This browser has no install flow — see the guide.'
+      : 'The browser has not offered installation yet.';
+    var instCls = installState === 'installed' ? 'ok' : installState === 'ready' ? 'ok' : installState === 'unsupported' ? 'off' : 'warn';
+    html += '<div class="pwa7-stat"><div class="pwa7-stat-label"><span class="pwa7-dot pwa7-dot-' + instCls + '"></span>Installation</div><div class="pwa7-stat-value">' + instLabel + '</div><div class="pwa7-stat-note">' + instNote + '</div></div>';
     // Notifications
-    html += '<div class="pwa32-section"><div class="pwa32-section-title">Notifications' + (_getUnreadNotifCount() > 0 ? ' <span style="background:#930205;color:#fff;font-size:.66rem;padding:2px 8px;border-radius:10px">' + _getUnreadNotifCount() + '</span>' : '') + '</div>';
-    html += '<div id="pwa32NotifList"></div>';
-    html += '</div>';
+    html += '<div class="pwa7-stat"><div class="pwa7-stat-label"><span class="pwa7-dot pwa7-dot-' + notifSmart.cls + '"></span>Notifications</div><div class="pwa7-stat-value">' + notifSmart.label + '</div><div class="pwa7-stat-note">' + notifSmart.note + '</div></div>';
+    // Connectivity
+    html += '<div class="pwa7-stat"><div class="pwa7-stat-label"><span class="pwa7-dot pwa7-dot-' + conn.cls + '"></span>Connectivity</div><div class="pwa7-stat-value">' + conn.label + '</div><div class="pwa7-stat-note">' + conn.note + '</div></div>';
+    // Offline
+    html += '<div class="pwa7-stat"><div class="pwa7-stat-label"><span class="pwa7-dot pwa7-dot-' + offlineReady.cls + '"></span>Offline</div><div class="pwa7-stat-value">' + offlineReady.label + '</div><div class="pwa7-stat-note">' + offlineReady.note + '</div></div>';
+    // Version
+    var verLabel = upd.updateAvailable ? 'Update Available' : 'Current';
+    var verNote = upd.updateAvailable ? 'A new version is ready to install.'
+      : (upd.updateUnknown ? 'Version v' + upd.version + ' — update state not reported by this browser.' : 'Studyria v' + upd.version + ' — you are up to date.');
+    html += '<div class="pwa7-stat"><div class="pwa7-stat-label"><span class="pwa7-dot pwa7-dot-' + (upd.updateAvailable ? 'warn' : 'ok') + '"></span>Version</div><div class="pwa7-stat-value">' + verLabel + '</div><div class="pwa7-stat-note">' + verNote + '</div></div>';
+    // App shell / SW
+    html += '<div class="pwa7-stat"><div class="pwa7-stat-label"><span class="pwa7-dot pwa7-dot-' + (swSupported ? 'ok' : 'off') + '"></span>App Shell</div><div class="pwa7-stat-value">' + (swSupported ? 'Active' : 'Unavailable') + '</div><div class="pwa7-stat-note">' + (swSupported ? (offlineReady.caches + ' offline cache' + (offlineReady.caches === 1 ? '' : 's') + ' on this device.') : 'This browser cannot cache the app for offline use.') + '</div></div>';
+    html += '</div></div>';
 
-    // Notification Topics
-    html += '<div class="pwa32-section"><div class="pwa32-section-title">Notification Topics</div>';
-    html += '<div class="pwa32-admin-card" id="pwa32NotifTopics"></div>';
-    html += '</div>';
-
-    // Download Manager
-    html += '<div class="pwa32-section"><div class="pwa32-section-title">Downloads</div>';
-    html += '<div id="pwa32DlContainer"></div>';
-    html += '</div>';
-
-    // FAQ
-    html += '<div class="pwa32-section"><div class="pwa32-section-title">Help & FAQ</div>';
-    var faqs = [
-      { q: 'How do I install Studyria?', a: 'Tap "Install App" above, or use your browser menu → "Add to Home Screen". The app will appear on your device like a native app.' },
-      { q: 'Can I read offline?', a: 'Yes! Once you visit a page, it\'s cached for offline access. Downloaded PDFs are available without internet.' },
-      { q: 'How do I update the app?', a: 'Tap "Check Now" in the App Status section. Updates install automatically in the background.' },
-      { q: 'Why am I not getting notifications?', a: 'Enable notifications using the button above. If blocked, you\'ll need to allow them in your browser settings.' },
-      { q: 'How do I clear storage?', a: 'Tap "Clear Cache & Refresh" to free up space. This won\'t delete your account or downloads.' },
+    // ═══ 3. QUICK STUDY ═══
+    html += '<div class="pwa7-section" id="pwa7Quick"><div class="pwa7-section-title">Quick Study</div><div class="pwa7-quick">';
+    var quick = [
+      { icon: '🧠', label: 'BrainLab', action: "navigate('brainlab')" },
+      { icon: '📝', label: 'Mock Tests', action: "navigate('brainlab');__blReady(function(){BrainLab.switchTab('mock');})" },
+      { icon: '📚', label: 'My Library', action: "navigate('my-library')" },
+      { icon: '📰', label: 'Current Affairs', action: "navigate('brainlab');__blReady(function(){BrainLab.switchTab('affairs');})" },
+      { icon: '💼', label: 'Career Hub', action: "navigate('career-hub')" },
+      { icon: '🧩', label: 'Quizzes', action: "navigate('brainlab');__blReady(function(){BrainLab.switchTab('quiz');})" },
+      { icon: '🔎', label: 'Search', action: "navigate('home');setTimeout(function(){var s=document.getElementById('discoverSearch');if(s){s.scrollIntoView({block:'center'});s.focus();}},350)" },
+      { icon: '📖', label: 'Free Materials', action: "navigate('free-materials')" }
     ];
-    faqs.forEach(function(faq, i) {
+    quick.forEach(function (q) {
+      html += '<button class="pwa7-quick-item" onclick="' + q.action.replace(/"/g, '&quot;') + '" aria-label="' + q.label + '"><span class="pwa7-quick-icon">' + q.icon + '</span><span class="pwa7-quick-label">' + q.label + '</span></button>';
+    });
+    html += '</div></div>';
+
+    // ═══ 4. CONTINUE LEARNING ═══
+    html += '<div class="pwa7-section"><div class="pwa7-section-title">Continue Learning</div><div class="pwa7-panel">';
+    if (contItems.length) {
+      contItems.forEach(function (it) {
+        html += '<div class="pwa7-row" role="button" tabindex="0" onclick="' + it.action.replace(/"/g, '&quot;') + '" onkeydown="if(event.key===\'Enter\'){this.click()}" style="cursor:pointer">';
+        html += '<div class="pwa7-row-icon">' + it.icon + '</div>';
+        html += '<div class="pwa7-row-body"><div class="pwa7-row-label">' + _escHtml(it.label) + '</div><div class="pwa7-row-note">' + _escHtml(it.note) + '</div></div>';
+        html += '<span class="pwa7-diag-v" aria-hidden="true">›</span></div>';
+      });
+    } else {
+      html += '<div class="pwa7-empty">No recent study activity yet. Start your first study session — your progress will appear here.</div>';
+      html += '<div style="text-align:center;margin-top:12px"><button class="pwa32-btn" onclick="navigate(\'library\')">Browse PDF Library</button></div>';
+    }
+    html += '</div></div>';
+
+    // ═══ 5. WHAT SHOULD I STUDY TODAY? ═══
+    html += '<div class="pwa7-section"><div class="pwa7-section-title">What should I study today?</div><div class="pwa7-panel">';
+    todayItems.forEach(function (it) {
+      html += '<div class="pwa7-row" role="button" tabindex="0" onclick="' + it.action.replace(/"/g, '&quot;') + '" onkeydown="if(event.key===\'Enter\'){this.click()}" style="cursor:pointer">';
+      html += '<div class="pwa7-row-icon">' + it.icon + '</div>';
+      html += '<div class="pwa7-row-body"><div class="pwa7-row-label">' + _escHtml(it.label) + '</div><div class="pwa7-row-note">' + _escHtml(it.note) + '</div></div>';
+      html += '<span class="pwa7-diag-v" aria-hidden="true">›</span></div>';
+    });
+    html += '<div class="pwa7-row-note" style="margin-top:8px">Suggestions are based on your real activity and available Studyria content.</div>';
+    html += '</div></div>';
+
+    // ═══ 6. SMART NOTIFICATIONS (existing system, reused) ═══
+    html += '<div class="pwa7-section"><div class="pwa7-section-title">Smart Notifications' + (_getUnreadNotifCount() > 0 ? ' <span style="background:#930205;color:#fff;font-size:.66rem;padding:2px 8px;border-radius:10px">' + _getUnreadNotifCount() + '</span>' : '') + '</div>';
+    html += '<div class="pwa7-panel"><div class="pwa7-row">';
+    html += '<div class="pwa7-row-icon">🔔</div>';
+    html += '<div class="pwa7-row-body"><div class="pwa7-row-label">' + notifSmart.label + '</div><div class="pwa7-row-note">' + notifSmart.note + '</div></div>';
+    if (notifSmart.canEnable) {
+      html += '<button class="pwa32-btn pwa32-btn-sm" onclick="window.PWA32._enableNotif()">' + (pushStatus && pushStatus.permission === 'granted' ? 'Complete Setup' : 'Enable Notifications') + '</button>';
+    } else if (notifPermission === 'denied') {
+      html += '<span class="pwa32-card-badge pwa32-badge-off">Blocked</span>';
+    } else if (notifSubscribed) {
+      html += '<span class="pwa32-card-badge pwa32-badge-ok">On</span>';
+    }
+    html += '</div></div>';
+    html += '<div id="pwa32NotifList"></div>';
+    // Existing topic system — the four REAL topics only (never invented ones)
+    html += '<div class="pwa7-section-title" style="margin-top:16px">Your Alert Topics</div>';
+    html += '<div class="pwa32-admin-card" id="pwa32NotifTopics"></div>';
+    html += '</div>'; // closes pwa7-section (row + panel already closed above)
+
+    // ═══ 7. SMART UPDATE CENTER ═══
+    html += '<div class="pwa7-section"><div class="pwa7-section-title">Smart Update Center</div><div class="pwa7-panel">';
+    html += '<div class="pwa7-row"><div class="pwa7-row-icon">🔄</div><div class="pwa7-row-body"><div class="pwa7-row-label">Studyria v' + upd.version + '</div><div class="pwa7-row-note">' + (upd.updateAvailable ? 'New version ready — tap Update App.' : (upd.updateUnknown ? 'Update state not reported by this browser.' : 'You are up to date.')) + '</div></div>';
+    if (upd.updateAvailable) html += '<button class="pwa32-btn pwa32-btn-sm" onclick="window.PWA32._applyUpdate()">Update App</button>';
+    html += '</div>';
+    html += '<div class="pwa7-row"><div class="pwa7-row-icon">🕓</div><div class="pwa7-row-body"><div class="pwa7-row-label">Last Checked</div><div class="pwa7-row-note">' + (upd.lastChecked ? _formatDate(upd.lastChecked) + ' · ' + new Date(upd.lastChecked).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'Not checked yet in this session') + '</div></div>';
+    html += '<button class="pwa32-btn pwa32-btn-sm" onclick="window.PWA32._runUpdateCheck()">Check for Updates</button></div>';
+    html += '</div></div>';
+
+    // ═══ 8. WHAT'S NEW (existing real release-notes system, reused) ═══
+    html += '<div class="pwa7-section"><div class="pwa7-section-title">What\'s New' + (unreadCount > 0 ? ' <span style="background:#930205;color:#fff;font-size:.66rem;padding:2px 8px;border-radius:10px">' + unreadCount + '</span>' : '') + '</div>';
+    html += '<div id="pwa32WhatsNew"></div></div>';
+
+    // ═══ 9. STORAGE & CACHE — honest Device Cache wording (P25 V7) ═══
+    html += '<div class="pwa7-section"><div class="pwa7-section-title">Storage &amp; Cache</div><div class="pwa7-panel">';
+    html += '<div class="pwa7-row"><div class="pwa7-row-icon">💾</div><div class="pwa7-row-body"><div class="pwa7-row-label">Local App Storage</div><div class="pwa7-row-note">' + (storageUsage.real ? storageUsage.text + ' (device cache — quota depends on your device)' : 'Storage usage not reported by this browser.') + '</div></div></div>';
+    if (storageData.caches.length) {
+      html += '<div class="pwa7-row"><div class="pwa7-row-icon">🗂️</div><div class="pwa7-row-body"><div class="pwa7-row-label">Cached Content</div><div class="pwa7-row-note">' + storageData.caches.map(function (c) { return _escHtml(c.name) + ': ' + c.entries + ' items'; }).join(' · ') + '</div></div></div>';
+    }
+    html += '<div class="pwa7-row"><div class="pwa7-row-icon">☁️</div><div class="pwa7-row-body"><div class="pwa7-row-label">Cloud Storage</div><div class="pwa7-row-note">Your account, purchased PDFs and progress are stored securely in Studyria cloud — not affected by clearing device cache.</div></div></div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">';
+    html += '<button class="pwa32-btn pwa32-btn-sm" onclick="window.PWA32._clearImageCache()">Clear Image Cache</button>';
+    html += '<button class="pwa32-btn pwa32-btn-sm" onclick="window.PWA32._clearTempCache()">Clear Temporary Cache</button>';
+    html += '<button class="pwa32-btn pwa32-btn-sm pwa32-btn-ghost" onclick="window.PWA32._confirmClearAll()">Clear All Local Cache</button>';
+    html += '</div>';
+    html += '<div class="pwa7-row-note" style="margin-top:10px">Clearing cache never deletes your account, purchases, downloads, or cloud files.</div>';
+    html += '</div></div>';
+
+    // ═══ 10. APP DIAGNOSTICS (collapsible, on-demand, whitelisted) ═══
+    html += '<div class="pwa7-section"><div class="pwa7-section-title">App Diagnostics</div>';
+    html += '<div class="pwa7-collapse" id="pwa7Diag">';
+    html += '<button class="pwa7-collapse-head" id="pwa7DiagHead" aria-expanded="false" onclick="window.PWA32._toggleDiag()"><span>Live runtime diagnostics</span><span class="pwa7-collapse-chevron">▾</span></button>';
+    html += '<div class="pwa7-collapse-body" id="pwa7DiagBody"></div>';
+    html += '</div></div>';
+
+    // ═══ 11. DOWNLOADS (existing real system, reused) ═══
+    html += '<div class="pwa7-section"><div class="pwa7-section-title">Downloads</div><div id="pwa32DlContainer"></div></div>';
+
+    // ═══ 12. APP FEATURES ═══
+    html += '<div class="pwa7-section"><div class="pwa7-section-title">App Features</div><div class="pwa7-grid">';
+    var feats = [
+      { icon: '⚡', t: 'Faster Access', d: 'Home-screen launch without a browser step.' },
+      { icon: '📴', t: 'Offline Study', d: 'Cached pages and downloaded PDFs work without internet.' },
+      { icon: '🔔', t: 'Smart Alerts', d: 'Study material and career notifications you control.' },
+      { icon: '🎯', t: 'Exam Preparation', d: 'BrainLab tests, quizzes, PYQs and current affairs.' },
+      { icon: '💼', t: 'Career Hub', d: 'Assam job alerts, scholarships and results.' },
+      { icon: '🔒', t: 'Secure', d: 'Your purchases and progress stay in your account.' }
+    ];
+    feats.forEach(function (ft) {
+      html += '<div class="pwa7-stat"><div class="pwa7-stat-label">' + ft.icon + ' ' + ft.t + '</div><div class="pwa7-stat-note" style="margin-top:7px">' + ft.d + '</div></div>';
+    });
+    html += '</div></div>';
+
+    // ═══ 13. HELP / INSTALLATION GUIDE (secondary — native install stays primary) ═══
+    html += '<div class="pwa7-section"><div class="pwa7-section-title">Help &amp; FAQ</div>';
+    var faqs = [
+      { q: 'How do I install Studyria?', a: 'On Android Chrome, tap "Install App" above — the browser install dialog opens. On iPhone/iPad, use Share → Add to Home Screen. Other browsers: use your browser menu → Add to Home Screen.' },
+      { q: 'Can I read offline?', a: 'Yes — once you visit a page it is cached for offline access, and downloaded PDFs work without internet.' },
+      { q: 'How do I update the app?', a: 'Use "Check for Updates" in the Smart Update Center. Updates install automatically in the background when available.' },
+      { q: 'Why am I not getting notifications?', a: 'Enable notifications using the button in Smart Notifications. If blocked, allow them in your browser settings.' },
+      { q: 'Will clearing cache delete my PDFs?', a: 'No. Clearing device cache only frees phone storage — your account, purchases and progress are stored in the cloud.' }
+    ];
+    faqs.forEach(function (faq, i) {
       html += '<div class="pwa32-faq-item" id="pwa32Faq' + i + '">';
       html += '<div class="pwa32-faq-q" onclick="window.PWA32._toggleFaq(' + i + ')">' + faq.q + ' <span class="pwa32-wn-chevron">▾</span></div>';
       html += '<div class="pwa32-faq-a"><div class="pwa32-faq-a-inner">' + faq.a + '</div></div>';
@@ -763,11 +1099,17 @@
     });
     html += '</div>';
 
+    // ═══ 14. APP VERSION FOOTER ═══
+    html += '<div class="pwa7-footer">';
+    html += '<strong>STUDYRIA</strong> — LEARN • GROW • ACHIEVE<br>';
+    html += 'App v' + upd.version + (upd.build ? ' · build ' + upd.build : '') + ' · Made for Assam aspirants';
+    html += '</div>';
+
     html += '</div>';
 
     pageEl.innerHTML = html;
 
-    // Render sub-sections
+    // ── Render existing sub-systems (unchanged) ──
     var wnContainer = document.getElementById('pwa32WhatsNew');
     if (wnContainer) _renderWhatsNew(wnContainer, releaseNotes);
 
@@ -861,12 +1203,10 @@
       if (el) el.classList.toggle('open');
     },
     _checkUpdate: function() {
-      if (typeof window.StudyriaUpdateSystem === 'object' && window.StudyriaUpdateSystem.checkForUpdate) {
-        window.StudyriaUpdateSystem.checkForUpdate();
-      } else if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.ready.then(function(reg) { reg.update(); });
-        showToast && showToast('Checking for updates…', 'info');
-      }
+      // V7 fix: route to the REAL production update API (window.studyriaUpdate,
+      // pwa-update.js). The old code called a nonexistent legacy update-system global
+      // and silently fell through to the bare SW update path.
+      _runUpdateCheck();
     },
     _enableNotif: function() {
       // [Studyria Push Migration fix] Route through the same native VAPID
@@ -950,6 +1290,22 @@
     _trackNav: _trackNav,
     // Security
     _validateVersion: _validateSWVersion,
+    // V7 Smart App Center helpers
+    _appVersion: _appVersion,
+    _smartConnectivity: _smartConnectivity,
+    _notifSmartStatus: _notifSmartStatus,
+    _offlineReadiness: _offlineReadiness,
+    _updateCenterState: _updateCenterState,
+    _storageBreakdown: _storageBreakdown,
+    _continueLearningData: _continueLearningData,
+    _todayStudy: _todayStudy,
+    _clearImageCache: _clearImageCache,
+    _clearTempCache: _clearTempCache,
+    _confirmClearAll: _confirmClearAll,
+    _runUpdateCheck: _runUpdateCheck,
+    _applyUpdate: _applyUpdate,
+    _toggleDiag: _toggleDiag,
+    _scrollToExplore: _scrollToExplore,
   };
 
   // ═══════════════════════════════════════════════════════════════════
@@ -999,6 +1355,11 @@
     window.addEventListener('online', function() {
       _syncOfflineProgress();
       _registerBackgroundSync();
+      if (_pageVisible()) renderPWAPage(); // V7: live connectivity status
+    });
+    // V7: honest offline state the moment the connection drops
+    window.addEventListener('offline', function() {
+      if (_pageVisible()) renderPWAPage();
     });
 
     console.log('[PWA32] V3.2 initialized ✅ version:', PWA32.VERSION);
