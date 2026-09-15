@@ -1,6 +1,43 @@
 <!DOCTYPE html>
 <html lang="en-IN">
 <head>
+<!-- PWA INSTALL V4 — EARLY beforeinstallprompt CAPTURE ════════════════
+     MUST be the first script in <head>. Chrome dispatches
+     beforeinstallprompt asynchronously after its installability check —
+     on slow devices this can happen BEFORE deferred scripts (app.js,
+     loaded at the bottom of a large document) execute. Without this
+     early listener the event is lost for the entire page load, which
+     was the root cause of "browser has not offered the install prompt"
+     on Android Chrome. This block only CAPTURES the event (stores it
+     on window._pwaInstallPrompt) and announces it via the custom
+     'pwa:installable' / 'pwa:installed' events. All install decisions
+     stay in ONE place: window.PWA (app.js). prompt() is NEVER called
+     here — only a real user gesture may do that (app.js installClick).
+     Diagnostics trail kept on window.__pwaInstallLog (no secrets). -->
+<script>
+(function () {
+  if (window.__pwaEarlyInstallCapture) return;
+  window.__pwaEarlyInstallCapture = true;
+  window._pwaInstallPrompt = window._pwaInstallPrompt || null;
+  window.__pwaInstallLog = [];
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    window._pwaInstallPrompt = e;
+    window.__pwaInstallLog.push({ evt: 'beforeinstallprompt', t: Date.now() });
+    try {
+      window.dispatchEvent(new CustomEvent('pwa:installable', { detail: { prompt: e, source: 'early' } }));
+    } catch (_) {}
+  }, true);
+
+  window.addEventListener('appinstalled', function () {
+    window.__pwaInstallLog.push({ evt: 'appinstalled', t: Date.now() });
+    try {
+      window.dispatchEvent(new CustomEvent('pwa:installed', { detail: { source: 'early' } }));
+    } catch (_) {}
+  }, true);
+})();
+</script>
 <!-- Microsoft Clarity -->
 <script type="text/javascript">
     (function(c,l,a,r,i,t,y){

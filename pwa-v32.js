@@ -645,16 +645,22 @@
     // Install status — P34 clear states, NEVER "App Installed · No".
     // Real signals only: standalone detection (app.js) + the real
     // beforeinstallprompt event + real SW support. No localStorage flags.
+    var stInfo = (window.PWA && typeof PWA.installState === 'function') ? PWA.installState() : null;
     var nativePromptReady = !!(window._pwaInstallPrompt || (window.PWA && PWA._deferredPrompt));
     var swSupported = 'serviceWorker' in navigator;
+    // V4: 'no-prompt' is split by real browser capability — a Chromium-family
+    // browser that hasn't offered the prompt YET is NOT routed to the manual
+    // modal; only browsers with no native install flow are 'unsupported'.
+    var chromiumWaiting = swSupported && !nativePromptReady && stInfo && stInfo.promptAvailable === false && !stInfo.unsupported;
     var installState = isInstalled ? 'installed'
       : nativePromptReady ? 'ready'
+      : chromiumWaiting ? 'no-prompt' 
       : swSupported ? 'no-prompt' : 'unsupported';
     var stMap = {
       installed:   { icon: '✅', label: 'Studyria App',    value: 'Studyria is installed on this device — you are using the installed app.', badge: 'Installed',    cls: 'pwa32-badge-ok' },
       ready:       { icon: '📲', label: 'App Installation', value: 'Ready to install — Studyria can be installed on this device.', badge: 'Ready',        cls: 'pwa32-badge-ok' },
-      'no-prompt': { icon: '📲', label: 'Install Studyria', value: 'Not installed — your browser has not offered the install prompt. Follow the install steps.', badge: 'Not installed', cls: 'pwa32-badge-warn' },
-      unsupported: { icon: '🚫', label: 'Install Studyria', value: 'PWA installation is not supported by this browser.', badge: 'Unsupported',  cls: 'pwa32-badge-off' }
+      'no-prompt': { icon: '📲', label: 'Install Studyria', value: (chromiumWaiting ? 'Install Studyria for a faster, app-like study experience. The browser install prompt will appear when you tap Install App.' : 'Install Studyria for a faster, app-like study experience.'), badge: 'Not installed', cls: 'pwa32-badge-warn' },
+      unsupported: { icon: '🚫', label: 'Install Studyria', value: 'PWA installation is not supported by this browser. Follow the manual install steps.', badge: 'Unsupported',  cls: 'pwa32-badge-off' }
     };
     var st = stMap[installState];
     html += '<div class="pwa32-card" style="margin-bottom:10px"><div class="pwa32-card-icon">' + st.icon + '</div><div class="pwa32-card-body"><div class="pwa32-card-label">' + st.label + '</div><div class="pwa32-card-value">' + st.value + '</div></div><span class="pwa32-card-badge ' + st.cls + '">' + st.badge + '</span></div>';
@@ -702,9 +708,20 @@
       html += '<div style="font-size:.8rem;color:var(--text2,#8d99ad);margin-bottom:8px">Faster access · App-like experience · Home-screen shortcut · Push notifications</div>';
       html += '<button class="pwa32-btn" style="min-height:44px" onclick="window.PWA32._triggerInstall()">📲 Install App</button>';
     } else if (installState === 'no-prompt') {
-      html += '<button class="pwa32-btn" style="min-height:44px" onclick="window.PWA32._installHelp()">📖 How to Install</button>';
+      // Chromium-family without the prompt captured YET — the native flow is
+      // still the primary CTA (the prompt may arrive any moment; tapping
+      // retries via the canonical PWA.installClick). Manual steps stay
+      // available as a clearly secondary, honest option.
+      html += '<div style="font-size:.8rem;color:var(--text2,#8d99ad);margin-bottom:8px">Faster access · App-like experience · Home-screen shortcut · Push notifications</div>';
+      html += '<div style="display:flex;flex-direction:column;gap:8px;max-width:300px;margin:0 auto">';
+      html += '<button class="pwa32-btn" style="min-height:44px" onclick="window.PWA32._triggerInstall()">📲 Install App</button>';
+      html += '<button class="pwa32-btn pwa32-btn-ghost" style="min-height:44px" onclick="window.PWA32._installHelp()">📖 How to Install</button>';
+      html += '</div>';
     } else {
-      html += '<div style="font-size:.78rem;color:var(--text2,#8d99ad)">Tip: open studyria.qzz.io in Chrome (Android/desktop) or Safari (iPhone) to install the app.</div>';
+      // Genuinely unsupported browser — honest manual steps are the primary
+      // action, because no native flow exists to offer.
+      html += '<div style="font-size:.8rem;color:var(--text2,#8d99ad);margin-bottom:8px">This browser doesn\'t offer app installation — follow the steps to add Studyria to your home screen.</div>';
+      html += '<button class="pwa32-btn" style="min-height:44px" onclick="window.PWA32._installHelp()">📖 How to Install</button>';
     }
     html += '</div>';
 
@@ -801,6 +818,21 @@
   // ═══════════════════════════════════════════════════════════════════
   // § 10. PUBLIC API
   // ═══════════════════════════════════════════════════════════════════
+
+  // V4: when beforeinstallprompt arrives AFTER the App page rendered
+  // (common — Chrome fires it asynchronously), refresh the page so the
+  // status card flips to Ready and the CTA triggers the native flow.
+  // Re-render only while the App page is actually visible.
+  function _pageVisible() {
+    var el = document.getElementById('page-pwa');
+    return !!(el && el.offsetParent !== null);
+  }
+  window.addEventListener('pwa:installable', function () {
+    if (_pageVisible()) renderPWAPage();
+  });
+  window.addEventListener('pwa:installed', function () {
+    if (_pageVisible()) renderPWAPage();
+  });
 
   window.PWA32 = {
     version: PWA32.VERSION,

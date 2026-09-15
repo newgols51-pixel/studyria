@@ -43,12 +43,18 @@ const PWA_CONFIG = {
 const _state = {
   swRegistration:   null,
   waitingSW:        null,
-  deferredPrompt:   null,   // beforeinstallprompt event
+  deferredPrompt:   null,   // beforeinstallprompt event (single canonical reference)
   isInstalled:      false,
   isOnline:         typeof navigator !== 'undefined' ? navigator.onLine : true,
   updateDismissed:  false,
   initialized:      false,
   updateCheckTimer: null,
+  // V4 — canonical install event trail (real signals only, per-device):
+  installEvents: {
+    promptSeen:     false,   // beforeinstallprompt actually captured
+    promptAt:       null,    // timestamp
+    installedEvent: false   // appinstalled actually fired
+  }
 };
 
 // Capability flags (set once at init)
@@ -403,39 +409,77 @@ function _scheduleUpdateChecks() {
 // 5. INSTALL PROMPT
 // ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * _installBrowserInfo — V4 §5: never classify a browser as "manual-install
+ * only" from a naive UA rule alone. This helper ONLY decides how likely this
+ * browser is to expose the real beforeinstallprompt natively, so the CTA can
+ * keep offering the native flow instead of routing Chrome to a manual modal.
+ */
+function _installBrowserInfo() {
+  var ua = navigator.userAgent || '';
+  var isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  // iPadOS masquerades as macOS Safari — detect via touch + no Win/Mac pointer
+  var isIPadOS = !isIOS && /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+  var isAndroid = /android/i.test(ua);
+  var isFirefox = /firefox\//i.test(ua);
+  var isOperaMini = /Opera Mini|OPiOS/.test(ua);
+  var isEdge = /edg\//i.test(ua);
+  var isSamsung = /SamsungBrowser/.test(ua);
+  var isOpera = /OPR\//.test(ua);
+  var isChrome = /Chrome\/|Chromium\//.test(ua) && !isEdge && !isSamsung && !isOpera && !isOperaMini;
+  // Chromium-family browsers implement beforeinstallprompt (Chrome, Edge,
+  // Samsung Internet, Opera). Firefox / iOS / Opera Mini genuinely do NOT.
+  var nativePromptLikely = !isIOS && !isIPadOS && !isFirefox && !isOperaMini &&
+    (isChrome || isEdge || isSamsung || isOpera || (isAndroid && !isFirefox));
+  var platform = isIOS || isIPadOS ? 'ios' : isAndroid ? 'android' : /Windows|Macintosh|Linux|CrOS/.test(ua) ? 'desktop' : 'other';
+  var browser = isIOS || isIPadOS ? 'safari-ios' : isFirefox ? 'firefox' : isEdge ? 'edge'
+    : isSamsung ? 'samsung' : isOpera ? 'opera' : isOperaMini ? 'opera-mini'
+    : isChrome ? 'chrome' : 'other';
+  return { isIOS: isIOS || isIPadOS, isAndroid: isAndroid, isFirefox: isFirefox,
+           nativePromptLikely: nativePromptLikely, platform: platform, browser: browser };
+}
+
 function setupInstallPrompt() {
-  // ── Global guard: only one beforeinstallprompt + appinstalled listener ever ──
-  // This flag is checked before every call so that inline scripts, pwaAppCenter,
-  // main.js, or any other file that also calls setupInstallPrompt() cannot
-  // register a second pair of listeners.
+  // ── Global guard: only ONE install wiring ever exists ──
   if (window.__pwaInstallListenersRegistered) return;
   window.__pwaInstallListenersRegistered = true;
 
-  // Remove any duplicate beforeinstallprompt handlers that may have been
-  // attached by old inline code or main.js before app.js loaded.
-  // We achieve this by moving to a named handler that can be referenced.
-
-  function _onBeforeInstallPrompt(e) {
-    e.preventDefault();
-    _state.deferredPrompt    = e;
-    window._pwaInstallPrompt = e;
-    console.log('[PWA] beforeinstallprompt captured ✅ — prompt ready');
-
-    // Show burger install button if not already installed
-    _updateInstallButtonVisibility();
-
-    window.dispatchEvent(new CustomEvent('pwa:installable', { detail: { prompt: e } }));
+  // ── V4: consume a prompt already captured by the EARLY inline listener
+  //    (index.html <head>). On slow devices Chrome can dispatch
+  //    beforeinstallprompt before deferred JS executes — the early capture
+  //    holds it; here we sync it into the canonical state. ──
+  if (window._pwaInstallPrompt) {
+    _state.deferredPrompt = window._pwaInstallPrompt;
+    _state.installEvents.promptSeen = true;
+    _state.installEvents.promptAt = window.__pwaInstallLog && window.__pwaInstallLog.length
+      ? window.__pwaInstallLog[window.__pwaInstallLog.length - 1].t : Date.now();
+    console.log('[PWA] beforeinstallprompt already captured (early listener) ✅');
   }
 
-  function _onAppInstalled() {
+  // ── Custom-event sync. The EARLY listener (or the defensive natives
+  //    below) is the ONLY dispatch source of 'pwa:installable' /
+  //    'pwa:installed'; app.js is a pure subscriber — never a re-dispatcher,
+  //    so no double-handling is possible. ──
+  window.addEventListener('pwa:installable', function (e) {
+    var p = (e && e.detail && e.detail.prompt) ? e.detail.prompt : window._pwaInstallPrompt;
+    if (!p) return;
+    _state.deferredPrompt = p;
+    window._pwaInstallPrompt = p;
+    _state.installEvents.promptSeen = true;
+    _state.installEvents.promptAt = Date.now();
+    console.log('[PWA] beforeinstallprompt captured ✅ — native prompt ready');
+    _updateInstallButtonVisibility();
+  });
+
+  window.addEventListener('pwa:installed', function () {
     console.log('[PWA] App installed ✅');
-    _state.isInstalled       = true;
-    _state.deferredPrompt    = null;
+    _state.isInstalled = true;
+    _state.installEvents.installedEvent = true;
+    _state.deferredPrompt = null;
     window._pwaInstallPrompt = null;
     window._pwaInstallToastShown = true;
     document.documentElement.setAttribute('data-pwa-installed', 'true');
 
-    // Hide / mark every known install button
     _markBurgerInstalled();
     ['pwaInstallBtn', 'pwaHmInstallBtn', 'installAppBtn'].forEach(function(id) {
       var btn = document.getElementById(id);
@@ -443,7 +487,6 @@ function setupInstallPrompt() {
     });
 
     document.getElementById('_pwaInstallBanner')?.remove();
-    window.dispatchEvent(new CustomEvent('pwa:installed'));
 
     if (window.gtag) {
       window.gtag('event', 'app_installed', { app_name: PWA_CONFIG.NAME });
@@ -452,12 +495,25 @@ function setupInstallPrompt() {
     if (typeof showToast === 'function') {
       showToast('✅ Studyria App installed!', 'success');
     }
+  });
+
+  // ── DEFENSIVE ONLY: register native listeners here when the early
+  //    inline capture is absent (e.g. app.js loaded standalone). When it
+  //    IS present (production index.html), exactly ONE native listener
+  //    pair exists — the early one — and this path never runs. ──
+  if (!window.__pwaEarlyInstallCapture) {
+    console.warn('[PWA] early install capture not found — registering deferred native listeners');
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window._pwaInstallPrompt = e;
+      window.dispatchEvent(new CustomEvent('pwa:installable', { detail: { prompt: e, source: 'deferred' } }));
+    });
+    window.addEventListener('appinstalled', function () {
+      window.dispatchEvent(new CustomEvent('pwa:installed', { detail: { source: 'deferred' } }));
+    });
   }
 
-  window.addEventListener('beforeinstallprompt', _onBeforeInstallPrompt);
-  window.addEventListener('appinstalled', _onAppInstalled);
-
-  // Bind the burger-menu install button exactly once
+  _updateInstallButtonVisibility();
   _bindInstallButton();
 }
 
@@ -618,10 +674,9 @@ async function promptInstall() {
   var prompt = window._pwaInstallPrompt || _state.deferredPrompt;
 
   if (!prompt) {
-    // No native install prompt available — show fallback instructions.
-    // Do NOT disable the burger menu button — it now navigates to the
-    // App & Updates page, which handles the fallback UI.
-    showiOSInstallTip();
+    // No native prompt right now — shared honest fallback (V4): Chromium
+    // browsers get a retry hint, genuinely unsupported ones get steps.
+    _noPromptFallback();
     return;
   }
 
@@ -637,9 +692,11 @@ async function promptInstall() {
     dismissInstallBanner();
 
     if (result.outcome === 'accepted') {
+      // V4 §10: 'accepted' means the browser STARTED installing — the real
+      // proof is the appinstalled event (the pwa:installed subscriber hides
+      // every CTA then). Never mark installed from userChoice alone.
       window._pwaInstallToastShown = true;
-      _markBurgerInstalled();
-      if (typeof showToast === 'function') showToast('🚀 Studyria installed!', 'success');
+      if (typeof showToast === 'function') showToast('📲 Installing Studyria…', 'info');
     }
   } catch (e) {
     console.warn('[PWA] Install prompt error:', e);
@@ -771,17 +828,145 @@ function showInstallHelp() {
 }
 
 /**
- * installClick — the ONE centralized CTA handler (P11). Every install
- * surface (header button, burger menu item, App page) routes through it:
- *   INSTALLED                → no-op (CTA is hidden anyway)
- *   prompt available         → trigger the REAL native install prompt
- *   prompt unavailable       → platform-specific How to Install modal
+ * _noPromptFallback — the ONE honest no-prompt path (V4 §5/§8/§12).
+ * "Prompt not captured yet" and "browser genuinely has no native flow"
+ * are DIFFERENT states and must not be conflated:
+ *   • Chromium-family browser (Chrome/Edge/Samsung/Opera): the site is
+ *     installable and the event may simply not have arrived yet (slow
+ *     load) or Chrome temporarily withheld it — NEVER route these to
+ *     the manual modal as if unsupported. Honest retry hint instead.
+ *   • Browsers with no beforeinstallprompt implementation (iOS Safari,
+ *     Firefox, Opera Mini, embedded WebViews): honest platform-specific
+ *     install steps — the real, supported mechanism there.
+ */
+function _noPromptFallback() {
+  var info = _installBrowserInfo();
+  if (info.nativePromptLikely) {
+    if (typeof showToast === 'function') {
+      showToast('Chrome hasn\'t offered the install prompt yet — wait a few seconds and tap Install App again, or use your browser menu (⋮ → Install app).', 'info');
+    } else {
+      console.log('[PWA] install prompt not ready yet on a Chromium browser — retry later');
+    }
+    return;
+  }
+  showInstallHelp();
+}
+
+/**
+ * installClick — the ONE centralized CTA handler (V4 §9). Every install
+ * surface (header button, burger menu item, mhDownloadBtn, App page)
+ * routes through this same handler. No duplicate install logic exists.
+ *   INSTALLED              → no-op (CTA hidden anyway)
+ *   prompt available       → REAL native prompt, from this user gesture
+ *   prompt not available   → honest fallback (_noPromptFallback)
  */
 function installClick() {
   if (_isAlreadyInstalled()) return; // never prompt when installed
   var prompt = window._pwaInstallPrompt || _state.deferredPrompt;
   if (prompt) { promptInstall(); return; }
-  showInstallHelp();
+  _noPromptFallback();
+}
+
+/**
+ * installState — THE canonical install state object (V4 §2E/§8). One
+ * authoritative answer for "what is the install situation on THIS
+ * device/browser right now". All four states stay distinct:
+ *   installed / promptAvailable / prompt-not-currently-available / unsupported
+ * Never a global "Studyria installed" flag — per-device/browser only.
+ */
+function installState() {
+  var info = _installBrowserInfo();
+  var standalone = detectStandalone();
+  var installed = _isAlreadyInstalled();
+  var promptAvailable = !!(window._pwaInstallPrompt || _state.deferredPrompt);
+  var swSupported = 'serviceWorker' in navigator;
+  var state = installed ? 'installed'
+    : promptAvailable ? 'prompt-available'
+    : (info.nativePromptLikely && swSupported) ? 'prompt-not-yet-available'
+    : swSupported ? 'unsupported-manual'
+    : 'unsupported';
+  return {
+    state: state,
+    installed: installed,
+    promptAvailable: promptAvailable,
+    promptSeen: _state.installEvents.promptSeen,
+    promptAt: _state.installEvents.promptAt,
+    installedEvent: _state.installEvents.installedEvent,
+    unsupported: state === 'unsupported' || state === 'unsupported-manual',
+    browser: info.browser,
+    platform: info.platform,
+    standalone: standalone,
+    displayMode: (window.matchMedia('(display-mode: standalone)').matches && 'standalone')
+      || (window.matchMedia('(display-mode: fullscreen)').matches && 'fullscreen')
+      || (window.matchMedia('(display-mode: browser)').matches ? 'browser' : 'unknown'),
+    navigatorStandalone: window.navigator.standalone === true,
+    swSupported: swSupported,
+    listenerMode: window.__pwaEarlyInstallCapture ? 'early-inline' : 'deferred-app-js'
+  };
+}
+
+/**
+ * installDiagnostics — V4 §4 runtime investigation, production-safe:
+ * runs ONLY on demand (console: PWA.installDiagnostics()), never logs
+ * automatically, exposes no secrets. Reports the exact conditions under
+ * which beforeinstallprompt did or did not arrive on this device.
+ */
+async function installDiagnostics() {
+  var info = _installBrowserInfo();
+  var d = {
+    userAgent: navigator.userAgent,
+    browserFamily: info.browser,
+    platform: info.platform,
+    protocol: location.protocol,
+    isSecureContext: window.isSecureContext,
+    promptSeen: _state.installEvents.promptSeen,
+    promptAt: _state.installEvents.promptAt,
+    promptAvailableNow: !!(window._pwaInstallPrompt || _state.deferredPrompt),
+    installedEvent: _state.installEvents.installedEvent,
+    installed: _isAlreadyInstalled(),
+    standalone: detectStandalone(),
+    displayMode: null,
+    navigatorStandalone: window.navigator.standalone === true,
+    documentReferrer: document.referrer || '(empty)',
+    listenerMode: window.__pwaEarlyInstallCapture ? 'early-inline' : 'deferred-app-js',
+    eventLog: (window.__pwaInstallLog || []).slice()
+  };
+  ['standalone', 'fullscreen', 'minimal-ui', 'browser'].forEach(function (m) {
+    if (!d.displayMode && window.matchMedia('(display-mode: ' + m + ')').matches) d.displayMode = m;
+  });
+
+  // Manifest check
+  try {
+    var r = await fetch('/manifest.json', { cache: 'no-store' });
+    d.manifestHttp = r.status;
+    var mf = await r.json();
+    d.manifest = {
+      name: mf.name || null, short_name: mf.short_name || null, id: mf.id || null,
+      start_url: mf.start_url || null, scope: mf.scope || null, display: mf.display || null,
+      icons: (mf.icons || []).map(function (i) { return (i.sizes || '') + '/' + (i.type || 'any'); })
+    };
+  } catch (e) {
+    d.manifestHttp = 'fetch-failed: ' + (e && e.message);
+  }
+
+  // Service worker check
+  try {
+    var reg = await navigator.serviceWorker.getRegistration();
+    d.swRegistration = reg ? (reg.active ? 'active' : reg.installing ? 'installing' : reg.waiting ? 'waiting' : 'registered') : 'none';
+    d.swController = navigator.serviceWorker.controller ? 'controlled' : 'no-controller';
+    d.swScope = reg ? reg.scope : null;
+  } catch (e) {
+    d.swRegistration = 'unsupported';
+  }
+
+  d.verdict = d.installed ? 'INSTALLED — install CTA correctly hidden'
+    : d.promptAvailableNow ? 'PROMPT AVAILABLE — native install ready, CTA triggers it'
+    : (info.nativePromptLikely && d.swRegistration !== 'none' && d.swRegistration !== 'unsupported')
+      ? 'ELIGIBLE BUT NO PROMPT YET — Chrome has not supplied beforeinstallprompt at this moment; this is browser-timing (early capture holds it if/when it fires). If it never fires, Chrome itself withheld it (e.g. recently uninstalled) — not an app defect.'
+    : 'BROWSER WITHOUT NATIVE INSTALL FLOW — honest manual fallback is correct here';
+
+  console.log('[PWA] Install diagnostics:', d);
+  return d;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1429,6 +1614,8 @@ window.PWA = {
   // Install
   promptInstall,
   installClick,
+  installState,
+  installDiagnostics,
   markBurgerInstalled: _markBurgerInstalled,
   showiOSInstallTip,
   showInstallHelp,
