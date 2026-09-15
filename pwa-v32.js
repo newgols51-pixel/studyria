@@ -868,9 +868,11 @@
       }
     },
     _triggerInstall: function() {
-      // Delegate to the canonical install handler in app.js (window.PWA).
-      // This is the SAME handler used by the burger menu and install banner.
-      if (window.PWA && typeof window.PWA.promptInstall === 'function') {
+      // Delegate to the canonical CTA handler in app.js (window.PWA).
+      // This is the SAME handler used by the header button and burger menu.
+      if (window.PWA && typeof window.PWA.installClick === 'function') {
+        window.PWA.installClick();
+      } else if (window.PWA && typeof window.PWA.promptInstall === 'function') {
         window.PWA.promptInstall();
       } else if (window._pwaInstallPrompt) {
         window._pwaInstallPrompt.prompt();
