@@ -75,13 +75,68 @@
     return isAllowed(id) ? ALLOWLIST[id] : null;
   }
 
+  /* ── PERSISTENCE SHAPE (V8.1) ─────────────────────────────────────
+     ONE canonical device key holds a versioned payload:
+       { "version": 1, "shortcuts": ["brainlab", ...], "updatedAt": ISO }
+     sanitizePrefs() is the single authority for what a stored payload
+     may look like — corrupted/tampered data yields null and the caller
+     safely falls back to defaults. Only shortcut IDs + ordering +
+     schema/version metadata are ever stored. No URLs, no secrets. */
+  var PREFS_KEY = 'studyria_shortcuts_v1';
+  var PREFS_VERSION = 1;
+  var LEGACY_PREFIX = 'shortcuts_v1:';  /* V8 per-identity keys — migrated once */
+
+  function sanitizePrefs(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    /* Accept the V8.1 shape ({shortcuts}) and — defensively — a stray
+       V8 shape ({ids}) so a half-written payload never breaks loading. */
+    var ids = Array.isArray(raw.shortcuts) ? raw.shortcuts
+            : (Array.isArray(raw.ids) ? raw.ids : null);
+    if (!ids) return null;
+    return { version: PREFS_VERSION, shortcuts: validate(ids) };
+  }
+
+  /* Pick the best legacy V8 candidate (most recently updated wins). */
+  function chooseLegacy(candidates) {
+    if (!Array.isArray(candidates)) return null;
+    var best = null, bestAt = '';
+    for (var i = 0; i < candidates.length; i++) {
+      var c = candidates[i];
+      if (!c || typeof c.key !== 'string' || !Array.isArray(c.ids)) continue;
+      var clean = validate(c.ids);
+      if (!clean.length) continue;
+      var at = typeof c.updatedAt === 'string' ? c.updatedAt : '';
+      if (!best || at > bestAt) { best = { key: c.key, ids: clean }; bestAt = at; }
+    }
+    return best;
+  }
+
+  /* ── CLOUD SYNC — HONESTLY OFF ────────────────────────────────────
+     The additive Supabase migration (sql/user-shortcuts-migration.sql)
+     has NOT been run yet (planned ~Oct 2026) — the user_shortcut_prefs
+     table does not exist. While this flag is false, pwa-v32.js makes
+     ZERO requests to that table: no 404/4xx probing, no console spam.
+     Feature works fully per-device without it.
+     TO ENABLE CROSS-DEVICE SYNC LATER: run the SQL migration in the
+     Supabase SQL editor, then flip this to true. The gated cloud
+     branches in pwa-v32.js activate with no rebuild: cloud preference
+     becomes canonical (last-write-wins by updatedAt), local stays the
+     offline fallback. Do NOT flip before the SQL has been run. */
+  var CLOUD_SYNC_ENABLED = false;
+
   var API = {
     ALLOWLIST: ALLOWLIST,
     MAX: MAX_SHORTCUTS,
     DEFAULT_IDS: Object.freeze(DEFAULT_IDS.slice()),
     validate: validate,
     isAllowed: isAllowed,
-    get: get
+    get: get,
+    PREFS_KEY: PREFS_KEY,
+    PREFS_VERSION: PREFS_VERSION,
+    LEGACY_PREFIX: LEGACY_PREFIX,
+    sanitizePrefs: sanitizePrefs,
+    chooseLegacy: chooseLegacy,
+    CLOUD_SYNC_ENABLED: CLOUD_SYNC_ENABLED
   };
 
   /* Browser: attach under window.StudyriaShortcuts */

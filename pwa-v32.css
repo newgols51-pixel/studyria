@@ -486,6 +486,9 @@ body.light .pwa32-wn-search {
    Mobile-first: safe from 320px, touch targets ≥ 44px.
    ═══════════════════════════════════════════════════════════════════ */
 
+.pwa32-sc-sub {
+  font-size: .72rem; color: var(--text2, #6b6358); margin: -6px 0 10px; padding: 0 4px;
+}
 .pwa32-sc-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));

@@ -489,13 +489,27 @@
 
   // ═══════════════════════════════════════════════════════════════════
   // ═══════════════════════════════════════════════════════════════════
-  // § 4c. MY SHORTCUTS (V8) — Personalized in-app quick shortcuts
+  // § 4c. MY SHORTCUTS (V8.1) — Personalized in-app quick shortcuts
   // ───────────────────────────────────────────────────────────────────
-  // Pure config/validation lives in shortcut-core.js (window.StudyriaShortcuts).
-  // This module handles ONLY: persistence (per-user localStorage key +
-  // additive Supabase table user_shortcut_prefs), rendering, and
-  // ID-based navigation dispatch (same navigate()/BrainLab.switchTab
-  // patterns the Smart App Center already uses).
+  // Pure config / validation / persistence-shape live in shortcut-core.js
+  // (window.StudyriaShortcuts). This module handles ONLY: per-DEVICE
+  // persistence (one canonical localStorage key), rendering, and
+  // ID-based navigation dispatch (same navigate()/__blReady patterns
+  // the Smart App Center already uses).
+  //
+  // PERSISTENCE MODEL (truthful, migration-free):
+  //   • ONE canonical device key (core.PREFS_KEY) — guests and signed-in
+  //     users share it, so signing in/out on this device never changes
+  //     or erases the user's picks.
+  //   • ZERO Supabase calls while StudyriaShortcuts.CLOUD_SYNC_ENABLED is
+  //     false — the user_shortcut_prefs table does not exist yet, and
+  //     probing it would spam the console with 404/4xx. The cloud
+  //     functions below are gated on that flag and are inert today.
+  //   • When sql/user-shortcuts-migration.sql is eventually run
+  //     (~Oct 2026), flip CLOUD_SYNC_ENABLED to true in shortcut-core.js:
+  //     the gated cloud branches activate with no rebuild — cloud
+  //     preference becomes canonical (last-write-wins by updatedAt),
+  //     local stays the offline fallback.
   //
   // HONEST LIMITATION: the Android/iOS launcher long-press shortcut
   // menu comes from the STATIC manifest.json and is identical for every
@@ -505,111 +519,122 @@
 
   var SC = (window.StudyriaShortcuts || null);
 
-  // In-memory working copy of the user's selected shortcut IDs (ordered)
+  // In-memory working copy of the selected shortcut IDs (ordered)
   var _scSelected = [];
-  // Truthful persistence state, never faked
-  var _scSyncState = 'default'; // 'default' | 'device' | 'synced' | 'pending'
+  // Truthful persistence state — never faked. Reachable TODAY:
+  //   'default' | 'local'          (per-device only)
+  // Flag-gated future states (inert until CLOUD_SYNC_ENABLED is true):
+  //   'cloud-synced' | 'sync-pending'
+  var _scSyncState = 'default';
 
   function _scCore() {
     if (!SC) SC = window.StudyriaShortcuts || null;
     return SC;
   }
 
-  // Per-user localStorage key — genuinely user-specific (guests get a
-  // separate key so signing in never adopts a guest's picks, and vice versa)
-  function _scLsKey() {
-    var uid = _uid();
-    return 'shortcuts_v1:' + (uid || 'guest');
+  // Cloud is only even attemptable when the flag was flipped AFTER the
+  // SQL migration ran. While false this is always false → zero table calls.
+  function _scCloudOn() {
+    var core = _scCore();
+    return !!(core && core.CLOUD_SYNC_ENABLED === true && _sb() && _uid());
   }
 
-  function _scLoadLocal() {
-    var core = _scCore(); if (!core) return [];
-    var stored = null;
-    try { stored = JSON.parse(localStorage.getItem(_scLsKey()) || 'null'); } catch(_) { stored = null; }
-    return core.validate(stored && stored.ids ? stored.ids : []);
+  // ── Canonical device persistence (ONE key, versioned payload) ──────
+  function _scReadPrefs() {
+    var core = _scCore(); if (!core) return null;
+    var raw = null;
+    try { raw = JSON.parse(localStorage.getItem(core.PREFS_KEY) || 'null'); } catch (_) { raw = null; }
+    // Corrupted / tampered data → null → caller falls back to defaults.
+    // Only our own key is read — unrelated storage is never touched.
+    return core.sanitizePrefs(raw);
   }
 
-  function _scLoadLocalMeta() {
-    try { return JSON.parse(localStorage.getItem(_scLsKey()) || 'null') || {}; } catch(_) { return {}; }
-  }
-
-  function _scSaveLocal(ids) {
+  function _scWritePrefs(ids) {
+    var core = _scCore(); if (!core) return;
     try {
-      localStorage.setItem(_scLsKey(), JSON.stringify({ ids: ids, updatedAt: new Date().toISOString() }));
-    } catch(_) {}
+      localStorage.setItem(core.PREFS_KEY, JSON.stringify({
+        version: core.PREFS_VERSION,
+        shortcuts: core.validate(ids),
+        updatedAt: new Date().toISOString()
+      }));
+    } catch (_) {}
   }
 
-  // ── Supabase sync (additive table user_shortcut_prefs) ─────────────
-  // Graceful degradation: table missing (migration not yet applied) or
-  // offline → keep the honest per-device state, never fake a sync.
+  // One-time migration from the V8 per-identity keys. Absorbs the best
+  // legacy pick into the canonical key, then removes ONLY keys carrying
+  // our own legacy prefix — no other localStorage/sessionStorage is cleared.
+  function _scMigrateLegacy() {
+    var core = _scCore(); if (!core) return null;
+    var candidates = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(core.LEGACY_PREFIX) === 0) {
+          var v = null;
+          try { v = JSON.parse(localStorage.getItem(k) || 'null'); } catch (_) { v = null; }
+          if (v && Array.isArray(v.ids)) candidates.push({ key: k, ids: v.ids, updatedAt: v.updatedAt || '' });
+        }
+      }
+    } catch (_) { return null; }
+    if (!candidates.length) return null;
+    var best = core.chooseLegacy(candidates);
+    candidates.forEach(function (c) { try { localStorage.removeItem(c.key); } catch (_) {} });
+    return best ? best.ids : null;
+  }
+
+  // ── Cloud sync (FUTURE — flag-gated, inert today) ──────────────────
+  // Each function checks the flag FIRST; while it is false these make
+  // ZERO network requests (no 404s, no console spam) and the callers
+  // below never even invoke them on the load path.
   async function _scFetchRemote() {
-    var sb = _sb(), uid = _uid(), core = _scCore();
-    if (!sb || !uid || !core) return null;
+    if (!_scCloudOn()) return null;               // gate FIRST
+    var core = _scCore(), sb = _sb(), uid = _uid();
     try {
       var res = await sb.from('user_shortcut_prefs')
-        .select('shortcut_ids, updated_at')
-        .eq('user_id', uid)
-        .maybeSingle();
-      if (res.error) {
-        console.warn('[SHORTCUTS] remote fetch unavailable:', res.error.message);
-        return null;
-      }
+        .select('shortcut_ids, updated_at').eq('user_id', uid).maybeSingle();
+      if (res.error) { console.warn('[SHORTCUTS] cloud fetch unavailable:', res.error.message); return null; }
       if (!res.data) return null;
       return { ids: core.validate(res.data.shortcut_ids || []), updatedAt: res.data.updated_at || '' };
-    } catch(e) {
-      console.warn('[SHORTCUTS] remote fetch failed:', e.message);
-      return null;
-    }
+    } catch (e) { console.warn('[SHORTCUTS] cloud fetch failed:', e.message); return null; }
   }
 
   async function _scSaveRemote(ids) {
-    var sb = _sb(), uid = _uid(), core = _scCore();
-    if (!sb || !uid || !core) return false;
-    var clean = core.validate(ids);
+    if (!_scCloudOn()) return false;              // gate FIRST
+    var core = _scCore(), sb = _sb(), uid = _uid();
     try {
       var res = await sb.from('user_shortcut_prefs').upsert({
         user_id: uid,
-        shortcut_ids: clean,           // jsonb — server CHECKs ≤4 + allowlist
+        shortcut_ids: core.validate(ids),        // server CHECKs ≤4 + allowlist
         updated_at: new Date().toISOString()
       });
-      if (res.error) {
-        console.warn('[SHORTCUTS] remote save unavailable:', res.error.message);
-        return false;
-      }
+      if (res.error) { console.warn('[SHORTCUTS] cloud save unavailable:', res.error.message); return false; }
       return true;
-    } catch(e) {
-      console.warn('[SHORTCUTS] remote save failed:', e.message);
-      return false;
-    }
+    } catch (e) { console.warn('[SHORTCUTS] cloud save failed:', e.message); return false; }
   }
 
-  // ── Load: local first (instant, offline-safe), then best-effort reconcile ──
+  // ── Load: canonical device key — instant, offline-safe, no network ──
   function _scInit() {
     var core = _scCore(); if (!core) return;
-    var local = _scLoadLocal();
-    var meta = _scLoadLocalMeta();
-    if (local.length) {
-      _scSelected = local;
-      _scSyncState = _uid() ? 'device' : 'device'; // corrected by remote reconcile below
-    } else {
+    var prefs = _scReadPrefs();
+    if (!prefs) {
+      // Corrupted/missing → try a one-time absorb of the V8 legacy keys,
+      // otherwise fall back to the default set. Never a blank erase.
+      var legacy = _scMigrateLegacy();
+      if (legacy && legacy.length) {
+        _scSelected = legacy;
+        _scWritePrefs(legacy);
+        _scSyncState = 'local';
+        return;
+      }
       _scSelected = core.DEFAULT_IDS.slice();
       _scSyncState = 'default';
+      return;
     }
-    if (_uid() && local.length) {
-      _scFetchRemote().then(function(remote) {
-        if (!remote) return;
-        var localAt = meta.updatedAt || '';
-        if (remote.updatedAt && remote.updatedAt > localAt && remote.ids.length) {
-          _scSelected = remote.ids;
-          _scSaveLocal(remote.ids);
-        }
-        _scSyncState = 'synced';
-        _scRenderQuick();
-        _scRenderEditor();
-      });
-    } else if (local.length && !_uid()) {
-      _scSyncState = 'device';
-    }
+    _scSelected = prefs.shortcuts;               // may legitimately be [] (user's choice)
+    _scSyncState = 'local';
+    // Future (only after CLOUD_SYNC_ENABLED is flipped): reconcile with
+    // the account preference — cloud wins if newer, else local is
+    // offered for account init. Implemented when the table exists.
   }
 
   // ── Navigation dispatch (allowlist IDs only — no URLs, ever) ───────
@@ -661,42 +686,44 @@
     var core = _scCore(); if (!core) return;
     var clean = core.validate(_scSelected);
     _scSelected = clean;
-    _scSaveLocal(clean);                              // immediate, offline-safe
-    if (!_uid()) {
-      _scSyncState = 'device';
-      _scRenderEditor();
-      showToast && showToast('Saved on this device. Sign in to sync across devices.', 'success');
+    _scWritePrefs(clean);                            // immediate, offline-safe
+    _scSyncState = 'local';
+    _scRenderEditor(); _scRenderQuick();
+    if (!_scCloudOn()) {                             // today: honest device-only save
+      showToast && showToast('✓ Saved on this device', 'success');
       return;
     }
-    _scSyncState = 'pending';
-    _scRenderEditor();
+    _scSyncState = 'sync-pending'; _scRenderEditor();
     var ok = await _scSaveRemote(clean);
-    _scSyncState = ok ? 'synced' : 'device';
+    _scSyncState = ok ? 'cloud-synced' : 'local';
     _scRenderEditor();
-    if (ok) showToast && showToast('Shortcuts saved & synced to your account ✓', 'success');
-    else showToast && showToast('Saved on this device — couldn\'t reach the server.', 'warning');
+    showToast && showToast(ok ? '✓ Saved — account sync active' : 'Saved on this device. Cloud sync unavailable.', ok ? 'success' : 'warning');
   }
 
   function _scReset() {
     var core = _scCore(); if (!core) return;
     _scSelected = core.DEFAULT_IDS.slice();
-    _scSaveLocal(_scSelected);
-    _scSyncState = _uid() ? 'pending' : 'device';
+    _scWritePrefs(_scSelected);
+    _scSyncState = 'local';
     _scRenderEditor(); _scRenderQuick();
-    if (_uid()) {
-      _scSaveRemote(_scSelected).then(function(ok) {
-        _scSyncState = ok ? 'synced' : 'device';
+    showToast && showToast('Shortcuts reset to the default set.', 'info');
+    // Future (flag-gated, inert today): reset also updates the account pref.
+    if (_scCloudOn()) {
+      _scSyncState = 'sync-pending'; _scRenderEditor();
+      _scSaveRemote(_scSelected).then(function (ok) {
+        _scSyncState = ok ? 'cloud-synced' : 'local';
         _scRenderEditor();
       });
     }
-    showToast && showToast('Shortcuts reset to the default set.', 'info');
   }
 
   // ── Renderers ──────────────────────────────────────────────────────
   function _scSyncLabel() {
-    if (_scSyncState === 'synced') return 'Synced to your account ✓';
-    if (_scSyncState === 'pending') return 'Syncing…';
-    if (_scSyncState === 'device') return 'Saved on this device';
+    // Reachable today: 'default' | 'local' only. The cloud states are
+    // unreachable while CLOUD_SYNC_ENABLED is false — never shown falsely.
+    if (_scSyncState === 'cloud-synced') return 'Saved — account sync active';  // future, flag-gated
+    if (_scSyncState === 'sync-pending') return 'Saving…';                      // future, flag-gated
+    if (_scSyncState === 'local') return '✓ Saved on this device';
     return 'Default set — personalize below';
   }
 
@@ -729,7 +756,7 @@
     if (!wrap || !core) return;
     var selCount = _scSelected.length;
     var html = '';
-    html += '<div class="pwa32-sc-intro"><span>Choose up to ' + core.MAX + ' sections for quick access.</span>';
+    html += '<div class="pwa32-sc-intro"><span>Choose up to ' + core.MAX + ' sections.</span>';
     html += '<span class="pwa32-sc-count' + (selCount >= core.MAX ? ' max' : '') + '">' + selCount + ' / ' + core.MAX + ' selected</span></div>';
 
     // Selected (ordered) list with move up/down/remove
@@ -775,8 +802,9 @@
     html += '<button class="pwa32-btn pwa32-btn-ghost" onclick="window.PWA32._scReset()">Reset to Default</button>';
     html += '</div>';
     html += '<div class="pwa32-sc-status">' + _escHtml(_scSyncLabel()) + '</div>';
-    // Truthful scope note — in-app only, not launcher shortcuts
+    // Truthful scope notes — in-app only, device-local today
     html += '<div class="pwa32-sc-note">These shortcuts appear inside the Studyria app. Your phone\'s launcher shortcuts (long-press on the app icon) are set by the app and are the same for everyone.</div>';
+    html += '<div class="pwa32-sc-note">Saved on this device — account sync will be available after cloud sync is enabled.</div>';
 
     wrap.innerHTML = html;
   }
@@ -1294,7 +1322,7 @@
     html += '</div></div>';
 
     // ═══ 2b. MY SHORTCUTS (personalized, up to 4) ═══
-    html += '<div class="pwa7-section"><div class="pwa7-section-title">⚡ My Shortcuts</div>';
+    html += '<div class="pwa7-section"><div class="pwa7-section-title">⚡ My Shortcuts</div><div class="pwa32-sc-sub">Your 4 quick-access sections</div>';
     html += '<div id="pwa32ScQuick"></div>';
     html += '</div>';
 
