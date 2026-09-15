@@ -674,36 +674,46 @@ function showiOSInstallTip() { return showInstallHelp(); }
  * claims a universal install method.
  */
 function showInstallHelp() {
+  // ── Capability detection (feature-first, UA only picks wording) ──
   var ua = navigator.userAgent || '';
   var isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
   var isAndroid = /android/i.test(ua);
   var isFirefox = /firefox\//i.test(ua);
   var isEdge = /edg\//i.test(ua);
+  var isSamsung = /SamsungBrowser/i.test(ua);
+  var isOperaMini = /Opera Mini/i.test(ua) || /OPiOS/i.test(ua);
 
-  var steps, head;
+  // Chrome-family on Android exposes beforeinstallprompt; if we got here
+  // without it, this browser requires menu installation (or is unsupported).
+  var unsupported = isFirefox || isOperaMini || (!isAndroid && !isIOS && !/chrome|edg|safari/i.test(ua));
+
+  var head, steps, note;
   if (isIOS) {
     head = 'Install Studyria on iPhone / iPad';
     steps = [
       'Open studyria.qzz.io in <strong>Safari</strong>',
       'Tap the <strong>Share</strong> button <span style="font-size:1.05rem">⬆</span> at the bottom',
-      'Scroll and tap <strong>Add to Home Screen</strong> <span style="font-size:1.05rem">➕</span>',
+      'Scroll down and tap <strong>Add to Home Screen</strong> <span style="font-size:1.05rem">➕</span>',
       'Tap <strong>Add</strong> — Studyria appears on your home screen'
     ];
+    note = "Safari doesn't provide the automatic install prompt, but the steps above give you the same installed app.";
   } else if (isAndroid) {
     head = 'Install Studyria on Android';
     steps = [
-      'Open studyria.qzz.io in <strong>Chrome</strong> (or your browser)',
+      'Open studyria.qzz.io in <strong>Chrome</strong>' + (isSamsung ? ' or <strong>Samsung Internet</strong>' : '') + ' (or your current browser)',
       'Tap the browser menu <strong>⋮</strong> (top right)',
-      'Tap <strong>Install app</strong> — or <strong>Add to Home screen</strong> on older browsers',
+      'Tap <strong>Install app</strong> / <strong>Add to Home screen</strong> — the exact wording depends on your browser',
       'Confirm — Studyria appears on your home screen'
     ];
-  } else if (isFirefox) {
+    note = "Your browser doesn't provide the automatic install prompt. You can still install Studyria from your browser menu — it works exactly the same.";
+  } else if (unsupported && isFirefox) {
     head = 'Install Studyria on Firefox';
     steps = [
-      'Firefox does not support full PWA install on this platform',
-      'You can still bookmark studyria.qzz.io for quick access',
-      'For the full app experience use Chrome or Edge on this device'
+      'Firefox doesn\'t support full PWA installation on this platform',
+      'You can bookmark studyria.qzz.io for quick access',
+      'For the full app experience, use Chrome or Edge on this device'
     ];
+    note = 'This is a browser limitation, not a problem with Studyria.';
   } else {
     head = 'Install Studyria on your computer';
     steps = [
@@ -711,6 +721,7 @@ function showInstallHelp() {
       'Click the <strong>install icon</strong> ⊕ at the right end of the address bar',
       'Click <strong>Install</strong> — Studyria opens in its own app window'
     ];
+    note = "Your browser doesn't provide the automatic install prompt. The address-bar option installs the same real app.";
   }
 
   document.getElementById('_pwaInstallHelp')?.remove();
@@ -721,24 +732,33 @@ function showInstallHelp() {
   ov.setAttribute('aria-label', head);
   ov.style.cssText = [
     'position:fixed', 'inset:0', 'z-index:99999',
-    'background:rgba(10,12,20,0.72)', 'backdrop-filter:blur(4px)',
+    'background:rgba(26,18,12,0.55)', 'backdrop-filter:blur(4px)',
     'display:flex', 'align-items:center', 'justify-content:center',
-    'padding:20px', 'font-family:system-ui,sans-serif'
+    'padding:20px', 'font-family:var(--font-body,system-ui,sans-serif)'
   ].join(';');
 
   ov.innerHTML = `
-    <div style="background:linear-gradient(160deg,#141b2d,#1a2338);border:1px solid rgba(201,154,60,0.28);border-radius:18px;max-width:420px;width:100%;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,0.7);text-align:left">
+    <div style="background:linear-gradient(160deg,#faf7f2,#f3ecdd);border:1px solid rgba(147,2,5,0.18);border-radius:18px;max-width:420px;width:100%;padding:24px;box-shadow:0 24px 80px rgba(26,18,12,0.35);text-align:left;color:#2b2118">
       <div style="font-size:1.6rem;margin-bottom:4px">📱</div>
-      <div style="color:#e4e8f0;font-weight:800;font-size:1.08rem;margin-bottom:14px">${head}</div>
-      <ol style="margin:0;padding-left:20px;color:#aab4c8;font-size:.88rem;line-height:1.75">
+      <div style="font-weight:800;font-size:1.12rem;color:#930205;margin-bottom:6px">${head}</div>
+      <div style="font-size:.84rem;color:#5c5145;margin-bottom:14px;line-height:1.5">
+        Install Studyria for a faster, app-like study experience.
+      </div>
+      <div style="border-top:1px solid rgba(147,2,5,0.14);border-bottom:1px solid rgba(147,2,5,0.14);padding:10px 0;margin-bottom:14px">
+        <div style="font-size:.76rem;color:#2b2118;line-height:2">
+          <div>✓ Quick access from your home screen</div>
+          <div>✓ App-like experience — no browser bars</div>
+          <div>✓ Push notifications for exam alerts</div>
+          <div>✓ Works great on slow connections</div>
+        </div>
+      </div>
+      <ol style="margin:0 0 14px;padding-left:20px;color:#4a3f33;font-size:.86rem;line-height:1.8">
         ${steps.map(t => `<li>${t}</li>`).join('')}
       </ol>
-      <div style="color:#6d7a92;font-size:.74rem;margin-top:12px;line-height:1.5">
-        Your browser did not show the automatic install prompt. The steps above open Studyria's real installed-app experience.
-      </div>
-      <div style="display:flex;gap:10px;margin-top:16px">
-        <button id="_pwaHelpOk" style="flex:1;padding:11px;background:linear-gradient(135deg,#930205,#c99a3c);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;min-height:44px">Got it</button>
-        <button id="_pwaHelpClose" style="padding:11px 16px;background:rgba(255,255,255,0.06);color:#8d99ad;border:1px solid rgba(255,255,255,0.12);border-radius:10px;cursor:pointer;min-height:44px" aria-label="Close">✕</button>
+      <div style="color:#8a7d6c;font-size:.74rem;line-height:1.5;margin-bottom:16px">${note}</div>
+      <div style="display:flex;gap:10px">
+        <button id="_pwaHelpOk" style="flex:1;padding:11px;background:linear-gradient(135deg,#930205,#b91c22);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;min-height:44px;font-size:.9rem">Got it</button>
+        <button id="_pwaHelpClose" style="padding:11px 16px;background:transparent;color:#8a7d6c;border:1px solid rgba(147,2,5,0.25);border-radius:10px;cursor:pointer;min-height:44px" aria-label="Close">✕</button>
       </div>
     </div>`;
 
@@ -748,6 +768,20 @@ function showInstallHelp() {
   document.addEventListener('keydown', esc);
   document.getElementById('_pwaHelpOk').addEventListener('click', close);
   document.getElementById('_pwaHelpClose').addEventListener('click', close);
+}
+
+/**
+ * installClick — the ONE centralized CTA handler (P11). Every install
+ * surface (header button, burger menu item, App page) routes through it:
+ *   INSTALLED                → no-op (CTA is hidden anyway)
+ *   prompt available         → trigger the REAL native install prompt
+ *   prompt unavailable       → platform-specific How to Install modal
+ */
+function installClick() {
+  if (_isAlreadyInstalled()) return; // never prompt when installed
+  var prompt = window._pwaInstallPrompt || _state.deferredPrompt;
+  if (prompt) { promptInstall(); return; }
+  showInstallHelp();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1394,6 +1428,7 @@ window.PWA = {
 
   // Install
   promptInstall,
+  installClick,
   markBurgerInstalled: _markBurgerInstalled,
   showiOSInstallTip,
   showInstallHelp,

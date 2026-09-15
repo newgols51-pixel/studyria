@@ -8949,7 +8949,7 @@ function studyriaApp() {
         </div>
       </div>
       <div style="padding:0 12px 10px">
-        <button onclick="mhCloseBurger();navigate('pwa')" style="width:100%;padding:11px 14px;border-radius:12px;background:linear-gradient(135deg,rgba(147,2,5,0.1),rgba(6,182,212,0.06));border:1px solid rgba(147,2,5,0.25);color:#2563EB;font-family:var(--font-body);font-size:.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .2s">
+        <button onclick="mhCloseBurger();if(window.PWA&&PWA.installClick)PWA.installClick();else navigate('pwa')" style="width:100%;padding:11px 14px;border-radius:12px;background:linear-gradient(135deg,rgba(147,2,5,0.1),rgba(6,182,212,0.06));border:1px solid rgba(147,2,5,0.25);color:#2563EB;font-family:var(--font-body);font-size:.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .2s">
           <span>📱</span><span>Install Studyria App</span>
         </button>
       </div>
@@ -9030,7 +9030,7 @@ function studyriaApp() {
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
         </button>
         <!-- PWA install (hidden, moved to menu) -->
-        <button class="icon-btn" id="pwaInstallBtn" title="Install Studyria App" style="display:none" onclick="navigate('pwa')">
+        <button class="icon-btn" id="pwaInstallBtn" title="Install Studyria App" style="display:none" onclick="if(window.PWA&&PWA.installClick)PWA.installClick();else navigate('pwa')">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </button>
         <!-- Search button (hidden, search is now in header) -->
@@ -21591,7 +21591,11 @@ async function renderPopularDownloads() {
 window._pwaInstallPrompt = window._pwaInstallPrompt || null;
 
 function triggerPWAInstall() {
-  if (window.PWA && typeof window.PWA.promptInstall === 'function') {
+  // Centralized CTA handler (P11): real native prompt when available,
+  // platform-specific How-to-Install modal otherwise. Never a fake install.
+  if (window.PWA && typeof window.PWA.installClick === 'function') {
+    window.PWA.installClick();
+  } else if (window.PWA && typeof window.PWA.promptInstall === 'function') {
     window.PWA.promptInstall();
   }
 }
@@ -44554,12 +44558,6 @@ window.dhMenuNotifications = function() {
 // Rate Studyria: show a toast and attempt native rating prompt
 window.dhRateStudyria = function() {
   if (typeof showToast === 'function') showToast('⭐ Thank you for rating Studyria!', 'success');
-  // Try to trigger PWA rating prompt if available
-  try {
-    if (window.deferredPrompt) {
-      window.deferredPrompt.prompt();
-    }
-  } catch(_) {}
 };
 
 // Auth toggle: Sign In or Sign Out depending on current user state
