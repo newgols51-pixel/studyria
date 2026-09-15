@@ -230,7 +230,8 @@ window.SUPABASE_URL = 'https://qsdfmgcekdpjdcyqhuhi.supabase.co';
 <title>Studyria – Assam's #1 PDF Study Platform</title>
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="pwa-v3.css">
-<link rel="stylesheet" href="pwa-v32.css">
+<!-- v7 cache-bust: versioned URL = fresh fetch via SWR (old URL keeps serving old bytes for up to a load) -->
+<link rel="stylesheet" href="pwa-v32.css?v=7">
 
 <!-- ── Favicon & PWA Icons (official Studyria logo) ── -->
 <link id="siteFavicon" rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
@@ -44400,7 +44401,7 @@ if(document.readyState === 'loading') document.addEventListener('DOMContentLoade
 
 <script src="pwa-v3.js" defer></script>
 <script src="pwa-update.js" defer></script>
-<script src="pwa-v32.js" defer></script>
+<script src="pwa-v32.js?v=7" defer></script>
 <script src="studyria-ui-2.0.js?v=20260730a" defer></script>
 <script src="studyria-me-v3.js" defer></script>
 <script src="studyria-home-v2.js?v=20260901b" defer></script>

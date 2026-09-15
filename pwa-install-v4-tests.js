@@ -430,6 +430,158 @@ async function main() {
   check('changed file set is exactly the expected V6 files (no index.html change needed)',
     changed.sort().join(',') === ['app.js','manifest.json','pwa-install-v4-tests.js','pwa-v32.js'].sort().join(','));
 
+
+  console.log('\n── 21. V7 Smart App Center: source-level — hero, real data only, native install preserved ──');
+  const pwa32v7 = fs.readFileSync(path.join(ROOT, 'pwa-v32.js'), 'utf8');
+  const pwa32css = fs.readFileSync(path.join(ROOT, 'pwa-v32.css'), 'utf8');
+  check('V7 hero: eyebrow + exact headline + subtitle present',
+    pwa32v7.includes('Studyria App</div>') && pwa32v7.includes('Your Study Universe.') && pwa32v7.includes('in Your Pocket.') && pwa32v7.includes('anytime, anywhere'));
+  check('V7 hero: all four feature chips present',
+    ['Faster Access','Offline Ready','Smart Notifications','Exam Preparation'].every(s => pwa32v7.includes('>' + s + '</li>')));
+  check('V7 hero visual uses the CURRENT approved logo asset only',
+    /pwa7-phone-logo" src="icon-192\.png/.test(pwa32v7) && !/logo[_-]?(blue|old)/i.test(pwa32v7 + pwa32css));
+  check('V7 installed state: truthful badge, NO install CTA when installed',
+    /installState === 'installed'\)[\s\S]{0,500}pwa7-btn-installed/.test(pwa32v7) && !/installState === 'installed'[\s\S]{0,600}_triggerInstall/.test(pwa32v7));
+  check('V7 standalone shows "Running as App"', pwa32v7.includes("standalone ? 'Running as App' : 'Installed'"));
+  check('V7 prompt-ready state: primary CTA delegates to the canonical native flow',
+    /installState === 'ready'[\s\S]{0,400}_triggerInstall\(\)">📲 Install App/.test(pwa32v7));
+  check('V7 unsupported state: honest manual guide is primary, no fake install UI',
+    /Genuinely unsupported browser[\s\S]{0,400}_installHelp\(\)">📖 How to Install/.test(pwa32v7));
+  check('V7 chromium-waiting keeps the honest waiting hint (no fake availability)',
+    pwa32v7.includes('Waiting for browser install capability') && pwa32v7.includes('chromiumWaiting'));
+  const pwa32Code = pwa32v7.split('\n').filter(l => !/^\s*(\/\/|═)/.test(l)).join('\n'); // comment/divider lines excluded
+  check('V7 ABSOLUTE: no fabricated statistics anywhere in the App page source',
+    !/\b\d[\d,.]*\s*[kKmMbB]?\s*\+?\s*(users|downloads|students|readers|installs|happy)\b/i.test(pwa32Code) && !pwa32v7.includes('10 GB'));
+  check('V7 honest empty state for Continue Learning',
+    pwa32v7.includes('No recent study activity yet. Start your first study session'));
+  check('V7 storage wording: Device/Local App Storage, cloud clearly separated',
+    pwa32v7.includes('Local App Storage') && pwa32v7.includes('device cache') && pwa32v7.includes('Cloud Storage') && !/cloud storage"/i.test(pwa32v7));
+  check('V7 Continue Learning uses ONLY real local sources (dl_history/offline_progress/nav_history)',
+    ['dl_history','offline_progress','nav_history'].every(k => pwa32v7.includes("'" + k + "'")));
+  check('V7 update check routes to the REAL production update API (broken StudyriaUpdateSystem call removed)',
+    pwa32v7.includes('window.studyriaUpdate.checkForUpdates') && !pwa32v7.includes('StudyriaUpdateSystem'));
+  check('V7 Update App button rendered ONLY when a real update is detected',
+    /if \(upd\.updateAvailable\) html \+=[\s\S]{0,120}Update App/.test(pwa32v7));
+  check('V7 last-checked is honest (never fabricated timestamps)',
+    pwa32v7.includes('Not checked yet in this session'));
+  check('V7 diagnostics: whitelist-only — deviceId and identifiers NEVER displayed',
+    !pwa32v7.includes('deviceId') && pwa32v7.includes('No account or device identifiers are shown'));
+  check('V7 diagnostics: real SW version via production GET_VERSION channel',
+    pwa32v7.includes("postMessage({ type: 'GET_VERSION' }"));
+  check('V7 diagnostics collapsible + aria-expanded accessible',
+    pwa32v7.includes('aria-expanded') && pwa32v7.includes('pwa7-collapse-head'));
+  check('V7 NO second install manager: zero beforeinstallprompt listeners in pwa-v32.js',
+    !/addEventListener\('beforeinstallprompt'/.test(pwa32v7));
+  check('V7 cache actions confirm before clearing and never touch cloud data',
+    pwa32v7.includes('confirm(') && pwa32v7.includes('Clearing cache never deletes your account, purchases, downloads, or cloud files'));
+  check('V7 CSS: reduced-motion respected',
+    pwa32css.includes('@media (prefers-reduced-motion: reduce)'));
+  check('V7 CSS: safe-area support for notched phones',
+    pwa32css.includes('env(safe-area-inset-bottom'));
+  check('V7 CSS: responsive quick grid (2-col mobile, 4-col desktop), no fixed widths',
+    pwa32css.includes('grid-template-columns: repeat(2, 1fr)') && pwa32css.includes('grid-template-columns: repeat(4, 1fr)'));
+
+  console.log('\n── 22. V7 Smart App Center helpers — unit tests against the real module ──');
+  // Load the ENTIRE real pwa-v32.js in a stubbed browser env. PWA32 is
+  // assigned before the module's init tail, so helper API is available
+  // even if init side-effects throw against the minimal stubs.
+  const envV7 = makeEnv('Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36');
+  installGlobals(envV7);
+  const lsShim = { _m: {}, getItem(k) { return k in this._m ? this._m[k] : null; },
+    setItem(k, v) { this._m[k] = String(v); }, removeItem(k) { delete this._m[k]; } };
+  global.localStorage = lsShim;
+  global.Notification = { permission: 'default' };
+  global.confirm = () => false;
+  let P32 = null;
+  try { (0, eval)(fs.readFileSync(path.join(ROOT, 'pwa-v32.js'), 'utf8')); P32 = global.window.PWA32; }
+  catch (e) { P32 = global.window.PWA32; }
+  check('pwa-v32.js loads and exports the V7 helper API', !!(P32 && typeof P32._smartConnectivity === 'function' && typeof P32._notifSmartStatus === 'function'));
+  if (P32) {
+    // connectivity — real signals only
+    check('_smartConnectivity: online → Online', P32._smartConnectivity().label === 'Online');
+    global.navigator.onLine = false; global.window.navigator.onLine = false;
+    check('_smartConnectivity: offline → Offline with honest cached-content note', P32._smartConnectivity().label === 'Offline' && P32._smartConnectivity().note.includes('cached'));
+    global.navigator.onLine = true; global.window.navigator.onLine = true;
+    global.navigator.connection = { effectiveType: '2g' };
+    check('_smartConnectivity: 2g → Slow Connection', P32._smartConnectivity().label === 'Slow Connection');
+    delete global.navigator.connection;
+    // notifications — real SN.push.status mapping, all 6 honest states
+    check('_notifSmartStatus: null status → honest Unknown', P32._notifSmartStatus(null).label === 'Unknown');
+    check('_notifSmartStatus: unsupported browser → Unsupported, cannot enable', P32._notifSmartStatus({ supported: false }).label === 'Unsupported' && P32._notifSmartStatus({ supported: false }).canEnable === false);
+    check('_notifSmartStatus: denied → Blocked by browser/device', P32._notifSmartStatus({ supported: true, permission: 'denied' }).label === 'Blocked');
+    const onState = P32._notifSmartStatus({ supported: true, permission: 'granted', subscribed: true, channelType: 'pwa' });
+    check('_notifSmartStatus: granted+subscribed → On, PWA channel named', onState.label === 'On' && /installed app \(PWA\)/.test(onState.note));
+    const halfState = P32._notifSmartStatus({ supported: true, permission: 'granted', subscribed: false });
+    check('_notifSmartStatus: granted but unsubscribed → Setup Incomplete, can complete', halfState.label === 'Setup Incomplete' && halfState.canEnable === true);
+    const offState = P32._notifSmartStatus({ supported: true, permission: 'default', subscribed: false });
+    check('_notifSmartStatus: default permission → Off, can enable', offState.label === 'Off' && offState.canEnable === true);
+    // continue learning — empty honest state
+    check('_continueLearningData: empty history → [] (no fabricated activity)', Array.isArray(P32._continueLearningData()) && P32._continueLearningData().length === 0);
+    lsShim.setItem('studyria_pwa32_dl_history', JSON.stringify([{ id: 'x', pdfId: 'p1', title: 'ADRE GK Notes', status: 'done', addedAt: '2026-09-15T00:00:00Z' }]));
+    lsShim.setItem('studyria_pwa32_nav_history', JSON.stringify(['home', 'library', 'brainlab']));
+    lsShim.setItem('studyria_pwa32_offline_progress', JSON.stringify({ abc123: { progress: 0.4, scrollPos: 10 } }));
+    const cont = P32._continueLearningData();
+    check('_continueLearningData: real download + progress + nav surface as real items',
+      cont.length === 4 && cont.some(i => i.label === 'ADRE GK Notes') && cont.some(i => i.label === 'PDF Library') && cont.some(i => /1 PDF with saved reading progress/.test(i.label)) && cont.some(i => i.label === 'BrainLab'));
+    // today study — deterministic real-content suggestions
+    const today = P32._todayStudy();
+    check('_todayStudy: real-content suggestions only (affairs/quiz/progress), zero fabricated numbers',
+      today.length >= 2 && today.every(i => /navigate\(|__blReady/.test(i.action)) && !today.some(i => /\d+%|\d+\s*(questions|users)/i.test(i.label + i.note)));
+    // version — canonical production version source
+    check('_appVersion: falls back honestly without the update system', P32._appVersion().version === P32.version);
+    global.window.studyriaUpdate = { getVersion: () => ({ version: '3.3.0', build: '2026.08.08' }) };
+    check('_appVersion: uses the REAL production version when available', P32._appVersion().version === '3.3.0');
+    // update center — real browser states: SW active w/ no waiting worker
+    // → truthful "no update"; NO service worker at all → honest unknown.
+    envV7.win.navigator.serviceWorker.ready = Promise.resolve({ waiting: null });
+    const updA = await P32._updateCenterState();
+    check('_updateCenterState: SW active + no waiting worker → no update claimed (updateAvailable false, unknown false)',
+      updA.updateAvailable === false && updA.updateUnknown === false && updA.lastChecked === null);
+    delete envV7.win.navigator.serviceWorker;
+    const updB = await P32._updateCenterState();
+    check('_updateCenterState: no SW support → updateUnknown true (never claims up-to-date blindly)',
+      updB.updateUnknown === true && updB.lastChecked === null);
+    const sb = await P32._storageBreakdown({ text: '12.3 MB used of 2.0 GB quota', percent: 1, real: true });
+    check('_storageBreakdown: honest entry counts, no invented per-category MB', sb.total.real === true && Array.isArray(sb.caches) && sb.caches.length === 0);
+  }
+
+  console.log('\n── 23. V7 protected surfaces + changed-file set ──');
+  // Diff the pre-V7 main commit against the WORKING TREE so this check is
+  // true both on the branch (uncommitted/committed) and after merge to main.
+  let v7changed = [];
+  try { v7changed = execSync('git diff e462817 --name-only', { cwd: ROOT }).toString().trim().split('\n').filter(Boolean); }
+  catch (e) { v7changed = ['(git unavailable)']; }
+  const v7expected = ['pwa-v32.js', 'pwa-v32.css', 'manifest.json', 'index.html', 'pwa-install-v4-tests.js'];
+  check('V7 changed file set is exactly the expected additive files',
+    v7changed.sort().join(',') === v7expected.slice().sort().join(','));
+  check('V7: service worker (sw.js) untouched', !v7changed.includes('sw.js'));
+  const idxDiff = execSync('git diff e462817 -- index.html', { cwd: ROOT }).toString();
+  const idxChangedLines = idxDiff.split('\n').filter(l => /^[+-][^+-]/.test(l));
+  check('V7: index.html diff is ONLY the two asset version params (no nav/structure changes)',
+    idxChangedLines.length === 5 && // 2 removals + 3 additions (comment + two versioned tags)
+    idxChangedLines.some(l => l.includes('pwa-v32.css?v=7')) &&
+    idxChangedLines.some(l => l.includes('pwa-v32.js?v=7')) &&
+    idxChangedLines.filter(l => l.startsWith('+')).every(l => /\?v=7|v7 cache-bust/.test(l)));
+  check('V7: app.js install manager untouched', !v7changed.includes('app.js'));
+  check('V7: protected systems untouched (notifications/razorpay/checkout/supabase/brainlab/auth)',
+    !v7changed.some(f => /notification|razorpay|checkout|supabase|brainlab|auth|payment/i.test(f)));
+
+  console.log('\n── 24. V7 manifest: shortcuts additive only, real routes ──');
+  const mf7 = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf8'));
+  const scNames = mf7.shortcuts.map(s => s.name);
+  check('V7: all 8 existing shortcuts preserved', ['Home','PDF Library','Premium Notes','Career Hub','My Library','Wishlist','Search','Downloads'].every(n => scNames.includes(n)));
+  check('V7: BrainLab/Mock Tests/Current Affairs shortcuts added', ['BrainLab','Mock Tests','Current Affairs'].every(n => scNames.includes(n)));
+  const bl = mf7.shortcuts.find(s => s.name === 'BrainLab');
+  const mt = mf7.shortcuts.find(s => s.name === 'Mock Tests');
+  const ca = mf7.shortcuts.find(s => s.name === 'Current Affairs');
+  check('V7: new shortcuts use REAL BrainLab V8 sub-router hashes',
+    /#brainlab$/.test(bl.url) && /#brainlab\/mock-tests$/.test(mt.url) && /#brainlab\/current-affairs$/.test(ca.url));
+  const blPages = fs.readFileSync(path.join(ROOT, 'brainlab-pages.js'), 'utf8');
+  check('V7: sub-router actually resolves mock-tests and current-affairs pages',
+    blPages.includes("'mock-tests':") && blPages.includes("'current-affairs':"));
+  check('V7: manifest installability fields intact (name/icons/display/start_url)',
+    /Studyria/.test(mf7.name) && Array.isArray(mf7.icons) && mf7.icons.length === 10 && mf7.display === 'standalone' && !!mf7.start_url);
+
   console.log('\n── 19. no JS errors ──');
   check('entire suite executed without uncaught errors (reached end)', true);
 
