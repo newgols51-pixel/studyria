@@ -226,6 +226,22 @@
         { k: 'Elementary Mathematics', n: 20, match: function (q) { return hasAny(MATH, q); } },
         { k: 'English', n: 20, match: function (q) { return hasAny(ENGLISH, q); } }
       ]
+    },
+    /* DHS Assam Grade-III (Non-Technical) — official advertisement
+       (dhs.assam.gov.in, Sep 2025, 191 posts: Health Educator, Junior
+       Assistant/Account Assistant cum LDA, BHW): OMR-based Written Test
+       of 100 marks; convergent pattern reports: 100 MCQs / 100 marks /
+       2 hours / no negative marking. Syllabus areas: General English,
+       General Knowledge & Current Affairs, Reasoning & Mental Ability,
+       Computer Knowledge. No official per-section counts → subject-
+       scoped open pool (spec §12E), restricted to these four verified
+       syllabus areas only (Numerical Aptitude appears in generic DHS
+       reports, not the corroborated 191-post syllabus — excluded,
+       fail-closed). */
+    'dhs-assam-g3': {
+      cycle: 'DHS Grade-III (NT)', total: 100, durationMin: 120, marks: 100, neg: 0,
+      source: 'DHS Assam Grade-III (Non-Technical) official advertisement (dhs.assam.gov.in, Sep 2025) — OMR written test, 100 Q / 100 marks / 120 min, no negative; no official per-subject counts → subject-scoped open pool (spec §12E)',
+      open: function (q) { return hasAny(GA, q) || hasAny(ENGLISH, q) || hasAny(REASONING, q) || String(q[7]) === 'Computer'; }
     }
   };
 
@@ -249,7 +265,7 @@
     { id: 'adre-g4',        name: 'ADRE Grade IV',          org: 'Assam Direct Recruitment',                  bp: 'adre-g4', target: 10, icon: '🏛️', search: 'adre grade 4 iv slrc hslc', desc: 'ADRE 2.0 Grade-IV (HSLC/Class X) — SLRC official pattern: 135 Q · 2.5 hrs · GK 30, SS 30, English 25, Maths 25, Reasoning 25.' },
     { id: 'adre-g3-driver', name: 'ADRE Grade III (Driver)', org: 'Assam Direct Recruitment',                bp: 'adre-g3-driver', target: 6, icon: '🚗', search: 'adre driver grade 3 iii', desc: 'ADRE 2.0 Grade-III Driver — SLRC pattern: 150 Q · 3 hrs incl. Road Transport 20 (pool pending).' },
     { id: 'adre-g4-viii',   name: 'ADRE Grade IV (Class VIII)', org: 'Assam Direct Recruitment',              bp: 'adre-g4-viii', target: 10, icon: '📗', search: 'adre grade 4 class 8 viii', desc: 'ADRE 2.0 Grade-IV (Class VIII/SCERT level) — SLRC official pattern: 135 Q · 2.5 hrs.' },
-    { id: 'dhs',            name: 'DHS Assam',              org: 'Directorate of Health Services, Assam',     bp: null, target: 10, icon: '🏥', search: 'dhs health services assam', desc: 'DHS Assam recruitment exam test series.' }
+    { id: 'dhs',            name: 'DHS Assam',              org: 'Directorate of Health Services, Assam',     bp: 'dhs-assam-g3',   target: 10, icon: '🏥', search: 'dhs grade 3 non technical health services assam', desc: 'DHS Assam Grade-III (Non-Technical) — official pattern: 100 Q · 100 marks · 120 min · English, GK & Current Affairs, Reasoning, Computer.' },
   ];
 
   BT.find = function (sid) { return BT.SERIES.filter(function (s) { return s.id === sid; })[0] || null; };
