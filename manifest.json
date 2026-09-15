@@ -18,6 +18,12 @@
   "lang": "en-IN",
   "dir": "ltr",
   "prefer_related_applications": false,
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://studyria.qzz.io/manifest.json"
+    }
+  ],
   "categories": [
     "education",
     "books",

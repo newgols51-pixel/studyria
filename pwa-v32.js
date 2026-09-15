@@ -834,6 +834,12 @@
   window.addEventListener('pwa:installed', function () {
     if (_pageVisible()) renderPWAPage();
   });
+  // V6 root-cause fix: re-render as soon as getInstalledRelatedApps()
+  // confirms an already-installed WebAPK (the tab was opened in plain
+  // Chrome, not standalone) — same-pattern subscriber, no polling.
+  window.addEventListener('pwa:relatedapp-installed', function () {
+    if (_pageVisible()) renderPWAPage();
+  });
 
   window.PWA32 = {
     version: PWA32.VERSION,

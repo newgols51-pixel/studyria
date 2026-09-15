@@ -55,7 +55,14 @@ const _state = {
     promptAt:        null,   // timestamp
     promptConsumed:  false,  // prompt() already called on the captured event
     installedEvent:  false   // appinstalled actually fired
-  }
+  },
+  // V6 root-cause fix: tri-state cache for navigator.getInstalledRelatedApps().
+  // null = not checked yet, true/false = last known verified result. This is
+  // the ONLY reliable way to detect "installed but opened in a normal Chrome
+  // tab" (display-mode is 'browser', not 'standalone', in that exact case —
+  // which is EXACTLY the state that made Chrome withhold beforeinstallprompt
+  // in V5: Chrome already knows this origin has an installed WebAPK).
+  relatedAppInstalled: null
 };
 
 // Capability flags (set once at init)
@@ -525,6 +532,12 @@ function setupInstallPrompt() {
 
   _updateInstallButtonVisibility();
   _bindInstallButton();
+
+  // V6: fire-and-forget related-apps check at init. Resolves quickly on
+  // Chrome/Android; when it confirms an install, _checkRelatedAppInstalled
+  // itself hides the CTA immediately — no waiting required for the common
+  // "opened in browser tab, already installed" case.
+  _checkRelatedAppInstalled();
 }
 
 /**
@@ -598,18 +611,58 @@ function dismissInstallBanner() {
 }
 
 /**
- * _isAlreadyInstalled — true when the PWA is running in standalone mode
- * OR was recorded as installed during this session.
+ * _isAlreadyInstalled — true when the PWA is running in standalone mode,
+ * OR was recorded as installed during this session, OR the V6 related-apps
+ * check has already verified an installed WebAPK on THIS device (covers the
+ * root-cause case: user opened studyria.qzz.io in a plain Chrome tab while
+ * the WebAPK is already on their home screen — display-mode stays 'browser'
+ * in that exact case, so the four display-mode/standalone/referrer signals
+ * below are ALL false even though the app IS installed).
  */
 function _isAlreadyInstalled() {
   return (
     _state.isInstalled ||
+    _state.relatedAppInstalled === true ||
     window.matchMedia('(display-mode: standalone)').matches ||
     window.matchMedia('(display-mode: fullscreen)').matches ||
     window.matchMedia('(display-mode: minimal-ui)').matches ||
     window.navigator.standalone === true ||
     document.referrer.startsWith('android-app://')
   );
+}
+
+/**
+ * _checkRelatedAppInstalled — V6 root-cause fix (§3/§20-C). Uses the Get
+ * Installed Related Apps API (Chrome 84+ Android, Chrome/Edge 140+ desktop)
+ * with the self-referencing related_applications entry in manifest.json
+ * (platform:"webapp", url: this app's own manifest URL) to ask the BROWSER
+ * — not a DOM signal — whether THIS origin's WebAPK/PWA is already
+ * installed on the device, regardless of how the current tab was opened.
+ * Feature-detects gracefully: browsers without the API simply keep
+ * relatedAppInstalled === null (unknown), and every existing display-mode
+ * signal keeps working exactly as before. Never throws, never blocks.
+ * Returns the resolved boolean (or null if unsupported/failed).
+ */
+async function _checkRelatedAppInstalled() {
+  try {
+    if (!navigator.getInstalledRelatedApps) { _state.relatedAppInstalled = null; return null; }
+    var apps = await navigator.getInstalledRelatedApps();
+    var matched = Array.isArray(apps) && apps.some(function (a) { return a && a.platform === 'webapp'; });
+    _state.relatedAppInstalled = matched;
+    if (matched) {
+      console.log('[PWA] getInstalledRelatedApps() confirms this WebAPK is already installed ✅ — treating as installed regardless of display-mode');
+      _markBurgerInstalled();
+      _updateInstallButtonVisibility();
+      // Let the App page (pwa-v32.js) re-render immediately if it's open —
+      // same pattern as the existing pwa:installable / pwa:installed events.
+      window.dispatchEvent(new CustomEvent('pwa:relatedapp-installed'));
+    }
+    return matched;
+  } catch (e) {
+    console.warn('[PWA] getInstalledRelatedApps() check failed (non-fatal):', e && e.message);
+    _state.relatedAppInstalled = null;
+    return null;
+  }
 }
 
 /**
@@ -901,6 +954,11 @@ function _awaitLatePrompt(maxWaitMs) {
  */
 async function _reportWithheldPrompt() {
   var d = await installDiagnostics();
+  // V6 defensive guard: diagnostics itself re-checks getInstalledRelatedApps
+  // fresh — if a race resolved "already installed" AFTER installClick's own
+  // check but before we got here, silently no-op instead of showing a
+  // withheld message about an app that is, in fact, already installed.
+  if (d.appInstalled) { _markBurgerInstalled(); _updateInstallButtonVisibility(); return; }
   var msg = 'Studyria is fully install-ready — Chrome itself is currently '
     + 'withholding the install prompt on this device. '
     + (d.reason === 'chrome-withheld-beforeinstallprompt'
@@ -924,17 +982,30 @@ async function _reportWithheldPrompt() {
  */
 async function installClick() {
   if (_isAlreadyInstalled()) return; // never prompt when installed
+
   var prompt = window._pwaInstallPrompt || _state.deferredPrompt;
   if (prompt) { promptInstall(); return; }
 
   var info = _installBrowserInfo();
   if (!info.nativePromptLikely || info.inAppBrowser) { _noPromptFallback(); return; }
 
-  // Chromium + installable + no captured event YET → active real attempt
+  // V6 §3/§20-C root-cause fix: BEFORE running the active attempt or
+  // reporting "Chrome withheld it", re-verify with the browser itself
+  // whether this WebAPK is ALREADY installed on this device (the tab may
+  // have been opened in plain Chrome even though the app is on the home
+  // screen — that is exactly the state where Chrome legitimately never
+  // dispatches beforeinstallprompt, and where V5's diagnostics could not
+  // yet tell "already installed" apart from "genuinely withheld").
+  var already = await _checkRelatedAppInstalled();
+  if (already === true || _isAlreadyInstalled()) return; // no-op, CTA hides itself
+
+  // Chromium + installable + confirmed NOT already installed + no captured
+  // event YET → active real attempt
   var got = await _awaitLatePrompt();
   if (got) { promptInstall(); return; }
 
-  // Proven-withheld path: diagnostics-backed exact reason (§7)
+  // Proven-withheld path: diagnostics-backed exact reason (§7), now with
+  // the already-installed possibility ruled out by the browser itself
   await _reportWithheldPrompt();
 }
 
@@ -974,22 +1045,28 @@ function installState() {
       || (window.matchMedia('(display-mode: browser)').matches ? 'browser' : 'unknown'),
     navigatorStandalone: window.navigator.standalone === true,
     swSupported: swSupported,
-    listenerMode: window.__pwaEarlyInstallCapture ? 'early-inline' : 'deferred-app-js'
+    listenerMode: window.__pwaEarlyInstallCapture ? 'early-inline' : 'deferred-app-js',
+    // V6: last known result of the browser-level related-apps check —
+    // null (not yet checked), true (confirmed installed via WebAPK even
+    // though this tab is not standalone), false (confirmed not installed)
+    relatedAppInstalled: _state.relatedAppInstalled
   };
 }
 
 /**
- * installDiagnostics — V5 §8 machine-readable runtime diagnosis,
+ * installDiagnostics — V6 §12/§20 machine-readable runtime diagnosis,
  * production-safe: runs ONLY on demand (console: PWA.installDiagnostics()
  * or automatically after a proven-withheld prompt), exposes no secrets.
  * Verifies every real Chrome installability criterion (fetches the
- * manifest + icons and reads REAL PNG dimensions), then reports the
- * exact reason beforeinstallprompt did or did not arrive.
+ * manifest + icons and reads REAL PNG dimensions), checks the browser's
+ * OWN answer to "is this already installed" via getInstalledRelatedApps()
+ * (root-cause fix — see _checkRelatedAppInstalled), then reports the exact
+ * reason beforeinstallprompt did or did not arrive.
  */
 async function installDiagnostics() {
   var info = _installBrowserInfo();
   var d = {
-    version: 5,
+    version: 6,
     captured: null,          // beforeinstallprompt: captured / not captured
     promptAvailable: null,  // prompt object currently held & unused
     promptConsumed: null,    // prompt() already called on the captured event
@@ -1017,11 +1094,31 @@ async function installDiagnostics() {
   details.listenerMode = window.__pwaEarlyInstallCapture ? 'early-inline' : 'deferred-app-js';
   details.eventLog = (window.__pwaInstallLog || []).slice();
 
+  // V6 §3/§20-C: ask the browser directly whether this WebAPK is already
+  // installed (fresh check, not the cached value) — this is the exact
+  // signal that separates "already installed, opened in a plain tab" from
+  // "genuinely not installed, Chrome withholding the prompt".
+  var relatedAppsSupported = typeof navigator.getInstalledRelatedApps === 'function';
+  details.relatedAppsApiSupported = relatedAppsSupported;
+  if (relatedAppsSupported) {
+    try {
+      var relApps = await navigator.getInstalledRelatedApps();
+      details.relatedAppsMatched = Array.isArray(relApps) ? relApps.filter(function (a) { return a && a.platform === 'webapp'; }) : [];
+      details.relatedAppsInstalled = details.relatedAppsMatched.length > 0;
+      _state.relatedAppInstalled = details.relatedAppsInstalled;
+    } catch (e) {
+      details.relatedAppsError = e && e.message;
+      details.relatedAppsInstalled = null;
+    }
+  } else {
+    details.relatedAppsInstalled = null; // unsupported on this browser — unknown, not false
+  }
+
   d.displayMode = (window.matchMedia('(display-mode: standalone)').matches && 'standalone')
     || (window.matchMedia('(display-mode: fullscreen)').matches && 'fullscreen')
     || (window.matchMedia('(display-mode: minimal-ui)').matches && 'minimal-ui')
     || (window.matchMedia('(display-mode: browser)').matches ? 'browser' : 'unknown');
-  d.appInstalled = _isAlreadyInstalled();
+  d.appInstalled = _isAlreadyInstalled() || details.relatedAppsInstalled === true;
   d.captured = !!(window._pwaInstallPrompt || _state.deferredPrompt) || _state.installEvents.promptSeen;
   d.promptAvailable = !!(window._pwaInstallPrompt || _state.deferredPrompt);
   d.promptConsumed = _state.installEvents.promptConsumed;
