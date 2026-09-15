@@ -619,13 +619,46 @@
     return { version: PWA32.VERSION, build: '' };
   }
 
-  // Connectivity — real: navigator.onLine + NetworkInformation.effectiveType.
+  // Connectivity — REAL status only (owner accuracy fix, Sep 15 2026).
+  // Level 1: navigator.onLine → Offline / online. Level 2: connection
+  // TYPE (wifi/cellular/ethernet) ONLY where the browser genuinely exposes
+  // it — displayed as Wi-Fi / Mobile Data / Ethernet, never a guessed
+  // radio generation. Level 3: QUALITY via NetworkInformation signals —
+  // effectiveType is a connection-QUALITY estimate, NOT a mobile-radio
+  // detector: a real 5G phone can report effectiveType '3g'. We therefore
+  // never derive or display 3G/4G/5G/LTE from it, and never say "On 3g".
+  // REAL STATUS > IMPRESSIVE STATUS: if the browser can't reliably tell us
+  // the radio generation, we show Connected / Mobile Data / Wi-Fi instead.
   function _smartConnectivity() {
-    if (!navigator.onLine) return { level: 'off', label: 'Offline', note: 'Showing available cached content.', cls: 'off' };
+    if (!navigator.onLine) return { level: 'off', label: 'Offline', note: 'No internet connection. Showing available cached content.', cls: 'off' };
     var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    var et = c && c.effectiveType;
-    if (et === 'slow-2g' || et === '2g' || et === '3g') return { level: 'slow', label: 'Slow Connection', note: 'On ' + et + ' — loading essential content first.', cls: 'warn' };
-    return { level: 'on', label: 'Online', note: et ? 'Connected (' + et + ').' : 'Connected.', cls: 'ok' };
+    var et = null, type = null, dl = null, rtt = null, saveData = false;
+    try {
+      et = c && c.effectiveType ? String(c.effectiveType) : null;
+      type = c && c.type ? String(c.type) : null;
+      dl = (c && typeof c.downlink === 'number') ? c.downlink : null;
+      rtt = (c && typeof c.rtt === 'number') ? c.rtt : null;
+      saveData = !!(c && c.saveData);
+    } catch (e) {}
+    // Quality classification — conservative, evidence-based:
+    // slow-2g/2g estimates are clearly degraded quality → Slow Connection.
+    // '3g' alone is AMBIGUOUS (a 5G phone can report it) → counts as slow
+    // only when corroborated by a high RTT or very low downlink estimate.
+    // 'Slow' is a quality claim, never a radio-technology claim.
+    var slow = (et === 'slow-2g' || et === '2g') ||
+               (et === '3g' && ((rtt !== null && rtt >= 600) || (dl !== null && dl <= 0.4)));
+    if (slow) return { level: 'slow', label: 'Slow Connection', note: 'Your connection is currently slow. Loading essential content first.', cls: 'warn' };
+    // Type labels — only what the API genuinely reports. 'cellular' is a
+    // transport type, not a radio generation → "Mobile Data". If the API
+    // is absent or silent, the honest answer is "Connected" — no guess.
+    var label = 'Connected', note = 'Internet connection is active.';
+    if (type === 'wifi') { label = 'Wi-Fi'; note = 'Connected to the internet.'; }
+    else if (type === 'cellular') { label = 'Mobile Data'; note = 'Connected to the internet.'; }
+    else if (type === 'ethernet') { label = 'Ethernet'; note = 'Connected to the internet.'; }
+    // Data saver is a user preference, NOT a network-quality downgrade —
+    // shown as honest extra info, never labelled "Slow 3G".
+    if (saveData) note += ' Data saver is on.';
+    return { level: 'on', label: label, note: note, cls: 'ok' };
   }
 
   // Notifications — real SN.push.status() mapping. Never fabricates a state.
@@ -1361,6 +1394,18 @@
     window.addEventListener('offline', function() {
       if (_pageVisible()) renderPWAPage();
     });
+    // V7.1 accuracy fix: network CHANGE while staying online (e.g. Wi-Fi →
+    // mobile data) fires no online/offline event. ONE listener on the
+    // NetworkInformation API (guarded, debounced, visible-page only) keeps
+    // the live card in sync without polling or duplicate listeners.
+    var _netInfo = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (_netInfo && typeof _netInfo.addEventListener === 'function') {
+      var _connChangeT = null;
+      _netInfo.addEventListener('change', function() {
+        clearTimeout(_connChangeT);
+        _connChangeT = setTimeout(function() { if (_pageVisible()) renderPWAPage(); }, 500);
+      });
+    }
 
     console.log('[PWA32] V3.2 initialized ✅ version:', PWA32.VERSION);
   }

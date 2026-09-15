@@ -497,14 +497,51 @@ async function main() {
   catch (e) { P32 = global.window.PWA32; }
   check('pwa-v32.js loads and exports the V7 helper API', !!(P32 && typeof P32._smartConnectivity === 'function' && typeof P32._notifSmartStatus === 'function'));
   if (P32) {
-    // connectivity — real signals only
-    check('_smartConnectivity: online → Online', P32._smartConnectivity().label === 'Online');
+    // connectivity — REAL status only, no radio-technology claims (owner fix §CONNECTION)
+    const RADIO_RE = /\b(3g|4g|5g|lte|4g\+|5g\+)\b/i;
+    const noRadio = (r) => r && !RADIO_RE.test(r.label) && !RADIO_RE.test(r.note);
+    // H: no Network Information API → safe fallback, never a guessed 3G/4G/5G
+    global.navigator.connection = undefined; global.window.navigator.connection = undefined;
+    const noApi = P32._smartConnectivity();
+    check('_smartConnectivity: no NetworkInformation API → Connected (safe fallback, no guess)',
+      noApi.level === 'on' && noApi.label === 'Connected' && noRadio(noApi));
+    // A: real 5G phone can report effectiveType '3g' — must NOT say "On 3g"; type cellular → Mobile Data
+    global.navigator.connection = { effectiveType: '3g', type: 'cellular', rtt: 50, downlink: 10 }; global.window.navigator.connection = global.navigator.connection;
+    const fiveG = P32._smartConnectivity();
+    check('_smartConnectivity: effectiveType 3g + healthy rtt/downlink (5G phone case) → Mobile Data, NEVER "On 3g"',
+      fiveG.level === 'on' && fiveG.label === 'Mobile Data' && noRadio(fiveG) && !/on\s*3g/i.test(fiveG.label + fiveG.note));
+    // B: Wi-Fi reliably exposed → Wi-Fi
+    global.navigator.connection = { effectiveType: '4g', type: 'wifi' }; global.window.navigator.connection = global.navigator.connection;
+    const wifi = P32._smartConnectivity();
+    check('_smartConnectivity: wifi type → Wi-Fi label, no radio-generation claim', wifi.label === 'Wi-Fi' && noRadio(wifi));
+    // ethernet reliably exposed → Ethernet
+    global.navigator.connection = { effectiveType: '4g', type: 'ethernet' }; global.window.navigator.connection = global.navigator.connection;
+    check('_smartConnectivity: ethernet type → Ethernet label, no radio-generation claim',
+      P32._smartConnectivity().label === 'Ethernet' && noRadio(P32._smartConnectivity()));
+    // C: genuinely degraded — 3g quality CORROBORATED by high rtt → Slow Connection, still no radio claim
+    global.navigator.connection = { effectiveType: '3g', type: 'cellular', rtt: 900, downlink: 0.3 }; global.window.navigator.connection = global.navigator.connection;
+    const slowCorr = P32._smartConnectivity();
+    check('_smartConnectivity: 3g + corroborated high rtt/low downlink → Slow Connection WITHOUT claiming "On 3g"',
+      slowCorr.level === 'slow' && slowCorr.label === 'Slow Connection' && noRadio(slowCorr) && slowCorr.note.includes('slow'));
+    // I: 2g quality estimate → Slow Connection (quality claim, not radio label)
+    global.navigator.connection = { effectiveType: '2g' }; global.window.navigator.connection = global.navigator.connection;
+    const slow2g = P32._smartConnectivity();
+    check('_smartConnectivity: 2g → Slow Connection with no "On 2g" radio phrasing',
+      slow2g.level === 'slow' && slow2g.label === 'Slow Connection' && noRadio(slow2g));
+    // D: offline → Offline with honest cached-content note
     global.navigator.onLine = false; global.window.navigator.onLine = false;
-    check('_smartConnectivity: offline → Offline with honest cached-content note', P32._smartConnectivity().label === 'Offline' && P32._smartConnectivity().note.includes('cached'));
+    const off = P32._smartConnectivity();
+    check('_smartConnectivity: offline → Offline with honest cached-content note',
+      off.level === 'off' && off.label === 'Offline' && off.note.includes('cached'));
     global.navigator.onLine = true; global.window.navigator.onLine = true;
-    global.navigator.connection = { effectiveType: '2g' };
-    check('_smartConnectivity: 2g → Slow Connection', P32._smartConnectivity().label === 'Slow Connection');
-    delete global.navigator.connection;
+    // 14: data saver is a preference, never a "Slow 3G" mislabel
+    global.navigator.connection = { effectiveType: '4g', type: 'cellular', saveData: true }; global.window.navigator.connection = global.navigator.connection;
+    const saver = P32._smartConnectivity();
+    check('_smartConnectivity: saveData → NOT slow-labelled; honest "Data saver is on" info only',
+      saver.level === 'on' && saver.label === 'Mobile Data' && /data saver is on/i.test(saver.note) && !/slow/i.test(saver.label));
+    global.navigator.connection = undefined; global.window.navigator.connection = undefined;
+    // online → back to Connected after cleanup
+    check('_smartConnectivity: online (API cleared) → Connected', P32._smartConnectivity().label === 'Connected');
     // notifications — real SN.push.status mapping, all 6 honest states
     check('_notifSmartStatus: null status → honest Unknown', P32._notifSmartStatus(null).label === 'Unknown');
     check('_notifSmartStatus: unsupported browser → Unsupported, cannot enable', P32._notifSmartStatus({ supported: false }).label === 'Unsupported' && P32._notifSmartStatus({ supported: false }).canEnable === false);
@@ -545,23 +582,58 @@ async function main() {
     check('_storageBreakdown: honest entry counts, no invented per-category MB', sb.total.real === true && Array.isArray(sb.caches) && sb.caches.length === 0);
   }
 
+  console.log('\n── 24. Connectivity accuracy fix — source rules + single live-update listener ──');
+  {
+    const src = fs.readFileSync(path.join(ROOT, 'pwa-v32.js'), 'utf8');
+    check('connectivity source: "On " + et radio phrasing is GONE (no effectiveType→radio display)',
+      !src.includes("'On ' + et") && !/Connected \('/.test(src));
+    check('connectivity source: effectiveType used ONLY as a quality signal (comment + slow classification), never a label',
+      /effectiveType is a connection-QUALITY estimate/.test(src) && /var slow = \(et === 'slow-2g' \|\| et === '2g'\)/.test(src));
+    check('connectivity source: type labels are transport words only (Wi-Fi/Mobile Data/Ethernet)',
+      /type === 'wifi'/.test(src) && /type === 'cellular'/.test(src) && /type === 'ethernet'/.test(src) && !/'5g'|'4g'/.test(src));
+    const chg = (src.match(/addEventListener\('change'/g) || []).length;
+    check('connectivity source: exactly ONE NetworkInformation change listener (no duplicates, no polling)',
+      chg === 1 && /_netInfo && typeof _netInfo\.addEventListener === 'function'/.test(src) && !/setInterval\([^\n]*connection/.test(src));
+    // behavioral: fresh module load with a counting connection mock → one registration
+    const regCount = { n: 0 };
+    const keepWin = global.window;
+    const freshEnv = {
+      navigator: { onLine: true, connection: { effectiveType: '3g', type: 'cellular',
+        addEventListener: (t, fn) => { if (t === 'change') regCount.n++; } } },
+      matchMedia: () => ({ matches: false, addEventListener(){} }),
+      document: { readyState: 'complete', documentElement: { setAttribute(){}, getAttribute: () => null },
+        addEventListener(){}, getElementById: () => ({ style: {}, addEventListener(){}, remove(){}, disabled: false }),
+        createElement: () => ({ style: {}, setAttribute(){}, addEventListener(){}, remove(){} }), body: { appendChild(){} } },
+      location: { protocol: 'https:' }, isSecureContext: true, addEventListener(){}, removeEventListener(){}
+    };
+    global.window = freshEnv; global.navigator = freshEnv.navigator;
+    try { (0, eval)(fs.readFileSync(path.join(ROOT, 'pwa-v32.js'), 'utf8')); } catch (e) {}
+    check('connectivity behavioral: module registers the change listener exactly once',
+      regCount.n === 1);
+    global.window = keepWin; global.navigator = keepWin.navigator;
+  }
+
   console.log('\n── 23. V7 protected surfaces + changed-file set ──');
-  // Diff the pre-V7 main commit against the WORKING TREE so this check is
-  // true both on the branch (uncommitted/committed) and after merge to main.
+  // Change-set guard: diffs the last known-good main commit BEFORE the
+  // current fix stream against the WORKING TREE, so it catches protected-
+  // system drift from the CURRENT work. (The original pre-V7 baseline
+  // e462817 served the V7 stream; since then owner-approved work landed
+  // on other streams — BrainLab content — which this guard must not
+  // false-flag. Strength is unchanged: exact file set + protected systems.)
+  const PWA_FIX_BASE = '1cb97d2'; // connectivity fix baseline (post DHS blueprint commit)
   let v7changed = [];
-  try { v7changed = execSync('git diff e462817 --name-only', { cwd: ROOT }).toString().trim().split('\n').filter(Boolean); }
+  try { v7changed = execSync('git diff ' + PWA_FIX_BASE + ' --name-only', { cwd: ROOT }).toString().trim().split('\n').filter(Boolean); }
   catch (e) { v7changed = ['(git unavailable)']; }
-  const v7expected = ['pwa-v32.js', 'pwa-v32.css', 'manifest.json', 'index.html', 'pwa-install-v4-tests.js'];
+  const v7expected = ['pwa-v32.js', 'index.html', 'pwa-install-v4-tests.js'];
   check('V7 changed file set is exactly the expected additive files',
     v7changed.sort().join(',') === v7expected.slice().sort().join(','));
   check('V7: service worker (sw.js) untouched', !v7changed.includes('sw.js'));
-  const idxDiff = execSync('git diff e462817 -- index.html', { cwd: ROOT }).toString();
+  const idxDiff = execSync('git diff ' + PWA_FIX_BASE + ' -- index.html', { cwd: ROOT }).toString();
   const idxChangedLines = idxDiff.split('\n').filter(l => /^[+-][^+-]/.test(l));
-  check('V7: index.html diff is ONLY the two asset version params (no nav/structure changes)',
-    idxChangedLines.length === 5 && // 2 removals + 3 additions (comment + two versioned tags)
-    idxChangedLines.some(l => /pwa-v32\.css\?v=\d+/.test(l)) &&
-    idxChangedLines.some(l => /pwa-v32\.js\?v=\d+/.test(l)) &&
-    idxChangedLines.filter(l => l.startsWith('+')).every(l => /\?v=\d+|cache-bust/.test(l)));
+  check('V7: index.html diff is ONLY the pwa-v32.js cache-bust param (no nav/structure changes)',
+    idxChangedLines.length === 2 && // 1 removal + 1 addition: the versioned script tag only
+    idxChangedLines.some(l => /-.*pwa-v32\.js\?v=7/.test(l)) &&
+    idxChangedLines.some(l => /\+.*pwa-v32\.js\?v=8/.test(l)));
   check('V7: app.js install manager untouched', !v7changed.includes('app.js'));
   check('V7: protected systems untouched (notifications/razorpay/checkout/supabase/brainlab/auth)',
     !v7changed.some(f => /notification|razorpay|checkout|supabase|brainlab|auth|payment/i.test(f)));
