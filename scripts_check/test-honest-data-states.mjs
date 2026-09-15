@@ -182,6 +182,15 @@ ok(fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8').includes('CACHE_VERSION'),
 ok(idx.includes("SELECT REAL ONES") === false && idx.includes('pdf_reviews').toString() === 'true' || idx.includes('pdf_reviews'),
    'PDP still reads real reviews from pdf_reviews');
 
+/* ── 8. Zero-count categories never say "0 PDFs" (Sep 2026 owner report) ── */
+const sv2 = fs.readFileSync(path.join(ROOT, 'studyria-home-v2.js'), 'utf8');
+ok(!sv2.includes("+ c.count + ' PDFs</div>'"),
+   'popular-categories card no longer prints the raw count as "N PDFs"');
+ok(sv2.includes("c.count > 0 ? c.count + ' PDFs' : 'Coming Soon'"),
+   'zero-count categories show "Coming Soon" instead of "0 PDFs"');
+ok(fs.readFileSync(path.join(ROOT, 'studyria-home-v2.css'), 'utf8').includes('sv2-cat-count-soon'),
+   'Coming Soon label styled (muted)');
+
 /* ══════════ RESULTS ════════════════ */
 console.log(`\n═══ RESULTS: ${pass} passed, ${fail} failed ═══`);
 process.exit(fail ? 1 : 0);

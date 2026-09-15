@@ -364,10 +364,13 @@
     });
 
     var html = cats.map(function(c) {
+      // Honest zero handling: a category with no PDFs says "Coming Soon"
+      // (same pattern as the Free Materials page) — never "0 PDFs".
+      var countLabel = c.count > 0 ? c.count + ' PDFs' : 'Coming Soon';
       return '<div class="sv2-cat-card" onclick="sv2NavCategory(\'' + esc(c.filter) + '\')">' +
         '<div class="sv2-cat-icon ' + c.cls + '">' + c.icon + '</div>' +
         '<div class="sv2-cat-name">' + esc(c.name) + '</div>' +
-        '<div class="sv2-cat-count">' + c.count + ' PDFs</div>' +
+        '<div class="sv2-cat-count' + (c.count > 0 ? '' : ' sv2-cat-count-soon') + '">' + countLabel + '</div>' +
       '</div>';
     }).join('');
 

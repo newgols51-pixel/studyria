@@ -191,6 +191,9 @@ body.light .sv2-cat-card:hover { border-color: rgba(147,2,5,0.4); box-shadow: 0 
 body.light .sv2-cat-name { color: #1a1a2e; }
 .sv2-cat-count { font-size: .65rem; color: var(--text-secondary, rgba(255,255,255,0.4)); }
 body.light .sv2-cat-count { color: rgba(0,0,0,0.45); }
+/* Zero-count categories say "Coming Soon" — muted, no fabricated number */
+.sv2-cat-count.sv2-cat-count-soon { font-style: italic; opacity: .75; }
+body.light .sv2-cat-count.sv2-cat-count-soon { color: rgba(0,0,0,0.38); }
 
 /* ── QUIZ CARD ──────────────────────────────────────────────────── */
 .sv2-quiz-card { flex: 0 0 clamp(220px, 65vw, 280px); border-radius: 14px; background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(147,2,5,0.06)); border: 1px solid rgba(139,92,246,0.2); padding: 16px; cursor: pointer; scroll-snap-align: start; transition: transform .25s ease, border-color .25s ease; display: flex; flex-direction: column; gap: 10px; position: relative; overflow: hidden; }
