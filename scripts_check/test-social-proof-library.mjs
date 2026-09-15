@@ -145,6 +145,18 @@ ok(idx.includes("document.getElementById('discoverEmpty');  if (_de) _de.style.d
 ok(idx.includes('window.gsRetrySearch = function'),
    'gsRetrySearch exists for the Retry button');
 
+/* ════════════════ 4. SUCCESS-STORIES COUNT LABEL ════════════════ */
+section('4. Success-stories carousel truthful labelling');
+
+ok(!idx.includes('69 verified reviews'),
+   'static "69 verified reviews" placeholder removed');
+ok(idx.includes("list.length+' sample reviews'"),
+   'sample-only wall is labelled "N sample reviews"');
+ok(idx.includes("vCount+' verified \u00B7 '+sCount+' sample reviews'"),
+   'mixed wall distinguishes verified vs sample counts');
+ok(idx.includes('Truthful labelling (Sep 2026)'),
+   'truthfulness contract documented in code');
+
 /* ════════════════ RESULTS ════════════════ */
 console.log(`\n═══ RESULTS: ${pass} passed, ${fail} failed ═══`);
 process.exit(fail ? 1 : 0);

@@ -19384,7 +19384,7 @@ body:not(.light) .sf-stories .srv-star-btn { color:rgba(255,255,255,0.2) !import
   <div class="sf-stories-rating">
     <span class="sf-stories-avg" id="srvAvgNum">4.9</span>
     <span class="sf-stories-stars" id="srvStarsRow">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
-    <span class="sf-stories-count" id="srvCountTxt">69 verified reviews</span>
+    <span class="sf-stories-count" id="srvCountTxt">Student reviews</span>
   </div>
   <div class="srv-outer" id="srvOuter" style="position:relative">
     <div class="srv-track" id="srvTrack"></div>
@@ -43928,7 +43928,19 @@ function _srvRender(list){
   var avg=_srvAvg(list);
   if(avgEl) avgEl.textContent=avg.toFixed(1);
   if(starsEl) starsEl.textContent=_srvStars(avg);
-  if(countEl) countEl.textContent=list.length+' verified reviews';
+  if(countEl){
+    /* Truthful labelling (Sep 2026): only reviews loaded from pdf_reviews
+       (verified purchases) are "verified". The curated SRV_REVIEWS wall is
+       sample content — each card is badged "Sample Review" — so the header
+       must never claim the whole wall is verified. pdf_reviews is currently
+       empty, so this renders as "N sample reviews" until real ones exist. */
+    var vCount=0;
+    for(var i=0;i<list.length;i++) if(list[i].verified) vCount++;
+    var sCount=list.length-vCount;
+    countEl.textContent = (vCount&&sCount) ? vCount+' verified · '+sCount+' sample reviews'
+                       : vCount           ? vCount+' verified reviews'
+                       :                   list.length+' sample reviews';
+  }
   /* Re-init carousel after render — let the carousel IIFE's
      boot() handle initialization (it owns _srvInitCarousel). */
   window._srvCarouselReady = false;
