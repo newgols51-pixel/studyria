@@ -624,7 +624,7 @@
       }
     } catch (e) {}
     var isOnline = navigator.onLine;
-    var storageUsage = _estimateStorage();
+    var storageUsage = await _estimateStorage();
 
     // Fetch release notes
     var releaseNotes = await _fetchReleaseNotes();
@@ -642,8 +642,22 @@
     // Status Cards
     html += '<div class="pwa32-section"><div class="pwa32-section-title">App Status</div>';
 
-    // Installed status
-    html += '<div class="pwa32-card" style="margin-bottom:10px"><div class="pwa32-card-icon">' + (isInstalled ? '✅' : '📲') + '</div><div class="pwa32-card-body"><div class="pwa32-card-label">App Installed</div><div class="pwa32-card-value">' + (isInstalled ? 'Running as installed app' : 'Not installed — install for best experience') + '</div></div><span class="pwa32-card-badge ' + (isInstalled ? 'pwa32-badge-ok' : 'pwa32-badge-warn') + '">' + (isInstalled ? 'Yes' : 'No') + '</span></div>';
+    // Install status — P34 clear states, NEVER "App Installed · No".
+    // Real signals only: standalone detection (app.js) + the real
+    // beforeinstallprompt event + real SW support. No localStorage flags.
+    var nativePromptReady = !!(window._pwaInstallPrompt || (window.PWA && PWA._deferredPrompt));
+    var swSupported = 'serviceWorker' in navigator;
+    var installState = isInstalled ? 'installed'
+      : nativePromptReady ? 'ready'
+      : swSupported ? 'no-prompt' : 'unsupported';
+    var stMap = {
+      installed:   { icon: '✅', label: 'Studyria App',    value: 'Studyria is installed on this device — you are using the installed app.', badge: 'Installed',    cls: 'pwa32-badge-ok' },
+      ready:       { icon: '📲', label: 'App Installation', value: 'Ready to install — Studyria can be installed on this device.', badge: 'Ready',        cls: 'pwa32-badge-ok' },
+      'no-prompt': { icon: '📲', label: 'Install Studyria', value: 'Not installed — your browser has not offered the install prompt. Follow the install steps.', badge: 'Not installed', cls: 'pwa32-badge-warn' },
+      unsupported: { icon: '🚫', label: 'Install Studyria', value: 'PWA installation is not supported by this browser.', badge: 'Unsupported',  cls: 'pwa32-badge-off' }
+    };
+    var st = stMap[installState];
+    html += '<div class="pwa32-card" style="margin-bottom:10px"><div class="pwa32-card-icon">' + st.icon + '</div><div class="pwa32-card-body"><div class="pwa32-card-label">' + st.label + '</div><div class="pwa32-card-value">' + st.value + '</div></div><span class="pwa32-card-badge ' + st.cls + '">' + st.badge + '</span></div>';
 
     // Version
     html += '<div class="pwa32-card" style="margin-bottom:10px"><div class="pwa32-card-icon">🔄</div><div class="pwa32-card-body"><div class="pwa32-card-label">Current Version</div><div class="pwa32-card-value">Released ' + _formatDate(PWA32.RELEASE_DATE) + '</div></div><span class="pwa32-card-badge pwa32-badge-info">v' + PWA32.VERSION + '</span></div>';
@@ -674,16 +688,23 @@
     html += '<div class="pwa32-card" style="margin-bottom:10px"><div class="pwa32-card-icon">' + (isOnline ? '🌐' : '📴') + '</div><div class="pwa32-card-body"><div class="pwa32-card-label">Offline Ready</div><div class="pwa32-card-value">' + (isOnline ? 'Online — content cached for offline use' : 'Offline — reading cached content') + '</div></div><span class="pwa32-card-badge ' + (isOnline ? 'pwa32-badge-ok' : 'pwa32-badge-warn') + '">' + (isOnline ? 'Online' : 'Offline') + '</span></div>';
 
     // Storage usage
-    html += '<div class="pwa32-card"><div class="pwa32-card-icon">💾</div><div class="pwa32-card-body"><div class="pwa32-card-label">Storage Usage</div><div class="pwa32-card-value">' + storageUsage.text + '</div><div class="pwa32-storage-bar"><div class="pwa32-storage-fill" style="width:' + storageUsage.percent + '%"></div></div></div></div>';
+    html += '<div class="pwa32-card"><div class="pwa32-card-icon">💾</div><div class="pwa32-card-body"><div class="pwa32-card-label">Storage Usage</div><div class="pwa32-card-value">' + storageUsage.text + '</div>' + (storageUsage.real ? '<div class="pwa32-storage-bar"><div class="pwa32-storage-fill" style="width:' + storageUsage.percent + '%"></div></div>' : '') + '</div></div>';
 
     html += '</div>';
 
-    // Install/Open App button
+    // Install CTA — P23/P24: real native prompt when available, honest
+    // platform instructions otherwise; installed users see NO install CTA.
     html += '<div style="margin-bottom:24px;text-align:center">';
     if (isInstalled) {
+      html += '<div style="font-size:.8rem;color:var(--text2,#8d99ad);margin-bottom:8px">✓ Installed · ✓ Home-screen shortcut · Push notifications follow the notification settings on this page</div>';
       html += '<button class="pwa32-btn pwa32-btn-ghost" onclick="window.PWA32._clearCache()">Clear Cache & Refresh</button>';
+    } else if (installState === 'ready') {
+      html += '<div style="font-size:.8rem;color:var(--text2,#8d99ad);margin-bottom:8px">Faster access · App-like experience · Home-screen shortcut · Push notifications</div>';
+      html += '<button class="pwa32-btn" style="min-height:44px" onclick="window.PWA32._triggerInstall()">📲 Install App</button>';
+    } else if (installState === 'no-prompt') {
+      html += '<button class="pwa32-btn" style="min-height:44px" onclick="window.PWA32._installHelp()">📖 How to Install</button>';
     } else {
-      html += '<button class="pwa32-btn" onclick="window.PWA32._triggerInstall()">📲 Install App</button>';
+      html += '<div style="font-size:.78rem;color:var(--text2,#8d99ad)">Tip: open studyria.qzz.io in Chrome (Android/desktop) or Safari (iPhone) to install the app.</div>';
     }
     html += '</div>';
 
@@ -757,19 +778,20 @@
     } catch(_) { return String(d); }
   }
 
+  /* P25 real-data fix: the old version summed localStorage chars and
+     presented them as total app storage against an invented 50MB budget.
+     Now reports the REAL browser storage figures from
+     navigator.storage.estimate(); if the browser doesn't expose them,
+     the card says so honestly instead of showing a fabricated number. */
   function _estimateStorage() {
-    var usage = 0;
     if (navigator.storage && navigator.storage.estimate) {
-      // Async, but we'll do a sync approximation from localStorage
+      return navigator.storage.estimate().then(function (est) {
+        var usedMB = (est.usage / 1024 / 1024).toFixed(1);
+        var pct = (est.quota && est.quota > 0) ? Math.min(100, Math.round(est.usage / est.quota * 100)) : 0;
+        return { text: usedMB + ' MB used' + (est.quota ? ' of ' + (est.quota / 1024 / 1024 / 1024).toFixed(1) + ' GB quota' : ''), percent: pct, real: true };
+      }).catch(function () { return { text: 'Storage usage not reported by this browser', percent: 0, real: false }; });
     }
-    try {
-      for (var key in localStorage) {
-        if (localStorage.hasOwnProperty(key)) usage += (localStorage[key] || '').length;
-      }
-    } catch(_) {}
-    var mb = (usage / 1024 / 1024).toFixed(1);
-    var percent = Math.min(100, Math.round(usage / 1024 / 1024 / 50 * 100)); // Assume 50MB budget
-    return { text: mb + ' MB used', percent: percent };
+    return Promise.resolve({ text: 'Storage usage not reported by this browser', percent: 0, real: false });
   }
 
   // ── PWA Install Prompt ───────────────────────────────────────────
@@ -833,6 +855,16 @@
         Notification.requestPermission().then(function(p) { renderPWAPage(); });
       } else {
         showToast && showToast('Enable notifications in your browser settings.', 'info');
+      }
+    },
+    _installHelp: function() {
+      // Same centralized install helper as every other surface (P33).
+      if (window.PWA && typeof window.PWA.showInstallHelp === 'function') {
+        window.PWA.showInstallHelp();
+      } else if (window.PWA && typeof window.PWA.showiOSInstallTip === 'function') {
+        window.PWA.showiOSInstallTip();
+      } else {
+        showToast && showToast('Open your browser menu → Add to Home Screen / Install app', 'info');
       }
     },
     _triggerInstall: function() {

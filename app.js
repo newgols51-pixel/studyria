@@ -665,47 +665,89 @@ function _markBurgerInstalled() {
 /**
  * iOS Add to Home Screen instructions (Safari does not support beforeinstallprompt)
  */
-function showiOSInstallTip() {
-  if (document.getElementById('_pwaIOSTip')) return;
+function showiOSInstallTip() { return showInstallHelp(); }
 
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  if (!isIOS) {
-    // Non-iOS without prompt: generic help
-    if (typeof showToast === 'function') {
-      showToast('📱 Tap browser menu → "Add to Home Screen" to install', 'info');
-    }
-    return;
+/**
+ * showInstallHelp — platform-aware manual-install instructions (P22).
+ * ONE centralized helper (all install surfaces call window.PWA — never
+ * their own logic). Real platform detection, no fake states, never
+ * claims a universal install method.
+ */
+function showInstallHelp() {
+  var ua = navigator.userAgent || '';
+  var isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  var isAndroid = /android/i.test(ua);
+  var isFirefox = /firefox\//i.test(ua);
+  var isEdge = /edg\//i.test(ua);
+
+  var steps, head;
+  if (isIOS) {
+    head = 'Install Studyria on iPhone / iPad';
+    steps = [
+      'Open studyria.qzz.io in <strong>Safari</strong>',
+      'Tap the <strong>Share</strong> button <span style="font-size:1.05rem">⬆</span> at the bottom',
+      'Scroll and tap <strong>Add to Home Screen</strong> <span style="font-size:1.05rem">➕</span>',
+      'Tap <strong>Add</strong> — Studyria appears on your home screen'
+    ];
+  } else if (isAndroid) {
+    head = 'Install Studyria on Android';
+    steps = [
+      'Open studyria.qzz.io in <strong>Chrome</strong> (or your browser)',
+      'Tap the browser menu <strong>⋮</strong> (top right)',
+      'Tap <strong>Install app</strong> — or <strong>Add to Home screen</strong> on older browsers',
+      'Confirm — Studyria appears on your home screen'
+    ];
+  } else if (isFirefox) {
+    head = 'Install Studyria on Firefox';
+    steps = [
+      'Firefox does not support full PWA install on this platform',
+      'You can still bookmark studyria.qzz.io for quick access',
+      'For the full app experience use Chrome or Edge on this device'
+    ];
+  } else {
+    head = 'Install Studyria on your computer';
+    steps = [
+      'Open studyria.qzz.io in ' + (isEdge ? '<strong>Edge</strong>' : '<strong>Chrome</strong>'),
+      'Click the <strong>install icon</strong> ⊕ at the right end of the address bar',
+      'Click <strong>Install</strong> — Studyria opens in its own app window'
+    ];
   }
 
-  const tip = document.createElement('div');
-  tip.id = '_pwaIOSTip';
-  tip.style.cssText = [
-    'position:fixed', 'bottom:0', 'left:0', 'right:0',
-    'z-index:99999', 'padding:20px 20px 32px',
-    'background:linear-gradient(0deg,#0d1830,#121e38)',
-    'border-top:1px solid rgba(147,2,5,0.25)',
-    'font-family:system-ui,sans-serif',
-    'text-align:center',
-    'box-shadow:0 -8px 40px rgba(0,0,0,0.6)',
+  document.getElementById('_pwaInstallHelp')?.remove();
+  var ov = document.createElement('div');
+  ov.id = '_pwaInstallHelp';
+  ov.setAttribute('role', 'dialog');
+  ov.setAttribute('aria-modal', 'true');
+  ov.setAttribute('aria-label', head);
+  ov.style.cssText = [
+    'position:fixed', 'inset:0', 'z-index:99999',
+    'background:rgba(10,12,20,0.72)', 'backdrop-filter:blur(4px)',
+    'display:flex', 'align-items:center', 'justify-content:center',
+    'padding:20px', 'font-family:system-ui,sans-serif'
   ].join(';');
 
-  tip.innerHTML = `
-    <div style="font-size:1.5rem;margin-bottom:10px">📱</div>
-    <div style="color:#e4e8f0;font-weight:700;font-size:1rem;margin-bottom:6px">Install Studyria on iPhone</div>
-    <div style="color:#7a8caa;font-size:.85rem;line-height:1.6">
-      Tap <strong style="color:#930205">Share</strong> <span style="font-size:1rem">⬆</span> at the bottom of Safari,
-      then tap <strong style="color:#930205">"Add to Home Screen"</strong> 
-      <span style="font-size:1rem">➕</span>
-    </div>
-    <button onclick="document.getElementById('_pwaIOSTip').remove()"
-      style="margin-top:14px;padding:10px 24px;background:linear-gradient(135deg,#930205,#c99a3c);color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer">
-      Got it
-    </button>
-    <div style="font-size:1.5rem;position:absolute;bottom:8px;left:50%;transform:translateX(-50%);color:#930205">▼</div>
-  `;
+  ov.innerHTML = `
+    <div style="background:linear-gradient(160deg,#141b2d,#1a2338);border:1px solid rgba(201,154,60,0.28);border-radius:18px;max-width:420px;width:100%;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,0.7);text-align:left">
+      <div style="font-size:1.6rem;margin-bottom:4px">📱</div>
+      <div style="color:#e4e8f0;font-weight:800;font-size:1.08rem;margin-bottom:14px">${head}</div>
+      <ol style="margin:0;padding-left:20px;color:#aab4c8;font-size:.88rem;line-height:1.75">
+        ${steps.map(t => `<li>${t}</li>`).join('')}
+      </ol>
+      <div style="color:#6d7a92;font-size:.74rem;margin-top:12px;line-height:1.5">
+        Your browser did not show the automatic install prompt. The steps above open Studyria's real installed-app experience.
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button id="_pwaHelpOk" style="flex:1;padding:11px;background:linear-gradient(135deg,#930205,#c99a3c);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;min-height:44px">Got it</button>
+        <button id="_pwaHelpClose" style="padding:11px 16px;background:rgba(255,255,255,0.06);color:#8d99ad;border:1px solid rgba(255,255,255,0.12);border-radius:10px;cursor:pointer;min-height:44px" aria-label="Close">✕</button>
+      </div>
+    </div>`;
 
-  document.body.appendChild(tip);
-  setTimeout(() => tip.remove(), 20000);
+  document.body.appendChild(ov);
+  var close = function () { ov.remove(); document.removeEventListener('keydown', esc); };
+  var esc = function (e) { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', esc);
+  document.getElementById('_pwaHelpOk').addEventListener('click', close);
+  document.getElementById('_pwaHelpClose').addEventListener('click', close);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1354,6 +1396,7 @@ window.PWA = {
   promptInstall,
   markBurgerInstalled: _markBurgerInstalled,
   showiOSInstallTip,
+  showInstallHelp,
   dismissInstallBanner,
   updateInstallButtonVisibility: _updateInstallButtonVisibility,
 

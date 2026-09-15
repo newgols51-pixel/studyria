@@ -137,31 +137,26 @@
   // § 2. NOTIFICATION CENTER
   // ═══════════════════════════════════════════════════════════════════
   function _renderNotifications(p) {
+    /* V3 honesty fix (spec P14/P16/P39 + P0 "no second notification
+       system"): the legacy local send form was fake push — OneSignal is
+       retired and the "Delivery Analytics" counters were localStorage
+       guesses that never reflected real delivery. Real notifications are
+       composed and sent (with real push, test-send and per-device
+       self-test) from Admin → Live Feed Notifications (SN V2). */
     var html = '<div class="pwa32-admin-card"><h3>Send Push Notification</h3>';
-    html += '<div style="margin-bottom:12px"><label style="font-size:.78rem;color:var(--text2);display:block;margin-bottom:6px">Title</label><input class="pwa32-admin-input" id="pwa32NotifTitle" placeholder="Notification title"></div>';
-    html += '<div style="margin-bottom:12px"><label style="font-size:.78rem;color:var(--text2);display:block;margin-bottom:6px">Body</label><textarea class="pwa32-admin-input pwa32-admin-textarea" id="pwa32NotifBody" placeholder="Notification message"></textarea></div>';
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">';
-    html += '<div><label style="font-size:.78rem;color:var(--text2);display:block;margin-bottom:6px">Image URL (optional)</label><input class="pwa32-admin-input" id="pwa32NotifImage" placeholder="https://…"></div>';
-    html += '<div><label style="font-size:.78rem;color:var(--text2);display:block;margin-bottom:6px">Deep Link (optional)</label><input class="pwa32-admin-input" id="pwa32NotifLink" placeholder="#library or https://…"></div>';
-    html += '</div>';
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">';
-    html += '<div><label style="font-size:.78rem;color:var(--text2);display:block;margin-bottom:6px">Schedule (optional)</label><input class="pwa32-admin-input" type="datetime-local" id="pwa32NotifSchedule"></div>';
-    html += '<div><label style="font-size:.78rem;color:var(--text2);display:block;margin-bottom:6px">Topic</label><select class="pwa32-admin-input" id="pwa32NotifTopic"><option value="">All users</option><option value="jobs">Job Alerts</option><option value="updates">App Updates</option><option value="offers">Offers & Deals</option><option value="education">Educational</option></select></div>';
-    html += '</div>';
-    html += '<button class="pwa32-btn" onclick="window.PWA32Admin._sendNotif()">Send Notification</button>';
-    html += '</div>';
-
-    // Delivery analytics
-    html += '<div class="pwa32-admin-card"><h3>Delivery Analytics</h3>';
-    var notifStats = _cfg('notif_stats', { sent: 0, delivered: 0, opened: 0, failed: 0 });
-    html += '<div class="pwa32-admin-grid">';
-    html += _statCard('Sent', String(notifStats.sent), 'Total notifications');
-    html += _statCard('Delivered', String(notifStats.delivered), 'Successfully received');
-    html += _statCard('Opened', String(notifStats.opened), 'User clicked');
-    html += _statCard('Failed', String(notifStats.failed), 'Delivery errors');
+    html += '<div style="padding:14px;border:1px solid var(--glass-border,rgba(255,255,255,0.12));border-radius:12px;background:var(--glass,rgba(255,255,255,0.03));margin-bottom:12px">';
+    html += '<div style="font-size:.85rem;color:var(--text);font-weight:700;margin-bottom:6px">📡 Real notifications are managed in Live Feed Notifications</div>';
+    html += '<div style="font-size:.78rem;color:var(--text2);line-height:1.6;margin-bottom:10px">Compose with presets, custom banners, scheduling and expiry — plus the real push kill-switch, device test push (to subscribed devices) and subscriber counts. The old one-click form here did not send real web push and its delivery numbers were local estimates, so it was removed (honest behavior over fake stats).</div>';
+    html += '<button class="pwa32-btn" onclick="switchAdminTab(\'live-feed\')">Open Live Feed Notifications →</button>';
     html += '</div></div>';
 
-    // Notification history
+    // Delivery analytics — honest semantics (P14): no provider delivery
+    // confirmation exists in this app, so no per-notification "delivered"
+    // claims. Real subscriber counts + test push live in the Live Feed panel.
+    html += '<div class="pwa32-admin-card"><h3>Delivery Analytics</h3>';
+    html += '<div style="font-size:.78rem;color:var(--text2);line-height:1.6">Per-notification delivery analytics (queued / sent / provider-accepted / failed) require delivery receipts from the push provider, which the current notification backend does not expose. Until then Studyria reports honestly: <b>subscriber count</b> and <b>test push results</b> (see Live Feed Notifications) — never fabricated "delivered" numbers.</div></div>';
+
+    // Notification history (reads the real table — honest errors if absent)
     html += '<div class="pwa32-admin-card"><h3>Recent Notifications</h3><div id="pwa32AdminNotifHistory"></div></div>';
 
     p.innerHTML = html;

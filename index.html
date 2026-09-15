@@ -7747,7 +7747,11 @@ crossorigin="anonymous"></script>
   }
 
   /* Hide elements moved from header to menu */
-  #themeToggle, #langSwitcherWrap, #dhWishlistBtn, #pwaInstallBtn { display: none !important; }
+  /* Install CTA fix (P19/P23): #pwaInstallBtn removed from this kill-rule —
+     it was hidden "because it moved to the menu", but the menu button
+     never existed, leaving NO visible install CTA. app.js now governs
+     visibility (hidden when installed, shown for non-installed users). */
+  #themeToggle, #langSwitcherWrap, #dhWishlistBtn { display: none !important; }
 
   /* Mobile search in menu */
   .hp-mobile-search {
@@ -20085,7 +20089,7 @@ async function handleNewsletterSubscribe(btn) {
 window.supabaseLib = window.supabase;
 </script>
 <script src="supabase.js?v=20260912a"></script>
-<script src="studyria-notifications.js?v=7" defer></script>
+<script src="studyria-notifications.js?v=8" defer></script>
 <script src="studyria-notification-center.js?v=7" defer></script>
 <link rel="stylesheet" href="cloud-manager.css?v=1"><script src="cloud-manager.js?v=1" defer></script>
 <link rel="stylesheet" href="brainlab-exam-import.css?v=20260910b">

@@ -336,7 +336,13 @@
     { id: 'premium', name: 'Premium Announcement', icon: '👑', type: 'GENERAL',   priority: 'high',  style: 'premium',
       desc: 'Pass / premium content announcement — gold look' },
     { id: 'urgent',  name: 'Important Alert',       icon: '🚨', type: 'GENERAL',   priority: 'high',  style: 'alert',
-      desc: 'Urgent alerts — deadline, exam date, urgent update' }
+      desc: 'Urgent alerts — deadline, exam date, urgent update' },
+    /* V3 additive templates (spec P12) — existing whitelisted types +
+       existing snPoster styles, ZERO backend changes */
+    { id: 'brainlab',name: 'BrainLab',            icon: '🧠', type: 'MOCK_TEST', priority: 'normal', style: 'mock',
+      desc: 'New BrainLab test series / mock test announcement — pair with a brainlab destination' },
+    { id: 'whatsapp',name: 'WhatsApp Update',     icon: '📲', type: 'GENERAL',   priority: 'normal', style: 'affairs',
+      desc: 'WhatsApp channel/community announcement — set Destination: External URL (https://whatsapp.com/…)' }
   ];
 
   /* Mirror of sw.js PUSH_TEMPLATE — the preview shows EXACTLY what the
