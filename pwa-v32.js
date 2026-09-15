@@ -488,6 +488,299 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════
+  // § 4c. MY SHORTCUTS (V8) — Personalized in-app quick shortcuts
+  // ───────────────────────────────────────────────────────────────────
+  // Pure config/validation lives in shortcut-core.js (window.StudyriaShortcuts).
+  // This module handles ONLY: persistence (per-user localStorage key +
+  // additive Supabase table user_shortcut_prefs), rendering, and
+  // ID-based navigation dispatch (same navigate()/BrainLab.switchTab
+  // patterns the Smart App Center already uses).
+  //
+  // HONEST LIMITATION: the Android/iOS launcher long-press shortcut
+  // menu comes from the STATIC manifest.json and is identical for every
+  // user — per-user native launcher shortcuts are NOT supported by this
+  // platform and are NOT claimed. These are IN-APP shortcuts only.
+  // ═══════════════════════════════════════════════════════════════════
+
+  var SC = (window.StudyriaShortcuts || null);
+
+  // In-memory working copy of the user's selected shortcut IDs (ordered)
+  var _scSelected = [];
+  // Truthful persistence state, never faked
+  var _scSyncState = 'default'; // 'default' | 'device' | 'synced' | 'pending'
+
+  function _scCore() {
+    if (!SC) SC = window.StudyriaShortcuts || null;
+    return SC;
+  }
+
+  // Per-user localStorage key — genuinely user-specific (guests get a
+  // separate key so signing in never adopts a guest's picks, and vice versa)
+  function _scLsKey() {
+    var uid = _uid();
+    return 'shortcuts_v1:' + (uid || 'guest');
+  }
+
+  function _scLoadLocal() {
+    var core = _scCore(); if (!core) return [];
+    var stored = null;
+    try { stored = JSON.parse(localStorage.getItem(_scLsKey()) || 'null'); } catch(_) { stored = null; }
+    return core.validate(stored && stored.ids ? stored.ids : []);
+  }
+
+  function _scLoadLocalMeta() {
+    try { return JSON.parse(localStorage.getItem(_scLsKey()) || 'null') || {}; } catch(_) { return {}; }
+  }
+
+  function _scSaveLocal(ids) {
+    try {
+      localStorage.setItem(_scLsKey(), JSON.stringify({ ids: ids, updatedAt: new Date().toISOString() }));
+    } catch(_) {}
+  }
+
+  // ── Supabase sync (additive table user_shortcut_prefs) ─────────────
+  // Graceful degradation: table missing (migration not yet applied) or
+  // offline → keep the honest per-device state, never fake a sync.
+  async function _scFetchRemote() {
+    var sb = _sb(), uid = _uid(), core = _scCore();
+    if (!sb || !uid || !core) return null;
+    try {
+      var res = await sb.from('user_shortcut_prefs')
+        .select('shortcut_ids, updated_at')
+        .eq('user_id', uid)
+        .maybeSingle();
+      if (res.error) {
+        console.warn('[SHORTCUTS] remote fetch unavailable:', res.error.message);
+        return null;
+      }
+      if (!res.data) return null;
+      return { ids: core.validate(res.data.shortcut_ids || []), updatedAt: res.data.updated_at || '' };
+    } catch(e) {
+      console.warn('[SHORTCUTS] remote fetch failed:', e.message);
+      return null;
+    }
+  }
+
+  async function _scSaveRemote(ids) {
+    var sb = _sb(), uid = _uid(), core = _scCore();
+    if (!sb || !uid || !core) return false;
+    var clean = core.validate(ids);
+    try {
+      var res = await sb.from('user_shortcut_prefs').upsert({
+        user_id: uid,
+        shortcut_ids: clean,           // jsonb — server CHECKs ≤4 + allowlist
+        updated_at: new Date().toISOString()
+      });
+      if (res.error) {
+        console.warn('[SHORTCUTS] remote save unavailable:', res.error.message);
+        return false;
+      }
+      return true;
+    } catch(e) {
+      console.warn('[SHORTCUTS] remote save failed:', e.message);
+      return false;
+    }
+  }
+
+  // ── Load: local first (instant, offline-safe), then best-effort reconcile ──
+  function _scInit() {
+    var core = _scCore(); if (!core) return;
+    var local = _scLoadLocal();
+    var meta = _scLoadLocalMeta();
+    if (local.length) {
+      _scSelected = local;
+      _scSyncState = _uid() ? 'device' : 'device'; // corrected by remote reconcile below
+    } else {
+      _scSelected = core.DEFAULT_IDS.slice();
+      _scSyncState = 'default';
+    }
+    if (_uid() && local.length) {
+      _scFetchRemote().then(function(remote) {
+        if (!remote) return;
+        var localAt = meta.updatedAt || '';
+        if (remote.updatedAt && remote.updatedAt > localAt && remote.ids.length) {
+          _scSelected = remote.ids;
+          _scSaveLocal(remote.ids);
+        }
+        _scSyncState = 'synced';
+        _scRenderQuick();
+        _scRenderEditor();
+      });
+    } else if (local.length && !_uid()) {
+      _scSyncState = 'device';
+    }
+  }
+
+  // ── Navigation dispatch (allowlist IDs only — no URLs, ever) ───────
+  function _scGo(id) {
+    var core = _scCore(); if (!core) return;
+    var s = core.get(id);
+    if (!s) { console.warn('[SHORTCUTS] blocked navigation to unknown id:', id); return; }
+    if (typeof navigate !== 'function') return;
+    navigate(s.nav.page);
+    // Same readiness pattern the Smart App Center uses for BrainLab tabs
+    if (s.nav.blTab) setTimeout(function() {
+      if (window.__blReady) __blReady(function() { BrainLab.switchTab(s.nav.blTab); });
+      else if (window.BrainLab && BrainLab.switchTab) BrainLab.switchTab(s.nav.blTab);
+    }, 250);
+    if (s.nav.blScroll) setTimeout(function() {
+      if (window.BrainLab && BrainLab.scrollToSection) BrainLab.scrollToSection(s.nav.blScroll);
+    }, 400);
+  }
+
+  // ── Editor actions (order-preserving) ──────────────────────────────
+  function _scToggle(id) {
+    var core = _scCore(); if (!core) return;
+    if (!core.isAllowed(id)) return;
+    var idx = _scSelected.indexOf(id);
+    if (idx > -1) {
+      _scSelected.splice(idx, 1);                    // removal preserves order
+    } else {
+      if (_scSelected.length >= core.MAX) {          // graceful 5th-block
+        showToast && showToast('Maximum ' + core.MAX + ' shortcuts — remove one first.', 'info');
+        return;
+      }
+      _scSelected.push(id);                           // append preserves order
+    }
+    _scRenderEditor();
+    _scRenderQuick();
+  }
+
+  function _scMove(index, dir) {
+    var j = index + dir;
+    if (index < 0 || j < 0 || index >= _scSelected.length || j >= _scSelected.length) return;
+    var t = _scSelected[index];
+    _scSelected[index] = _scSelected[j];
+    _scSelected[j] = t;
+    _scRenderEditor();
+    _scRenderQuick();
+  }
+
+  async function _scSave() {
+    var core = _scCore(); if (!core) return;
+    var clean = core.validate(_scSelected);
+    _scSelected = clean;
+    _scSaveLocal(clean);                              // immediate, offline-safe
+    if (!_uid()) {
+      _scSyncState = 'device';
+      _scRenderEditor();
+      showToast && showToast('Saved on this device. Sign in to sync across devices.', 'success');
+      return;
+    }
+    _scSyncState = 'pending';
+    _scRenderEditor();
+    var ok = await _scSaveRemote(clean);
+    _scSyncState = ok ? 'synced' : 'device';
+    _scRenderEditor();
+    if (ok) showToast && showToast('Shortcuts saved & synced to your account ✓', 'success');
+    else showToast && showToast('Saved on this device — couldn\'t reach the server.', 'warning');
+  }
+
+  function _scReset() {
+    var core = _scCore(); if (!core) return;
+    _scSelected = core.DEFAULT_IDS.slice();
+    _scSaveLocal(_scSelected);
+    _scSyncState = _uid() ? 'pending' : 'device';
+    _scRenderEditor(); _scRenderQuick();
+    if (_uid()) {
+      _scSaveRemote(_scSelected).then(function(ok) {
+        _scSyncState = ok ? 'synced' : 'device';
+        _scRenderEditor();
+      });
+    }
+    showToast && showToast('Shortcuts reset to the default set.', 'info');
+  }
+
+  // ── Renderers ──────────────────────────────────────────────────────
+  function _scSyncLabel() {
+    if (_scSyncState === 'synced') return 'Synced to your account ✓';
+    if (_scSyncState === 'pending') return 'Syncing…';
+    if (_scSyncState === 'device') return 'Saved on this device';
+    return 'Default set — personalize below';
+  }
+
+  function _scRenderQuick() {
+    var el = document.getElementById('pwa32ScQuick');
+    var core = _scCore();
+    if (!el || !core) return;
+    var html = '';
+    if (!_scSelected.length) {
+      html += '<div class="pwa32-sc-empty">No shortcuts selected yet — choose up to 4 below.</div>';
+    } else {
+      html += '<div class="pwa32-sc-grid">';
+      _scSelected.forEach(function(id) {
+        var s = core.get(id);
+        if (!s) return;
+        html += '<button class="pwa32-sc-tile" onclick="window.PWA32._scGo(\'' + _escAttr(id) + '\')" aria-label="Open ' + _escAttr(s.label) + '">';
+        html += '<span class="pwa32-sc-tile-icon">' + s.icon + '</span>';
+        html += '<span class="pwa32-sc-tile-label">' + _escHtml(s.label) + '</span>';
+        html += '</button>';
+      });
+      html += '</div>';
+    }
+    html += '<div class="pwa32-sc-status">' + _escHtml(_scSyncLabel()) + '</div>';
+    el.innerHTML = html;
+  }
+
+  function _scRenderEditor() {
+    var wrap = document.getElementById('pwa32ScEditor');
+    var core = _scCore();
+    if (!wrap || !core) return;
+    var selCount = _scSelected.length;
+    var html = '';
+    html += '<div class="pwa32-sc-intro"><span>Choose up to ' + core.MAX + ' sections for quick access.</span>';
+    html += '<span class="pwa32-sc-count' + (selCount >= core.MAX ? ' max' : '') + '">' + selCount + ' / ' + core.MAX + ' selected</span></div>';
+
+    // Selected (ordered) list with move up/down/remove
+    html += '<div class="pwa32-sc-order">';
+    if (!selCount) {
+      html += '<div class="pwa32-sc-empty">Nothing selected yet.</div>';
+    } else {
+      _scSelected.forEach(function(id, i) {
+        var s = core.get(id); if (!s) return;
+        html += '<div class="pwa32-sc-order-row">';
+        html += '<span class="pwa32-sc-order-num">' + (i + 1) + '</span>';
+        html += '<span class="pwa32-sc-order-icon">' + s.icon + '</span>';
+        html += '<span class="pwa32-sc-order-label">' + _escHtml(s.label) + '</span>';
+        html += '<span class="pwa32-sc-order-acts">';
+        html += '<button class="pwa32-sc-mini" onclick="window.PWA32._scMove(' + i + ',-1)" aria-label="Move up"' + (i === 0 ? ' disabled' : '') + '>↑</button>';
+        html += '<button class="pwa32-sc-mini" onclick="window.PWA32._scMove(' + i + ',1)" aria-label="Move down"' + (i === selCount - 1 ? ' disabled' : '') + '>↓</button>';
+        html += '<button class="pwa32-sc-mini pwa32-sc-remove" onclick="window.PWA32._scToggle(\'' + _escAttr(id) + '\')" aria-label="Remove">✕</button>';
+        html += '</span></div>';
+      });
+    }
+    html += '</div>';
+
+    // Option grid — unselected cards disabled (not hidden) at max
+    html += '<div class="pwa32-sc-grid pwa32-sc-picker">';
+    Object.keys(core.ALLOWLIST).forEach(function(id) {
+      var s = core.ALLOWLIST[id];
+      var isSel = _scSelected.indexOf(id) > -1;
+      var blocked = !isSel && selCount >= core.MAX;
+      html += '<button class="pwa32-sc-tile' + (isSel ? ' selected' : '') + (blocked ? ' blocked' : '') + '"'
+        + ' onclick="window.PWA32._scToggle(\'' + _escAttr(id) + '\')"'
+        + (blocked ? ' aria-disabled="true"' : '')
+        + ' aria-label="' + (isSel ? 'Remove ' + _escAttr(s.label) : (blocked ? _escAttr(s.label) + ' — max reached' : 'Add ' + _escAttr(s.label))) + '">';
+      html += '<span class="pwa32-sc-tile-icon">' + s.icon + '</span>';
+      html += '<span class="pwa32-sc-tile-label">' + _escHtml(s.label) + '</span>';
+      html += '<span class="pwa32-sc-check">' + (isSel ? '✓ Selected' : '') + '</span>';
+      html += '</button>';
+    });
+    html += '</div>';
+
+    // Actions
+    html += '<div class="pwa32-sc-actions">';
+    html += '<button class="pwa32-btn" onclick="window.PWA32._scSave()">Save Shortcuts</button>';
+    html += '<button class="pwa32-btn pwa32-btn-ghost" onclick="window.PWA32._scReset()">Reset to Default</button>';
+    html += '</div>';
+    html += '<div class="pwa32-sc-status">' + _escHtml(_scSyncLabel()) + '</div>';
+    // Truthful scope note — in-app only, not launcher shortcuts
+    html += '<div class="pwa32-sc-note">These shortcuts appear inside the Studyria app. Your phone\'s launcher shortcuts (long-press on the app icon) are set by the app and are the same for everyone.</div>';
+
+    wrap.innerHTML = html;
+  }
+
   // § 5. OFFLINE ENGINE — Reading progress sync, background sync
   // ═══════════════════════════════════════════════════════════════════
 
@@ -1000,6 +1293,11 @@
     html += '<div class="pwa7-stat"><div class="pwa7-stat-label"><span class="pwa7-dot pwa7-dot-' + (swSupported ? 'ok' : 'off') + '"></span>App Shell</div><div class="pwa7-stat-value">' + (swSupported ? 'Active' : 'Unavailable') + '</div><div class="pwa7-stat-note">' + (swSupported ? (offlineReady.caches + ' offline cache' + (offlineReady.caches === 1 ? '' : 's') + ' on this device.') : 'This browser cannot cache the app for offline use.') + '</div></div>';
     html += '</div></div>';
 
+    // ═══ 2b. MY SHORTCUTS (personalized, up to 4) ═══
+    html += '<div class="pwa7-section"><div class="pwa7-section-title">⚡ My Shortcuts</div>';
+    html += '<div id="pwa32ScQuick"></div>';
+    html += '</div>';
+
     // ═══ 3. QUICK STUDY ═══
     html += '<div class="pwa7-section" id="pwa7Quick"><div class="pwa7-section-title">Quick Study</div><div class="pwa7-quick">';
     var quick = [
@@ -1016,6 +1314,11 @@
       html += '<button class="pwa7-quick-item" onclick="' + q.action.replace(/"/g, '&quot;') + '" aria-label="' + q.label + '"><span class="pwa7-quick-icon">' + q.icon + '</span><span class="pwa7-quick-label">' + q.label + '</span></button>';
     });
     html += '</div></div>';
+
+    // ═══ 3b. PERSONALIZE YOUR SHORTCUTS (editor) ═══
+    html += '<div class="pwa7-section"><div class="pwa7-section-title">✨ Personalize Your Shortcuts</div>';
+    html += '<div id="pwa32ScEditor" class="pwa32-sc-editor-card"></div>';
+    html += '</div>';
 
     // ═══ 4. CONTINUE LEARNING ═══
     html += '<div class="pwa7-section"><div class="pwa7-section-title">Continue Learning</div><div class="pwa7-panel">';
@@ -1154,6 +1457,14 @@
 
     var dlContainer = document.getElementById('pwa32DlContainer');
     if (dlContainer) _renderDownloadManager(dlContainer);
+
+    // My Shortcuts — instant from local state; remote reconcile is
+    // async & non-blocking and re-renders itself when it lands.
+    if (window.StudyriaShortcuts) {
+      _scInit();
+      _scRenderQuick();
+      _scRenderEditor();
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -1219,6 +1530,11 @@
   window.PWA32 = {
     version: PWA32.VERSION,
     renderPage: renderPWAPage,
+    _scGo: _scGo,
+    _scToggle: _scToggle,
+    _scMove: _scMove,
+    _scSave: _scSave,
+    _scReset: _scReset,
     _fetchReleaseNotes: _fetchReleaseNotes,
     _autoGenerate: _autoGenerateReleaseNotes,
     _toggleRelease: function(headerEl) {
