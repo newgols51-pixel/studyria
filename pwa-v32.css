@@ -456,3 +456,24 @@ body.light .pwa32-wn-search {
   .pwa7-btn, .pwa7-quick-item, .pwa7-collapse-chevron, .pwa7-stat { transition: none !important; }
   .pwa7-btn:hover, .pwa7-quick-item:hover { transform: none !important; }
 }
+
+/* ── CANONICAL PAPER CREAM PINNING (owner decision, Sep 15 2026) ─────
+   Product decision: the Studyria Smart App Center is PERMANENTLY Paper
+   Cream — no dark mode, no dark-mode toggle, no dark palette branch.
+   This block pins every theme token the page consumes to the exact
+   Paper Cream palette values the site already resolves globally today
+   (identical computed values → zero visual change). It exists so this
+   page can never inherit a dark-theme flip from any future global
+   theme mechanism. Scoped to #page-pwa only. Visual-only change. */
+#page-pwa {
+  --text: #1c1b1a;            /* dark ink */
+  --text2: #6b6358;           /* muted warm neutral */
+  --text3: #9a9285;
+  --gold: #c99a3c;            /* Premium Gold */
+  --primary: #930205;         /* Royal Maroon */
+  --surface: rgba(28,27,26,0.03);
+  --glass-bg: rgba(255,255,255,0.03);
+  --glass-border: rgba(28,27,26,0.12);
+  background: #faf7f2;        /* Paper Cream */
+  color: #1c1b1a;
+}
