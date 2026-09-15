@@ -12467,20 +12467,19 @@ function shUpdateHeroStats() {
   if (pdfEl && pdfs.length) pdfEl.textContent = pdfs.length + '+';
 
   var auto = typeof window.getAutoStudentCount === 'function'
-    ? window.getAutoStudentCount() : 1500;
+    ? window.getAutoStudentCount() : 1200;
+  var _sp = window.CANONICAL_SOCIAL_PROOF || auto.toLocaleString() + '+';
   var studEl = document.getElementById('heroStatStudents');
-  if (studEl) studEl.textContent = auto >= 1000
-    ? (auto/1000).toFixed(1) + 'k+'
-    : auto + '+';
+  if (studEl) studEl.textContent = _sp;
 
   // Legacy compat elements
   var ctaEl = document.getElementById('homeCtaStudentCount');
-  if (ctaEl) ctaEl.textContent = auto + '+';
+  if (ctaEl) ctaEl.textContent = _sp;
   var commEl = document.getElementById('communityStudentCount');
-  if (commEl) commEl.textContent = auto + '+ Students';
+  if (commEl) commEl.textContent = _sp + ' Students';
   var aboutEl = document.getElementById('aboutStatStudents');
   if (aboutEl && (aboutEl.textContent === '—' || !aboutEl.textContent)) {
-    aboutEl.textContent = auto + '+';
+    aboutEl.textContent = _sp;
   }
 }
 
@@ -22259,6 +22258,11 @@ async function renderLibGrid() {
   if (grid) grid.innerHTML = Array(8).fill('<div class="ottlib-grid-card ottlib-skeleton" style="aspect-ratio:2/3"></div>').join('');
 
   // ── Load from Supabase first ───────────────────────────────────
+  // Data-consistency contract (Sep 2026): a FAILED fetch must never be
+  // presented as "0 PDFs". We track failure and, when the request failed
+  // and there is no data, show an honest error state with Retry instead
+  // of an empty result / zeroed stats.
+  let fetchFailed = false;
   if (window.supabaseClient) {
     try {
       let q = window.supabaseClient.from('pdfs').select('*').eq('status', 'published');
@@ -22268,15 +22272,25 @@ async function renderLibGrid() {
       }
       q = q.order('created_at', { ascending: false }).limit(100);
       const { data, error } = await q;
-      if (!error && data && data.length > 0) {
+      if (error) throw error;
+      if (data && data.length > 0) {
         data.forEach(row => {
           const idx = window.PDFS.findIndex(p => String(p.id) === String(row.id));
           if (idx >= 0) window.PDFS[idx] = Object.assign(window.PDFS[idx], row);
           else window.PDFS.push(row);
         });
+        window._libFetchFailed = false;   // healthy pipeline confirmed
       }
-    } catch(e) { console.warn('Library Supabase fetch:', e); }
+    } catch(e) {
+      console.warn('Library Supabase fetch:', e);
+      fetchFailed = true;
+    }
+  } else {
+    // No client yet (Supabase SDK still loading / blocked). The global
+    // loader (pdf-list.js) flags a hard failure via window._libFetchFailed
+    // after its wait window — until then the data is "not loaded", never "0".
   }
+  if (window._libFetchFailed) fetchFailed = true;
 
   let filtered = validPdfs(window.PDFS || []).filter(p =>
     (libCat === 'All' || !libCat || p.category === libCat) &&
@@ -22291,18 +22305,54 @@ async function renderLibGrid() {
   if (sort === 'price-high') filtered.sort((a,b) => (b.price||0) - (a.price||0));
   if (sort === 'newest') filtered.sort((a,b) => new Date(b.created_at||0) - new Date(a.created_at||0));
 
-  if (countEl) countEl.textContent = `${filtered.length} PDFs`;
+  const hardError = fetchFailed && (window.PDFS || []).length === 0 && !search && (!libCat || libCat === 'All');
+
+  // Data pipeline still starting (no client yet, nothing local, no hard
+  // failure flagged): keep the skeletons up and claim nothing. A real
+  // result/error state arrives once the pipeline resolves.
+  const stillLoading = !window.supabaseClient && !window._libFetchFailed &&
+                       (window.PDFS || []).length === 0;
+  if (stillLoading) {
+    if (countEl) countEl.textContent = '…';
+    if (empty) empty.classList.add('hidden');
+    return;
+  }
+
+  if (countEl) countEl.textContent = hardError ? '—' : `${filtered.length} PDFs`;
 
   if (grid) {
     if (filtered.length === 0) {
-      // Show friendly empty state instead of blank grid
+      // Show a friendly, HONEST empty state instead of a blank grid.
+      // Four distinct states — FETCH ERROR is never shown as "0 PDFs".
       grid.innerHTML = '';
       if (empty) {
         empty.classList.remove('hidden');
-        const emptyTitle = empty.querySelector('.lib-empty-title');
-        const emptyBody = empty.querySelector('p, .lib-empty-body, .lib-empty-sub');
-        if (emptyTitle) emptyTitle.textContent = search || libCat !== 'All' ? 'No PDFs Found' : 'Library Loading…';
-        if (emptyBody) emptyBody.textContent = search ? `No results for "${search}". Try a different search term.` : libCat && libCat !== 'All' ? `No PDFs in "${libCat}" yet. Browse All Categories.` : 'PDFs are loading. Please check your connection.';
+        // NOTE: the real markup uses .ottlib-empty-title / .ottlib-empty-sub
+        // (the old .lib-empty-* selectors never matched, so these variants
+        // silently failed before). We rebuild the block each time so every
+        // state renders correctly.
+        if (hardError) {
+          // FETCH ERROR — the request failed; do NOT claim an empty library
+          empty.innerHTML = '<div class="ottlib-empty-icon">📡</div>' +
+            '<div class="ottlib-empty-title">Couldn\u2019t load PDFs</div>' +
+            '<div class="ottlib-empty-sub">The library could not be reached. Check your connection and try again.</div>' +
+            '<button type="button" onclick="renderLibGrid()" style="margin-top:14px;padding:10px 26px;border:none;border-radius:10px;background:#930205;color:#fff;font-weight:600;font-size:.85rem;cursor:pointer">Retry</button>';
+        } else if (search) {
+          // EMPTY RESULT for a valid query
+          empty.innerHTML = '<div class="ottlib-empty-icon">🔍</div>' +
+            '<div class="ottlib-empty-title">No PDFs Found</div>' +
+            '<div class="ottlib-empty-sub">No results for \u201C' + search.replace(/</g,'&lt;').replace(/"/g,'&quot;') + '\u201D. Try a different search term.</div>';
+        } else if (libCat && libCat !== 'All') {
+          // Category has no PDFs (honest empty category)
+          empty.innerHTML = '<div class="ottlib-empty-icon">📭</div>' +
+            '<div class="ottlib-empty-title">No PDFs Found</div>' +
+            '<div class="ottlib-empty-sub">No PDFs in \u201C' + libCat.replace(/</g,'&lt;') + '\u201D yet. Browse All Categories.</div>';
+        } else {
+          // Data loaded fine — library is genuinely empty
+          empty.innerHTML = '<div class="ottlib-empty-icon">📭</div>' +
+            '<div class="ottlib-empty-title">No PDFs Yet</div>' +
+            '<div class="ottlib-empty-sub">New study materials are on the way. Check back soon.</div>';
+        }
       }
     } else {
       if (empty) empty.classList.add('hidden');
@@ -22313,8 +22363,10 @@ async function renderLibGrid() {
       }
     }
   }
-  renderLibHeroStats();
-  if (typeof ottlibRenderShelves === 'function') ottlibRenderShelves();
+  // On a hard fetch error never overwrite the stats with 0 — leave the
+  // last-known values; the error state above explains the situation.
+  if (!hardError) renderLibHeroStats();
+  if (!hardError && typeof ottlibRenderShelves === 'function') ottlibRenderShelves();
   // Trigger lazy-load observer for new images
   setTimeout(() => { if (typeof window.initLazyImages === 'function') window.initLazyImages(); }, 100);
 }
@@ -38016,7 +38068,7 @@ function heroApplySettings(s) {
     subEl.textContent = '';
     subEl.classList.remove('hero-cursor');
     if(window._heroTypingTimer) clearTimeout(window._heroTypingTimer);
-    const _liveStudentCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 157;
+    const _liveStudentCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1200;
     // Bug fix: some hero_settings rows in the DB were saved as a JSON-array
     // string (e.g. ["phrase one", "phrase two"]) instead of the expected
     // pipe-separated format ("phrase one|phrase two"). Splitting a JSON
@@ -38037,7 +38089,7 @@ function heroApplySettings(s) {
       _phraseList = _rawPhrases.split('|');
     }
     const phrases = _phraseList.map(p => p.trim()).filter(Boolean)
-      .map(p => p.replace(/\d[\d,]*\+?\s*students/gi, _liveStudentCount + '+ students'));
+      .map(p => p.replace(/\d[\d,]*\+?\s*students/gi, (window.CANONICAL_SOCIAL_PROOF || _liveStudentCount.toLocaleString() + '+') + ' students'));
     if(phrases.length && g('enable_typing_effect')) {
       window._startTypedFallback(phrases);
     } else if(phrases.length) {
@@ -39940,7 +39992,9 @@ function _animatePstatEl(numEl, endVal, opts) {
     if (progress < 1) requestAnimationFrame(step);
     else numEl.textContent = decimal !== null
       ? decimal.toFixed(1) + suffix
-      : (endVal >= 1000 ? (endVal/1000).toFixed(1)+'K+' : endVal.toLocaleString() + suffix);
+      // Exact locale format (1200 → "1,200+") — matches the canonical
+      // social-proof display instead of rounding to "1.2K+"
+      : endVal.toLocaleString() + suffix;
   }
   requestAnimationFrame(step);
 }
@@ -39951,31 +40005,21 @@ function _animatePstatEl(numEl, endVal, opts) {
 // callers (home pstat cards, About page, hero, footer CTA) all
 // read the same numbers without duplicating DB round-trips.
 
-// ── AUTO STUDENT COUNTER ─────────────────────────────────────────
-// Grows the student count by 2-5 per day from the seed date.
-// Deterministic per-day increment (seeded by date index) — every
-// visitor on the same calendar day sees the same number.
-// No localStorage or server-side persistence needed.
+// ── CANONICAL SOCIAL PROOF (owner decision, 15 Sep 2026) ──────────────
+// The public student/selectee social-proof metric is "1,200+" — ONE
+// canonical value shown consistently on every surface (hero CTA
+// subtitle, About tile, community hub, stat band, /homepage marketing
+// page). Replaces the former auto-growing counter (157 + 2-5/day),
+// which drifted out of sync with the marketing page's hardcoded
+// numbers and showed a different figure every day. Never change this
+// value without an explicit owner decision.
 (function() {
-  var STUDENT_BASE      = 157;
-  var STUDENT_SEED_DATE = new Date('2026-06-27T00:00:00+05:30').getTime();
-  var MS_PER_DAY        = 86400000;
-
-  function _dailyIncrement(dayIndex) {
-    // Deterministic 2-5 increment per day (simple LCG hash)
-    var seed = (dayIndex * 1103515245 + 12345) & 0x7fffffff;
-    return 2 + (seed % 4); // 2, 3, 4 or 5
-  }
-
-  function getAutoStudentCount() {
-    var daysPassed = Math.floor((Date.now() - STUDENT_SEED_DATE) / MS_PER_DAY);
-    if (daysPassed <= 0) return STUDENT_BASE;
-    var total = STUDENT_BASE;
-    for (var i = 0; i < daysPassed; i++) total += _dailyIncrement(i);
-    return total;
-  }
-
+  var STUDENT_BASE = 1200; // canonical "1,200+" — students metric
+  function getAutoStudentCount() { return STUDENT_BASE; }
   window.getAutoStudentCount = getAutoStudentCount;
+  // Exact display string — shared formatters round 1200 to "1K+"/"1.2K+",
+  // so student surfaces use this string directly.
+  window.CANONICAL_SOCIAL_PROOF = '1,200+';
 })();
 
 /**
@@ -40042,7 +40086,7 @@ function _applyPlatformStats(stats) {
   // (Home, About, Connect with, CTA, Footer, Hero, Library, etc).
   // It is intentionally NOT replaced by live Supabase row counts,
   // so every surface always shows the same number.
-  const studentCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 157;
+  const studentCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1200;
 
   // ── Homepage pstat cards ─────────────────────────────────────
   const card0 = document.getElementById('pstatNum0');
@@ -40070,7 +40114,7 @@ function _applyPlatformStats(stats) {
   // ── About page stat tiles ────────────────────────────────────
   const aboutStudents = document.getElementById('aboutStatStudents');
   if (aboutStudents) {
-    aboutStudents.textContent = _fmtStatNum(studentCount);
+    aboutStudents.textContent = window.CANONICAL_SOCIAL_PROOF || '1,200+';
   }
 
   const aboutPdfs = document.getElementById('aboutStatPdfs');
@@ -40083,19 +40127,19 @@ function _applyPlatformStats(stats) {
   // ── Home CTA subtitle ────────────────────────────────────────
   const ctaCount = document.getElementById('homeCtaStudentCount');
   if (ctaCount) {
-    ctaCount.textContent = _fmtStatNum(studentCount);
+    ctaCount.textContent = window.CANONICAL_SOCIAL_PROOF || '1,200+';
   }
 
   // ── Community hub title ──────────────────────────────────────
   const communityCount = document.getElementById('communityStudentCount');
   if (communityCount) {
-    communityCount.textContent = _fmtStatNum(studentCount) + ' Students';
+    communityCount.textContent = (window.CANONICAL_SOCIAL_PROOF || '1,200+') + ' Students';
   }
 
   // ── Homepage stat band (dynamic) ────────────────────────────
   const sbStudents = document.getElementById('statBandStudents');
   if (sbStudents) {
-    sbStudents.textContent = _fmtStatNum(studentCount) + '+';
+    sbStudents.textContent = window.CANONICAL_SOCIAL_PROOF || '1,200+';
   }
   const sbPdfs = document.getElementById('statBandPdfs');
   if (sbPdfs && pdfCount > 0) {
@@ -40118,7 +40162,7 @@ function initPlatformStats() {
   if (!cards.length) return;
 
   // Auto student count for static fallback
-  const autoStudentCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 157;
+  const autoStudentCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1200;
 
   // Immediately start count-up with current data-target values (static fallback)
   const observer = new IntersectionObserver((entries) => {
@@ -40151,12 +40195,12 @@ function initPlatformStats() {
   loadSupabaseHomeStats().then(stats => {
     _applyPlatformStats(stats);
   }).catch(() => {
-    // Even on error, show auto-counter on community + CTA
-    const auto = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 157;
+    // Even on error, show the canonical social proof on community + CTA
+    const _sp = window.CANONICAL_SOCIAL_PROOF || '1,200+';
     const cta  = document.getElementById('homeCtaStudentCount');
-    if (cta) cta.textContent = auto + '+';
+    if (cta) cta.textContent = _sp;
     const cc   = document.getElementById('communityStudentCount');
-    if (cc)  cc.textContent  = auto + '+ Students';
+    if (cc)  cc.textContent  = _sp + ' Students';
   });
 }
 
@@ -40183,14 +40227,14 @@ function initAboutStats() {
     if (stats) {
       _applyPlatformStats(stats);
     } else {
-      // No DB data — use auto-counter fallback
-      const autoCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 157;
-      if (aboutStudents) aboutStudents.textContent = autoCount + '+';
+      // No DB data — use canonical social-proof fallback
+      const autoCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1200;
+      if (aboutStudents) aboutStudents.textContent = window.CANONICAL_SOCIAL_PROOF || '1,200+';
       if (aboutPdfs)     aboutPdfs.textContent = '—';
     }
   }).catch(() => {
-    const autoCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 157;
-    if (aboutStudents) aboutStudents.textContent = autoCount + '+';
+    const autoCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1200;
+    if (aboutStudents) aboutStudents.textContent = window.CANONICAL_SOCIAL_PROOF || '1,200+';
     if (aboutPdfs)     aboutPdfs.textContent = '—';
   });
 }
@@ -40271,20 +40315,22 @@ function renderHome() {
 }
 
 // ── STUDENT COUNT EARLY INIT ────────────────────────────────────
-// Pre-populate all student count surfaces with the auto-counter
-// immediately (no DB wait). Supabase will overwrite with live data
-// when it resolves, keeping all sections in sync automatically.
+// Pre-populate all student count surfaces with the canonical social
+// proof immediately (no DB wait). Supabase overwrites live metrics
+// (PDF counts/downloads) when it resolves; the student number stays
+// canonical everywhere by design.
 document.addEventListener('DOMContentLoaded', function _initStudentCounters() {
-  var autoCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 157;
+  var autoCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1200;
+  var _sp = window.CANONICAL_SOCIAL_PROOF || autoCount.toLocaleString() + '+';
   var ctaEl = document.getElementById('homeCtaStudentCount');
-  if (ctaEl) ctaEl.textContent = autoCount + '+';
+  if (ctaEl) ctaEl.textContent = _sp;
   var commEl = document.getElementById('communityStudentCount');
-  if (commEl) commEl.textContent = autoCount + '+ Students';
+  if (commEl) commEl.textContent = _sp + ' Students';
   var aboutEl = document.getElementById('aboutStatStudents');
-  if (aboutEl && aboutEl.textContent === '—') aboutEl.textContent = autoCount + '+';
+  if (aboutEl && aboutEl.textContent === '—') aboutEl.textContent = _sp;
   // Stat band fallback (Supabase will overwrite with live data)
   var sbStud = document.getElementById('statBandStudents');
-  if (sbStud) sbStud.textContent = autoCount + '+';
+  if (sbStud) sbStud.textContent = _sp;
   var sbPdfs = document.getElementById('statBandPdfs');
   if (sbPdfs) sbPdfs.textContent = '—';
   var sbDl = document.getElementById('statBandDownloads');
@@ -45584,9 +45630,12 @@ window.addEventListener('load', function() {
     if (typeof _refreshFreeButtonLabels === 'function') setTimeout(_refreshFreeButtonLabels, 50);
    } catch(e) {
      console.error('[GlobalSearch] error:', e);
+     // FETCH ERROR ≠ EMPTY RESULT: show the real error state with Retry —
+     // never fall back to "No matching results found" on a failed request.
      var _dl = document.getElementById('discoverLoading'); if (_dl) _dl.style.display = 'none';
-     var _de = document.getElementById('discoverEmpty'); if (_de) _de.style.display = 'block';
+     var _de = document.getElementById('discoverEmpty');  if (_de) _de.style.display = 'none';
      var _dr = document.getElementById('discoverResults'); if (_dr) _dr.innerHTML = '';
+     var _der = document.getElementById('discoverError');  if (_der) _der.style.display = 'block';
    }
   };
 

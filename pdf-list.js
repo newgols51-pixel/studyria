@@ -22,9 +22,30 @@
   const PAGE_SIZE     = 200;     // rows per Supabase page (max 1000)
   const STATUSES      = ['published']; // show ONLY published — approved stays in Draft Queue (Smart Publish Manager)
 
-  const client = window.supabaseClient;
+  // ── 0. Wait for the Supabase client instead of bailing ─────────
+  // The old code returned immediately when the client wasn't ready yet
+  // (slow CDN, cold cache), which silently left the Library at 0 PDFs
+  // with no error state. Now we poll briefly — the client normally
+  // appears within milliseconds because supabase.js loads first.
+  // If it never appears we flag window._libFetchFailed so the Library
+  // shows an honest error state with Retry instead of a fake "0 PDFs".
+  const CLIENT_WAIT_MS = 10000;   // total wait window
+  const POLL_MS       = 250;      // poll cadence
+  function waitForClient() {
+    return new Promise(resolve => {
+      const started = Date.now();
+      (function poll() {
+        if (window.supabaseClient) return resolve(window.supabaseClient);
+        if (Date.now() - started >= CLIENT_WAIT_MS) return resolve(null);
+        setTimeout(poll, POLL_MS);
+      })();
+    });
+  }
+  const client = await waitForClient();
   if (!client) {
-    console.warn('pdf-list.js: supabaseClient not ready — using local PDFS only');
+    console.error('pdf-list.js: supabaseClient never appeared (SDK blocked/failed?) — flagging Library error state');
+    window._libFetchFailed = true;
+    _rerenderAll();
     return;
   }
 
@@ -77,8 +98,11 @@
       }
     }
   } catch (e) {
-    console.warn('pdf-list.js: fetch failed — falling back to local PDFS', e);
-    // Clear skeletons and show local data if any
+    console.warn('pdf-list.js: fetch failed after retries — flagging Library error state', e);
+    // The fetch failed after retries. If we have NO local data at all,
+    // flag the hard failure so the Library shows an honest error state
+    // with a Retry button instead of silently rendering "0 PDFs".
+    if ((window.PDFS || []).length === 0) window._libFetchFailed = true;
     _rerenderAll();
     return;
   }
@@ -135,6 +159,7 @@
     window.PDFS = dbPdfs; // fallback — should never happen
   }
   if (libGrid) libGrid.dataset.loaded = '1';
+  window._libFetchFailed = false; // healthy pipeline — clear any stale failure flag
 
   console.log(`✅ pdf-list.js: ${dbPdfs.length} PDFs loaded (${STATUSES.join(', ')})`);
 

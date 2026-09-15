@@ -26,7 +26,7 @@
 // no duplicate notifications, no foreign SDK listeners.
 
 // ── VERSION ───────────────────────────────────────────────────────
-const CACHE_VERSION = 'v159'; // v159: MY SHORTCUTS V8 — personalized in-app quick shortcuts (max 4, allowlist-gated, per-user persistence with additive Supabase table + localStorage fallback). PWA install flow / beforeinstallprompt / push handlers untouched.
+const CACHE_VERSION = 'v160'; // v160: CANONICAL SOCIAL PROOF ("1,200+" students on every surface) + honest Library/search states — fetch errors show error+Retry instead of silent "0 PDFs"; pdf-list.js waits for the Supabase client (no silent bail); empty-state selectors fixed to .ottlib-*. PWA install / push handlers untouched.
 const CACHE_NAME    = 'studyria-' + CACHE_VERSION;
 const IMG_CACHE     = 'studyria-img-' + CACHE_VERSION;
 const FONT_CACHE    = 'studyria-font-' + CACHE_VERSION;
