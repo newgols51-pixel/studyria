@@ -658,9 +658,9 @@
       : swSupported ? 'no-prompt' : 'unsupported';
     var stMap = {
       installed:   { icon: '✅', label: 'Studyria App',    value: 'Studyria is installed on this device — you are using the installed app.', badge: 'Installed',    cls: 'pwa32-badge-ok' },
-      ready:       { icon: '📲', label: 'App Installation', value: 'Ready to install — Studyria can be installed on this device.', badge: 'Ready',        cls: 'pwa32-badge-ok' },
-      'no-prompt': { icon: '📲', label: 'Install Studyria', value: (chromiumWaiting ? 'Install Studyria for a faster, app-like study experience. The browser install prompt will appear when you tap Install App.' : 'Install Studyria for a faster, app-like study experience.'), badge: 'Not installed', cls: 'pwa32-badge-warn' },
-      unsupported: { icon: '🚫', label: 'Install Studyria', value: 'PWA installation is not supported by this browser. Follow the manual install steps.', badge: 'Unsupported',  cls: 'pwa32-badge-off' }
+      ready:       { icon: '📲', label: 'App Installation', value: 'Native install available — tap Install App to open the browser install dialog.', badge: 'Native install available', cls: 'pwa32-badge-ok' },
+      'no-prompt': { icon: '📲', label: 'Install Studyria', value: (chromiumWaiting ? 'Waiting for browser install capability — tap Install App and the browser install dialog will open from your tap.' : 'Install Studyria for a faster, app-like study experience.'), badge: 'Waiting for browser', cls: 'pwa32-badge-warn' },
+      unsupported: { icon: '🚫', label: 'Install Studyria', value: 'PWA installation is not supported by this browser. Follow the manual install steps.', badge: 'Unsupported/manual',  cls: 'pwa32-badge-off' }
     };
     var st = stMap[installState];
     html += '<div class="pwa32-card" style="margin-bottom:10px"><div class="pwa32-card-icon">' + st.icon + '</div><div class="pwa32-card-body"><div class="pwa32-card-label">' + st.label + '</div><div class="pwa32-card-value">' + st.value + '</div></div><span class="pwa32-card-badge ' + st.cls + '">' + st.badge + '</span></div>';
@@ -708,10 +708,11 @@
       html += '<div style="font-size:.8rem;color:var(--text2,#8d99ad);margin-bottom:8px">Faster access · App-like experience · Home-screen shortcut · Push notifications</div>';
       html += '<button class="pwa32-btn" style="min-height:44px" onclick="window.PWA32._triggerInstall()">📲 Install App</button>';
     } else if (installState === 'no-prompt') {
-      // Chromium-family without the prompt captured YET — the native flow is
-      // still the primary CTA (the prompt may arrive any moment; tapping
-      // retries via the canonical PWA.installClick). Manual steps stay
-      // available as a clearly secondary, honest option.
+      // Chromium-family without the prompt captured YET — tapping runs the
+      // ACTIVE attempt (PWA.installClick nudges Chrome's installability
+      // re-check and opens the REAL native dialog if the event arrives
+      // within the user-gesture window). Manual steps stay a clearly
+      // secondary, honest option — never the primary path on Chrome.
       html += '<div style="font-size:.8rem;color:var(--text2,#8d99ad);margin-bottom:8px">Faster access · App-like experience · Home-screen shortcut · Push notifications</div>';
       html += '<div style="display:flex;flex-direction:column;gap:8px;max-width:300px;margin:0 auto">';
       html += '<button class="pwa32-btn" style="min-height:44px" onclick="window.PWA32._triggerInstall()">📲 Install App</button>';

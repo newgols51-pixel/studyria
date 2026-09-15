@@ -22,7 +22,8 @@ function makeEnv(userAgent, opts = {}) {
   win.navigator = { userAgent, onLine: true, standalone: false, maxTouchPoints: 0,
     serviceWorker: { getRegistration: async () => null, controller: null } };
   win.matchMedia = q => ({ matches: (opts.standalone && q.includes('standalone')) ||
-    (opts.displayMode && q.includes(opts.displayMode)) || false, addEventListener(){} });
+    (opts.displayMode ? q.includes(opts.displayMode) : (!opts.standalone && q.includes('(display-mode: browser)'))) ||
+    false, addEventListener(){} });
   const modalCaptures = [];
   const toasts = [];
   let docAttr = null;
@@ -63,7 +64,26 @@ function installGlobals(env) {
   global.navigator = env.win.navigator;
   global.document = env.win.document;
   global.location = env.win.location;
-  global.fetch = async () => ({ ok: true, status: 200, json: async () => ({ name:'Studyria', start_url:'/', display:'standalone', icons:[{sizes:'192x192'},{sizes:'512x512'}] }) });
+  // V5: installDiagnostics() fetches the manifest + real icons, reads PNG
+  // IHDR dimensions — the mock serves a valid manifest + valid PNG bytes.
+  global.fetch = async (url) => {
+    const u = String(url);
+    if (u.includes('manifest.json')) return { ok: true, status: 200,
+      headers: { get: (k) => k === 'content-type' ? 'application/manifest+json' : null },
+      json: async () => ({ name:'Studyria', short_name:'Studyria', id:'/', start_url:'/', scope:'/',
+        display:'standalone',
+        icons:[{src:'icon-192.png',sizes:'192x192',type:'image/png',purpose:'any'},{src:'icon-512.png',sizes:'512x512',type:'image/png',purpose:'any'},{src:'icon-maskable-512.png',sizes:'512x512',type:'image/png',purpose:'maskable'}] }) };
+    if (u.includes('.png')) {
+      const w = u.includes('512') ? 512 : 192;
+      const buf = new Uint8Array(33);
+      buf.set([0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A], 0); // PNG signature
+      buf[16] = 0; buf[17] = 0; buf[18] = (w >> 8) & 255; buf[19] = w & 255; // IHDR width
+      return { ok: true, status: 200,
+        headers: { get: (k) => k === 'content-type' ? 'image/png' : null },
+        arrayBuffer: async () => buf.buffer };
+    }
+    return { ok: true, status: 200, json: async () => ({}) };
+  };
   global.showToast = env.win.showToast;
 }
 
@@ -225,11 +245,83 @@ async function main() {
   loadAppJs2();
   API.setupInstallPrompt();
   envC.win._pwaInstallPrompt = null; global.window._pwaInstallPrompt = null; API._state.deferredPrompt = null; API._state.isInstalled = false;
-  API.installClick();
-  await new Promise(r => setTimeout(r, 10));
-  check('Chrome (no prompt yet) → NO manual modal', envC.modalCaptures.length === 0);
-  check('Chrome (no prompt yet) → honest retry toast instead', envC.toasts.length > 0);
+  envC.win.__pwaLatePromptWaitMs = 60; // keep the suite fast (prod default 3500)
+  await API.installClick();
+  await new Promise(r => setTimeout(r, 20));
+  check('Chrome (no prompt, active attempt failed) → NO manual modal', envC.modalCaptures.length === 0);
+  check('Chrome withheld → truthful reason toast (not banned wording)', envC.toasts.length > 0 && envC.toasts.every(t => !/wait a few seconds/i.test(t.msg) && /withholding|Reason:/i.test(t.msg)));
   check("Chrome → installState() === 'prompt-not-yet-available'", API.installState().state === 'prompt-not-yet-available');
+
+  console.log('\n── 13b. V5 §7/§8: diagnostics report the exact machine-readable reason ──');
+  const diag = await API.installDiagnostics();
+  check('diagnostics.version === 5', diag.version === 5);
+  check('diagnostics: browser chrome / platform android / displayMode browser',
+    diag.browser === 'chrome' && diag.platform === 'android' && diag.displayMode === 'browser');
+  check('diagnostics: captured=false, promptAvailable=false, promptConsumed=false',
+    diag.captured === false && diag.promptAvailable === false && diag.promptConsumed === false);
+  check('diagnostics: installability ELIGIBLE (manifest+mime+icons+dims+https all pass)',
+    diag.installability.eligible === true && diag.installability.criteria.manifestMime === true &&
+    diag.installability.criteria.iconsFetchable === true && diag.installability.criteria.iconDims === true);
+  check("diagnostics: reason === 'chrome-withheld-beforeinstallprompt' (exact)",
+    diag.reason === 'chrome-withheld-beforeinstallprompt');
+  check('diagnostics: appInstalled=false, real browser (not in-app/iframe)',
+    diag.appInstalled === false && diag.details.inAppBrowser === false && diag.details.iframe === false);
+
+  console.log('\n── 13c. V5 §15-C: prompt captured LATE during the active window ──');
+  const envL = makeEnv(CHROME_ANDROID_UA);
+  installGlobals(envL);
+  loadAppJs2();
+  API.setupInstallPrompt();
+  envL.win._pwaInstallPrompt = null; global.window._pwaInstallPrompt = null; API._state.deferredPrompt = null; API._state.isInstalled = false;
+  envL.win.__pwaLatePromptWaitMs = 400; // active window: event may arrive mid-attempt
+  let latePromptCalls = 0;
+  const clickP = API.installClick(); // the user gesture (tap) starts the attempt
+  await new Promise(r => setTimeout(r, 120)); // ...Chrome dispatches beforeinstallprompt 120ms later
+  const evLate = { preventDefault(){}, prompt(){ latePromptCalls++; }, userChoice: Promise.resolve({ outcome: 'accepted' }) };
+  // the early listener captures it (production path)
+  const earlyL = envL.listeners.find(l => l.t === 'pwa:installable');
+  if (earlyL) earlyL.fn({ type: 'pwa:installable', detail: { prompt: evLate, source: 'early' } });
+  else { envL.win._pwaInstallPrompt = evLate; global.window._pwaInstallPrompt = evLate; }
+  await clickP;
+  await new Promise(r => setTimeout(r, 20));
+  check('late-arriving event → REAL prompt() still fired from the same gesture', latePromptCalls === 1);
+  check('late capture → promptConsumed tracked in state', API._state.installEvents.promptConsumed === true);
+
+  console.log('\n── 13d. V5 §5: fresh capture resets promptConsumed; consumed event never re-used ──');
+  const evF = { preventDefault(){}, prompt(){}, userChoice: Promise.resolve({ outcome: 'dismissed' }) };
+  API._state.deferredPrompt = evF; envL.win._pwaInstallPrompt = evF; global.window._pwaInstallPrompt = evF;
+  API._state.installEvents.promptConsumed = false;
+  await API.installClick();
+  check('consumed prompt cleared after userChoice', API._state.deferredPrompt === null && envL.win._pwaInstallPrompt === null);
+  check('installState().promptConsumed true after prompt() used', API.installState().promptConsumed === true);
+  const evF2 = { preventDefault(){}, prompt(){}, userChoice: Promise.resolve({ outcome: 'dismissed' }) };
+  const sub = envL.listeners.find(l => l.t === 'pwa:installable');
+  sub.fn({ type: 'pwa:installable', detail: { prompt: evF2 } });
+  check('new capture resets promptConsumed to false', API._state.installEvents.promptConsumed === false);
+
+  console.log('\n── 13e. V5 §15-H: in-app browser / WebView → honest unsupported state ──');
+  const WEBVIEW_UA = 'Mozilla/5.0 (Linux; Android 13; Pixel 7; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/126.0.0.0 Mobile Safari/537.36';
+  const INSTAGRAM_UA = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36 Instagram 326.0.0.90 Android';
+  for (const [label, ua] of [['Android WebView', WEBVIEW_UA], ['Instagram in-app', INSTAGRAM_UA]]) {
+    const envW = makeEnv(ua);
+    installGlobals(envW);
+    loadAppJs2();
+    API.setupInstallPrompt();
+    envW.win._pwaInstallPrompt = null; global.window._pwaInstallPrompt = null; API._state.deferredPrompt = null; API._state.isInstalled = false;
+    envW.win.__pwaLatePromptWaitMs = 60;
+    await API.installClick();
+    await new Promise(r => setTimeout(r, 20));
+    check(`${label} → installState() === 'unsupported-manual' (never native attempt)`, API.installState().state === 'unsupported-manual' && API.installState().inAppBrowser === true);
+    check(`${label} → honest How-to-Install modal (no withheld-reason toast)`, envW.modalCaptures.length > 0 && envW.toasts.length === 0);
+  }
+
+  console.log('\n── 13f. V5 §15-I: prompt state survives SPA/hash navigation ──');
+  const evNav = { preventDefault(){}, prompt(){}, userChoice: Promise.resolve({ outcome: 'dismissed' }) };
+  API._state.deferredPrompt = evNav; envL.win._pwaInstallPrompt = evNav; global.window._pwaInstallPrompt = evNav;
+  global.location = { protocol: 'https:', hash: '#library' }; // simulate hash navigation (no reload)
+  check('after #hash navigation → installState().promptAvailable still true', API.installState().promptAvailable === true);
+  check('after #hash navigation → installState() still prompt-available', API.installState().state === 'prompt-available');
+  global.location = { protocol: 'https:', hash: '' }; // restore
 
   console.log('\n── 14. installState() canonical state matrix ──');
   envC.win._pwaInstallPrompt = { prompt(){} }; global.window._pwaInstallPrompt = envC.win._pwaInstallPrompt; API._state.isInstalled = false;
@@ -243,9 +335,12 @@ async function main() {
   const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const appjs = fs.readFileSync(path.join(ROOT, 'app.js'), 'utf8');
   check('no window.deferredPrompt legacy anywhere', !/window\.deferredPrompt/.test(idx + appjs));
-  check('header pwaInstallBtn routes to PWA.installClick', /id="pwaInstallBtn"[^>]*onclick="if\(window\.PWA&&PWA\.installClick\)PWA\.installClick\(\)/.test(idx));
+  check('V5 M: mobile header download icon (mhDownloadBtn) REMOVED from markup', !idx.includes('mhDownloadBtn'));
+  check('V5 M: desktop header install icon (pwaInstallBtn) REMOVED from markup', !/id="pwaInstallBtn"/.test(idx));
+  check('V5 M: no dead header-icon wiring left in app.js', !/['"]pwaInstallBtn['"]/.test(appjs));
   check('burger install item routes to PWA.installClick', /mhCloseBurger\(\);if\(window\.PWA&&PWA\.installClick\)PWA\.installClick\(\)/.test(idx));
-  check('triggerPWAInstall (mhDownloadBtn) routes to PWA.installClick', /triggerPWAInstall[\s\S]{0,300}PWA\.installClick/.test(idx));
+  check('legacy triggerPWAInstall stub still routes to PWA.installClick', /triggerPWAInstall[\s\S]{0,300}PWA\.installClick/.test(idx));
+  check('V5 §2: banned "wait a few seconds" retry toast GONE from source', !appjs.includes("hasn't offered the install prompt yet"));
   check('early capture is the FIRST script in <head>', idx.indexOf('__pwaEarlyInstallCapture') < idx.indexOf('clarity'));
   const pwa32 = fs.readFileSync(path.join(ROOT, 'pwa-v32.js'), 'utf8');
   check('pwa-v32 App page: Install App PRIMARY in no-prompt state', /no-prompt'[\s\S]{0,900}_triggerInstall\(\)">📲 Install App<\/button>[\s\S]{0,400}_installHelp\(\)">📖 How to Install/.test(pwa32));
