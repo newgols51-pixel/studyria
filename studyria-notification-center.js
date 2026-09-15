@@ -215,7 +215,9 @@
     retry: function () { load(); },
     setPref: function (cat, on) {
       prefs[cat] = !!on; persist(); updateBadges(unreadCount()); renderList(); renderSettings();
+      savePrefsRemote();   /* P1: account-level persistence when available */
     },
+    retrySettings: function () { lastPushSt = null; renderSettings(); },
     pushToggle: function () {
       if (pushBusy || !(window.SN && SN.push)) return;
       pushBusy = true;
@@ -253,7 +255,8 @@
     var b = document.querySelectorAll('[data-snc-badge]');
     for (var i = 0; i < b.length; i++) {
       b[i].hidden = !(n > 0);
-      if (n > 0) b[i].textContent = (n > 9 ? '9+' : String(n));
+      /* P13: 0 → hidden · 1–99 → exact number · 100+ → 99+ */
+      if (n > 0) b[i].textContent = (n > 99 ? '99+' : String(n));
     }
   }
 
@@ -266,7 +269,10 @@
       host.dataset.sncInit = '1';
       host.innerHTML = shell();
     }
-    renderList(); renderSettings(); renderToolbarCounts();
+    /* P0 safety: one component failing must never take down the page */
+    try { renderList(); } catch (e) {}
+    try { renderSettings(); } catch (e) {}
+    try { renderToolbarCounts(); } catch (e) {}
   }
 
   function shell() { return (
@@ -289,6 +295,8 @@
         '<h2 class="snc-set-h" id="sncSettingsTitle">⚙️ Notification Preferences</h2>' +
         '<div id="sncPushCard"></div>' +
         '<div id="sncPrefsCard"></div>' +
+        '<h2 class="snc-set-h" id="sncDeviceTitle">📱 This Device</h2>' +
+        '<div id="sncDeviceCard"></div>' +
       '</section>' +
     '</div>');
   }
@@ -447,8 +455,10 @@
     if (!box) return;
     if (loading) { box.innerHTML = skeleton(); return; }
     if (loadErr) {
+      var off = (typeof navigator.onLine === 'boolean' && !navigator.onLine);
       box.innerHTML = '<div class="snc-state"><div class="snc-state-ico" aria-hidden="true">⚠️</div>' +
-        '<p class="snc-state-t">Couldn\'t load notifications.</p>' +
+        '<p class="snc-state-t">Unable to load notifications.</p>' +
+        '<p class="snc-state-s">' + (off ? 'You\'re offline — check your connection, then try again.' : 'Couldn\'t reach the notification service. Your updates are safe — try again.') + '</p>' +
         '<button class="snc-primary-btn" onclick="SNC.retry()">Try Again</button></div>';
       return;
     }
@@ -456,7 +466,9 @@
     var page = list.slice(0, shown);   /* §24 — paginate history, 10 at a time */
     if (!list.length) {
       if (records.length && filter === 'unread') {
-        box.innerHTML = '<div class="snc-state"><div class="snc-state-ico" aria-hidden="true">✅</div><p class="snc-state-t">No unread notifications.</p></div>';
+        box.innerHTML = '<div class="snc-state"><div class="snc-state-ico" aria-hidden="true">✨</div>' +
+          '<p class="snc-state-t">No unread notifications.</p>' +
+          '<p class="snc-state-s">You\'re completely up to date.</p></div>';
       } else {
         box.innerHTML = '<div class="snc-state"><div class="snc-state-ico" aria-hidden="true">🔔</div>' +
           '<p class="snc-state-t">You\'re all caught up.</p><p class="snc-state-s">New Studyria updates will appear here.</p>' +
@@ -496,57 +508,164 @@
     box.innerHTML = html;
   }
 
-  /* ── Settings: real push status (§20, §21) + toggle-row prefs ──── */
+  /* ── Settings: real push status (§20/§21) + toggle-row prefs ────
+     P0/P11 hardening: any failure here (SN missing, status() throwing,
+     a promise that never settles) degrades to an honest retry state —
+     the skeleton can NEVER get stuck again. */
   var pushBusy = false;
-  function renderSettings() {
+  var lastPushSt = null;      /* last REAL status — drives the Device card */
+  var prefsSync = { tried: false, remoteOk: false, saving: false };
+
+  function pushSubText(st) {
+    if (st.subscribed) return 'Notifications enabled — updates arrive on this device even when the site is closed.';
+    if (st.permission === 'denied') return 'Notifications are blocked for this device. Open your browser Settings → Site settings → Notifications → Allow for studyria.qzz.io, then reload and tap the switch.';
+    if (st.permission === 'unsupported') return 'Push notifications aren\'t supported in this browser. Try Chrome, Edge, or install the Studyria app.';
+    return 'Choose what you want to receive. Turn on to get notified the moment new PDFs, jobs, quizzes, mock tests and exam alerts drop.';
+  }
+
+  function renderPushCard(st) {
     var box = el('sncPushCard');
-    if (box) {
-      if (!(window.SN && SN.push)) { box.innerHTML = ''; }
-      else {
-        box.innerHTML = '<div class="snc-card snc-set-card"><div class="snc-sk-lines"><div class="snc-sk-l snc-sk-s" style="width:40%"></div></div></div>';
-        SN.push.status().then(function (st) {
-          if (!el('sncPushCard')) return;
-          var on = st.subscribed;   /* REAL subscription state (§21) */
-          var sub = '', btns = '';
-          if (on) {
-            sub = 'Push alerts are enabled on this device — updates arrive even when the site is closed.';
-            btns = '<button class="snc-linkbtn" onclick="SNC.pushSelfTest()">🧪 Send Test</button>';
-          } else if (st.permission === 'denied') {
-            sub = 'Notifications are blocked in your browser. Open your browser menu → Site settings → Notifications → Allow, then tap below.';
-          } else if (st.permission === 'unsupported') {
-            sub = 'Push notifications aren\'t supported in this browser. Try Chrome, Edge, or install the Studyria app.';
-          } else {
-            sub = 'Choose what you want to receive. Turn on to get notified the moment new PDFs, jobs, quizzes, mock tests and exam alerts drop.';
-          }
-          var canToggle = st.permission !== 'unsupported';
-          box.innerHTML = '<div class="snc-card snc-set-card">' +
-            '<div class="snc-row">' +
-              '<div class="snc-row-txt"><span class="snc-row-name">🔔 Push Notifications</span><span class="snc-row-sub">' + esc(sub) + '</span></div>' +
-              (canToggle
-                ? '<label class="snc-switch" aria-label="Push notifications ' + (on ? 'on' : 'off') + '">' +
-                    '<input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="SNC.pushToggle()"' +
-                    (pushBusy ? ' disabled' : '') + '><span class="snc-sw-track"><span class="snc-sw-knob"></span></span></label>'
-                : '<span class="snc-pill na">N/A</span>') +
-            '</div>' +
-            (btns ? '<div class="snc-row-btns">' + btns + '</div>' : '') +
-          '</div>';
-        }).catch(function () { box.innerHTML = ''; });
+    if (!box || !st) return;
+    var on = !!st.subscribed;   /* REAL subscription state (§21) */
+    var sub = pushSubText(st);
+    var btns = '';
+    if (on) btns = '<button class="snc-linkbtn" onclick="SNC.pushSelfTest()">🧪 Send Test</button>';
+    var canToggle = st.permission !== 'unsupported';
+    box.innerHTML = '<div class="snc-card snc-set-card">' +
+      '<div class="snc-row">' +
+        '<div class="snc-row-txt"><span class="snc-row-name">🔔 Push Notifications</span><span class="snc-row-sub">' + esc(sub) + '</span></div>' +
+        (canToggle
+          ? '<label class="snc-switch" aria-label="Push notifications ' + (on ? 'on' : 'off') + '">' +
+              '<input type="checkbox" ' + (on ? 'checked' : '') + ' onchange="SNC.pushToggle()"' +
+              (pushBusy ? ' disabled' : '') + '><span class="snc-sw-track"><span class="snc-sw-knob"></span></span></label>'
+          : '<span class="snc-pill na">N/A</span>') +
+      '</div>' +
+      (btns ? '<div class="snc-row-btns">' + btns + '</div>' : '') +
+    '</div>';
+  }
+
+  /* P3: This Device — REAL signals only (channel detection from the V2
+     architecture, browser/platform from UA, last-synced from the last
+     successful history fetch). No IMEI, no phone number, no fingerprint. */
+  function renderDeviceCard() {
+    var box = el('sncDeviceCard');
+    if (!box) return;
+    var st = lastPushSt;
+    if (!st) { box.innerHTML = ''; return; }   /* no real data yet → no card */
+    var mode = (st.channelType === 'pwa') ? 'Installed PWA' : 'Browser (Web)';
+    var browser = [st.browser, st.platform].filter(function (x) { return x && x !== 'Other'; }).join(' · ') || '—';
+    var statusLine = st.subscribed ? '● Notifications active'
+      : (st.permission === 'denied' ? '○ Blocked in browser settings'
+      : (st.permission === 'unsupported' ? '○ Push not supported here' : '○ Push not enabled'));
+    var ls = '';
+    try {
+      var t = localStorage.getItem(lsName('lastSync'));
+      if (t) { var d = new Date(t); ls = (!isNaN(d.getTime()) ? (timeAgo(t) + ' (' + exactTime(t) + ')') : ''); }
+    } catch (e) {}
+    if (!ls) ls = 'Not synced yet';
+    box.innerHTML = '<div class="snc-card snc-set-card">' +
+      '<div class="snc-row"><div class="snc-row-txt">' +
+        '<span class="snc-row-name">📱 This Device</span>' +
+        '<span class="snc-row-sub">' + esc(statusLine) + '<br>Browser: ' + esc(browser) + ' · Mode: ' + esc(mode) + '<br>Last synced: ' + esc(ls) + '</span>' +
+      '</div></div></div>';
+  }
+
+  function renderSettings() {
+    try {
+      var box = el('sncPushCard');
+      if (box) {
+        if (!(window.SN && SN.push && typeof SN.push.status === 'function')) {
+          box.innerHTML = '';
+        } else {
+          box.innerHTML = '<div class="snc-card snc-set-card"><div class="snc-sk-lines"><div class="snc-sk-l snc-sk-s" style="width:40%"></div></div></div>';
+          var settled = false;
+          var done = function (st) {
+            if (!el('sncPushCard')) return;
+            settled = true;
+            lastPushSt = st;
+            renderPushCard(st);
+            renderDeviceCard();
+          };
+          var fail = function () {
+            if (settled || !el('sncPushCard')) return;
+            settled = true;
+            box.innerHTML = '<div class="snc-card snc-set-card"><div class="snc-row"><div class="snc-row-txt">' +
+              '<span class="snc-row-name">🔔 Push Notifications</span>' +
+              '<span class="snc-row-sub">Couldn\'t load device push status.</span></div>' +
+              '<div class="snc-row-btns"><button class="snc-linkbtn" onclick="SNC.retrySettings()">Try Again</button></div></div></div>';
+          };
+          try {
+            Promise.resolve().then(function () { return SN.push.status(); })
+              .then(done).catch(fail);
+            setTimeout(fail, 6000);   /* honest timeout — never a stuck skeleton */
+          } catch (e) { fail(); }
+        }
       }
-    }
-    var pb = el('sncPrefsCard');
-    if (pb) {
-      var rows = '';
-      PREF_CATEGORIES.forEach(function (c) {
-        rows += '<div class="snc-card snc-set-card"><div class="snc-row">' +
-          '<div class="snc-row-txt"><span class="snc-row-name">' + TYPES[c].icon + ' ' + esc(TYPES[c].label) + '</span></div>' +
-          '<label class="snc-switch" aria-label="' + esc(TYPES[c].label) + ' notifications">' +
-            '<input type="checkbox" ' + (prefs[c] !== false ? 'checked' : '') +
-            ' onchange="SNC.setPref(\'' + c + '\', this.checked)"><span class="snc-sw-track"><span class="snc-sw-knob"></span></span></label>' +
-        '</div></div>';
-      });
-      pb.innerHTML = rows +
-        '<p class="snc-note">Your choices shape which updates appear in this Notification Center.</p>';
-    }
+      var pb = el('sncPrefsCard');
+      if (pb) {
+        var rows = '';
+        PREF_CATEGORIES.forEach(function (c) {
+          rows += '<div class="snc-card snc-set-card"><div class="snc-row">' +
+            '<div class="snc-row-txt"><span class="snc-row-name">' + TYPES[c].icon + ' ' + esc(TYPES[c].label) + '</span></div>' +
+            '<label class="snc-switch" aria-label="' + esc(TYPES[c].label) + ' notifications">' +
+              '<input type="checkbox" ' + (prefs[c] !== false ? 'checked' : '') +
+              ' onchange="SNC.setPref(\'' + c + '\', this.checked)"><span class="snc-sw-track"><span class="snc-sw-knob"></span></span></label>' +
+          '</div></div>';
+        });
+        var syncNote = 'Your choices shape which updates appear in this Notification Center.';
+        if (prefsSync.saving) syncNote = 'Saving your choices…';
+        else if (prefsSync.remoteOk) syncNote = '✓ Saved — synced to your Studyria account.';
+        else if (window.currentUser) syncNote = 'Saved on this device. ' + syncNote;
+        pb.innerHTML = rows + '<p class="snc-note">' + esc(syncNote) + '</p>';
+      }
+    } catch (e) { /* P0: settings can never break the notification list */ }
+  }
+
+  /* ── P1: preferences persistence — account sync when available, else
+     localStorage (per-user, uid-keyed). The optional Supabase table
+     (sql/notification-prefs-migration.sql) makes prefs follow the user
+     across devices; without it the localStorage source stays truth. */
+  function sbClient() {
+    return (window.supabaseClient && typeof window.supabaseClient.from === 'function') ? window.supabaseClient : null;
+  }
+  function loadPrefsRemote() {
+    var c = sbClient();
+    if (!c || !window.currentUser || !window.currentUser.uid) return Promise.resolve(false);
+    var uid = String(window.currentUser.uid);
+    var q;
+    try { q = c.from('notification_prefs').select('prefs').eq('user_id', uid).maybeSingle(); }
+    catch (e) { prefsSync.remoteOk = false; return Promise.resolve(false); }   /* table absent/unreachable → localStorage stays truth */
+    return q.then(function (r) {
+      prefsSync.tried = true;
+      if (r && r.error) { prefsSync.remoteOk = false; return false; }   /* table not set up → localStorage stays truth */
+      prefsSync.remoteOk = true;
+      var data = r && r.data;
+      if (data && data.prefs) {
+        try {
+          var sp = (typeof data.prefs === 'string') ? JSON.parse(data.prefs) : data.prefs;
+          if (sp && typeof sp === 'object') {
+            PREF_CATEGORIES.forEach(function (k) { if (typeof sp[k] === 'boolean') prefs[k] = sp[k]; });
+            persist();
+          }
+        } catch (e) {}
+      }
+      return true;
+    }).catch(function () { prefsSync.remoteOk = false; return false; });
+  }
+  function savePrefsRemote() {
+    var c = sbClient();
+    if (!c || !window.currentUser || !window.currentUser.uid || !prefsSync.remoteOk) return;
+    var uid = String(window.currentUser.uid);
+    prefsSync.saving = true;
+    var payload = { user_id: uid, prefs: JSON.stringify(prefs), updated_at: new Date().toISOString() };
+    var q;
+    try { q = c.from('notification_prefs').upsert(payload, { onConflict: 'user_id' }); }
+    catch (e) { prefsSync.saving = false; return; }   /* honest: stays device-local */
+    q.then(function (r) {
+      prefsSync.saving = false;
+      prefsSync.remoteOk = !(r && r.error);
+      renderSettings();
+    }).catch(function () { prefsSync.saving = false; prefsSync.remoteOk = false; renderSettings(); });
   }
 
   /* ── Guest view: sign-in wall, guest push setup preserved (§19/§46) ── */
@@ -581,6 +700,7 @@
     if (box) renderList();
     fetchHistory().then(function (list) {
       loading = false;
+      try { localStorage.setItem(lsName('lastSync'), new Date().toISOString()); } catch (e) {}
       /* key by id — one event appears exactly once, regardless of
          realtime reconnect / retry / poll overlap (§17 duplicate protection) */
       records = dedupe(list);
@@ -759,6 +879,12 @@
   function boot() {
     injectStyles();
     updateBadgesAsync();
+    /* P1: pull account-level preferences first (supersedes local when the
+       optional table exists); re-render + re-badge after the merge. */
+    loadPrefsRemote().then(function () {
+      renderSettings();
+      updateBadgesAsync();
+    });
     if (location.hash === '#notifications') { render(); load(); startPoll(); }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

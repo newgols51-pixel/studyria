@@ -1495,6 +1495,57 @@
     return Promise.resolve('');
   }
 
+  /* ── Device identity + PWA channel detection (notif V2 spec §8/§12) ──
+   * Real signals only — NO fabricated install state:
+   *   • display-mode: standalone/minimal-ui/window-controls-overlay
+   *   • iOS navigator.standalone
+   *   • window.PWA.isInstalled() where the existing PWA layer provides it
+   *   • manifest start_url '/?source=pwa' (set only on installed launches)
+   * Device id is an app-generated UUID in localStorage — never IMEI,
+   * phone number or any hardware identifier. */
+  function _deviceId() {
+    try {
+      var id = localStorage.getItem('snDeviceId');
+      if (id && /^[A-Za-z0-9-]{8,64}$/.test(id)) return id;
+      id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+        : ('dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 14));
+      localStorage.setItem('snDeviceId', id);
+      return id;
+    } catch (e) { return ''; }
+  }
+
+  function _pwaDisplayMode() {
+    try {
+      var mq = window.matchMedia;
+      if (mq && (mq('(display-mode: standalone)').matches ||
+                 mq('(display-mode: minimal-ui)').matches ||
+                 mq('(display-mode: window-controls-overlay)').matches)) return 'standalone';
+    } catch (e) {}
+    if (window.navigator && navigator.standalone === true) return 'standalone';
+    return 'browser';
+  }
+
+  function _isPwaContext() {
+    if (window.PWA && typeof window.PWA.isInstalled === 'function') {
+      try { if (window.PWA.isInstalled()) return true; } catch (e) {}
+    }
+    if (_pwaDisplayMode() === 'standalone') return true;
+    try { if (/[?&]source=pwa/.test(window.location.search)) return true; } catch (e) {}
+    return false;
+  }
+
+  function _platformInfo() {
+    var ua = navigator.userAgent || '';
+    return {
+      platform: /android/i.test(ua) ? 'Android' : /iphone|ipad|ipod/i.test(ua) ? 'iOS'
+        : /windows/i.test(ua) ? 'Windows' : /mac/i.test(ua) && !/iphone|ipad/i.test(ua) ? 'macOS'
+        : /linux/i.test(ua) ? 'Linux' : 'Other',
+      browser: /edg\//i.test(ua) ? 'Edge' : /opr\/|opera/i.test(ua) ? 'Opera'
+        : /firefox\//i.test(ua) ? 'Firefox' : /crios|chrome\//i.test(ua) ? 'Chrome'
+        : /safari\//i.test(ua) ? 'Safari' : 'Other'
+    };
+  }
+
   function pushEnable() {
     if (!pushSupported()) return Promise.resolve({ success: false, reason: 'not_supported' });
     if (Notification.permission === 'denied') return Promise.resolve({ success: false, reason: 'denied' });
