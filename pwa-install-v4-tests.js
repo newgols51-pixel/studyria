@@ -97,10 +97,10 @@ function loadAppJs2() {
   grab('const PWA_CONFIG = {', '\n};', true);
   grab('const _state = {', '\n};', true);
   grab('function detectStandalone', '\nfunction checkInstalledState');
-  grab('function _installBrowserInfo', '\n// ═');
+  grab('function _installBrowserInfo', '\n// ═'); // NOTE: this range already covers _checkRelatedAppInstalled (V6), _markBurgerInstalled, installClick, installState, installDiagnostics — all defined before section 6.
   const code = blocks.join('\n').replace(/^const /gm, 'var ');
   // eslint-disable-next-line no-eval
-  API = (0, eval)('(function(){' + code + '\nreturn {setupInstallPrompt, installClick, installState, promptInstall, _isAlreadyInstalled, _state, installDiagnostics, _installBrowserInfo};})()');
+  API = (0, eval)('(function(){' + code + '\nreturn {setupInstallPrompt, installClick, installState, promptInstall, _isAlreadyInstalled, _state, installDiagnostics, _installBrowserInfo, _checkRelatedAppInstalled};})()');
   global.window.__pwaInstallPrompt = global.window._pwaInstallPrompt;
 }
 
@@ -254,7 +254,7 @@ async function main() {
 
   console.log('\n── 13b. V5 §7/§8: diagnostics report the exact machine-readable reason ──');
   const diag = await API.installDiagnostics();
-  check('diagnostics.version === 5', diag.version === 5);
+  check('diagnostics.version === 6', diag.version === 6);
   check('diagnostics: browser chrome / platform android / displayMode browser',
     diag.browser === 'chrome' && diag.platform === 'android' && diag.displayMode === 'browser');
   check('diagnostics: captured=false, promptAvailable=false, promptConsumed=false',
@@ -323,6 +323,77 @@ async function main() {
   check('after #hash navigation → installState() still prompt-available', API.installState().state === 'prompt-available');
   global.location = { protocol: 'https:', hash: '' }; // restore
 
+  console.log('\n── 13g. V6 ROOT CAUSE §3: WebAPK already installed + opened in a plain Chrome tab ──');
+  // EXACTLY the screenshot scenario: Studyria on the home screen (installed
+  // WebAPK), but the tab reports display-mode 'browser' — the four legacy
+  // signals (standalone/fullscreen/minimal-ui/navigator.standalone/referrer)
+  // are ALL false. Only getInstalledRelatedApps() can tell the truth.
+  const envR = makeEnv(CHROME_ANDROID_UA);
+  envR.win.navigator.getInstalledRelatedApps = async () => [{ platform: 'webapp', id: 'https://studyria.qzz.io/', url: 'https://studyria.qzz.io/manifest.json' }];
+  installGlobals(envR);
+  loadAppJs2();
+  API.setupInstallPrompt();
+  envR.win._pwaInstallPrompt = null; global.window._pwaInstallPrompt = null; API._state.deferredPrompt = null; API._state.isInstalled = false;
+  envR.win.__pwaLatePromptWaitMs = 60;
+  await API._checkRelatedAppInstalled();
+  check('related-apps check resolves relatedAppInstalled === true', API._state.relatedAppInstalled === true);
+  check('_isAlreadyInstalled() now TRUE even though display-mode is browser', API._isAlreadyInstalled() === true);
+  check("installState() === 'installed' (no false 'prompt-not-yet-available')", API.installState().state === 'installed');
+  const toastsR = envR.toasts.length, modalsR = envR.modalCaptures.length;
+  await API.installClick();
+  await new Promise(r => setTimeout(r, 120));
+  check('installClick on installed WebAPK → silent no-op (no toast, no modal, no prompt attempt)',
+    envR.toasts.length === toastsR && envR.modalCaptures.length === modalsR);
+  check('installState().relatedAppInstalled === true exposed', API.installState().relatedAppInstalled === true);
+  const diagR = await API.installDiagnostics();
+  check("diagnostics reason === 'already-installed' (exact — the browser itself confirmed it)",
+    diagR.reason === 'already-installed');
+  check('diagnostics.relatedAppsInstalled === true, relatedAppsApiSupported === true',
+    diagR.details.relatedAppsInstalled === true && diagR.details.relatedAppsApiSupported === true);
+  check('diagnostics.appInstalled === true (folded in)', diagR.appInstalled === true);
+
+  console.log('\n── 13h. V6 §3-negative: fresh device (related apps empty) → normal install flow ──');
+  const envFresh = makeEnv(CHROME_ANDROID_UA);
+  envFresh.win.navigator.getInstalledRelatedApps = async () => [];
+  installGlobals(envFresh);
+  loadAppJs2();
+  API.setupInstallPrompt();
+  envFresh.win._pwaInstallPrompt = null; global.window._pwaInstallPrompt = null; API._state.deferredPrompt = null; API._state.isInstalled = false;
+  envFresh.win.__pwaLatePromptWaitMs = 60;
+  const alreadyN = await API._checkRelatedAppInstalled();
+  check('fresh device → relatedAppInstalled === false (not installed)', alreadyN === false && API._state.relatedAppInstalled === false);
+  check('fresh device → installClick still runs the ACTIVE attempt path (no silent no-op)',
+    API.installState().state === 'prompt-not-yet-available');
+  let nativePromptCalls = 0;
+  const evN = { preventDefault(){}, prompt(){ nativePromptCalls++; }, userChoice: Promise.resolve({ outcome: 'accepted' }) };
+  API._state.deferredPrompt = evN; envFresh.win._pwaInstallPrompt = evN; global.window._pwaInstallPrompt = evN;
+  await API.installClick();
+  await new Promise(r => setTimeout(r, 20));
+  check('fresh device + captured event → REAL prompt() called (V6 does not break the primary flow)', nativePromptCalls === 1);
+
+  console.log('\n── 13i. V6 §6-F: browser without getInstalledRelatedApps → graceful null, legacy signals intact ──');
+  const envU = makeEnv(CHROME_ANDROID_UA);
+  // no getInstalledRelatedApps defined at all
+  installGlobals(envU);
+  loadAppJs2();
+  API.setupInstallPrompt();
+  const alreadyU = await API._checkRelatedAppInstalled();
+  check('unsupported API → relatedAppInstalled stays null (unknown, not false)', alreadyU === null && API._state.relatedAppInstalled === null);
+  check('unsupported API → _isAlreadyInstalled() still honors legacy display-mode signals only', API._isAlreadyInstalled() === false);
+  check('unsupported API → installState().relatedAppInstalled === null', API.installState().relatedAppInstalled === null);
+
+  console.log('\n── 13j. V6 §9/§10: manifest self-entry + current logo untouched ──');
+  const mf = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf8'));
+  check('manifest related_applications has the self webapp entry (platform + url)',
+    Array.isArray(mf.related_applications) && mf.related_applications.some(a => a.platform === 'webapp' && /manifest\.json$/.test(a.url || '')));
+  check('manifest prefer_related_applications still false (installability preserved)',
+    mf.prefer_related_applications === false);
+  check('manifest name/short_name/start_url/display intact',
+    /Studyria/.test(mf.name) && mf.short_name === 'Studyria' && !!mf.start_url && mf.display === 'standalone');
+  const changed6 = execSync('git diff origin/main --name-only', { cwd: ROOT }).toString().trim().split('\n').filter(Boolean);
+  check('V6: icon asset files NOT in the diff (current logo preserved — old blue logo NOT restored)',
+    !changed6.some(f => /icon|logo|apple-touch|favicon/.test(f)));
+
   console.log('\n── 14. installState() canonical state matrix ──');
   envC.win._pwaInstallPrompt = { prompt(){} }; global.window._pwaInstallPrompt = envC.win._pwaInstallPrompt; API._state.isInstalled = false;
   check('prompt present → prompt-available', API.installState().state === 'prompt-available');
@@ -353,8 +424,11 @@ async function main() {
   catch (e) { changed = ['(git unavailable)']; }
   check('service worker (sw.js) untouched', !changed.includes('sw.js'));
   check('notification system files untouched', !changed.some(f => /notification/.test(f)));
-  check('changed file set is exactly the expected 4 files',
-    changed.sort().join(',') === ['app.js','index.html','pwa-install-v4-tests.js','pwa-v32.js'].sort().join(','));
+  // V6: index.html needs no further change (header icons already removed
+  // in V5's merge to main) — only the install-logic files + manifest.json
+  // (self-referencing related_applications for getInstalledRelatedApps).
+  check('changed file set is exactly the expected V6 files (no index.html change needed)',
+    changed.sort().join(',') === ['app.js','manifest.json','pwa-install-v4-tests.js','pwa-v32.js'].sort().join(','));
 
   console.log('\n── 19. no JS errors ──');
   check('entire suite executed without uncaught errors (reached end)', true);
