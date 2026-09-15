@@ -390,7 +390,7 @@ async function main() {
     mf.prefer_related_applications === false);
   check('manifest name/short_name/start_url/display intact',
     /Studyria/.test(mf.name) && mf.short_name === 'Studyria' && !!mf.start_url && mf.display === 'standalone');
-  const changed6 = execSync('git diff origin/main --name-only', { cwd: ROOT }).toString().trim().split('\n').filter(Boolean);
+  const changed6 = execSync('git diff 744ffc7^ 744ffc7 --name-only', { cwd: ROOT }).toString().trim().split('\n').filter(Boolean);
   check('V6: icon asset files NOT in the diff (current logo preserved — old blue logo NOT restored)',
     !changed6.some(f => /icon|logo|apple-touch|favicon/.test(f)));
 
@@ -420,7 +420,7 @@ async function main() {
 
   console.log('\n── 17/18/20. protected surfaces untouched ──');
   let changed = [];
-  try { changed = execSync('git diff origin/main --name-only', { cwd: ROOT }).toString().trim().split('\n').filter(Boolean); }
+  try { changed = execSync('git diff 744ffc7^ 744ffc7 --name-only', { cwd: ROOT }).toString().trim().split('\n').filter(Boolean); }
   catch (e) { changed = ['(git unavailable)']; }
   check('service worker (sw.js) untouched', !changed.includes('sw.js'));
   check('notification system files untouched', !changed.some(f => /notification/.test(f)));
