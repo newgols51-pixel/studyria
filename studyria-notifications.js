@@ -79,6 +79,25 @@
     return '';
   }
 
+  /* ── Secure destination URL validation (notif V2 spec §2) ──────────
+   * Accepts Studyria AND external HTTPS URLs (whatsapp.com, t.me,
+   * instagram.com, youtube.com, example.com …). Rejects javascript:,
+   * data:, file:, blob:, vbscript:, malformed URLs, embedded
+   * credentials and control characters. The SAME rules are enforced
+   * independently in sw.js before any URL is opened — defense in depth. */
+  function _secureHttpsUrl(val) {
+    var v = String(val || '').trim();
+    if (!v) return { ok: false, error: 'Enter a destination URL (https://…)' };
+    if (/[\x00-\x20\x7f]/.test(v)) return { ok: false, error: 'URL contains spaces or control characters' };
+    if (v.length > 2048) return { ok: false, error: 'URL is too long (max 2048 characters)' };
+    var u;
+    try { u = new URL(v); } catch (e) { return { ok: false, error: 'Malformed URL — must start with https://' }; }
+    if (u.protocol !== 'https:') return { ok: false, error: 'Only https:// URLs are allowed — javascript:/data:/file:/blob: are rejected' };
+    if (!u.hostname) return { ok: false, error: 'URL has no hostname' };
+    if (u.username || u.password) return { ok: false, error: 'URLs with embedded login credentials are not allowed' };
+    return { ok: true, url: u.href, external: u.host !== 'studyria.qzz.io' };
+  }
+
   function destinationAction(dest) {
     if (!dest) return '';
     var i = String(dest).indexOf(':');
@@ -103,13 +122,15 @@
         var pid = resolvePageId(val);
         return pid ? "navigate('" + escAttr(pid) + "')" : '';
       }
-      case 'url':
-        // Trusted-destination guard: only https Studyria URLs open directly;
-        // anything else falls back to the homepage (never a broken/foreign URL).
-        if (/^https:\/\/studyria\.qzz\.io\//.test(val)) {
-          return "SN._trackOpen('notification_card_open','URL');window.open('" + escAttr(val) + "','_blank','noopener')";
-        }
-        return '';
+      case 'url': {
+        /* V2 §1/§4: validated external HTTPS URLs (WhatsApp/Telegram/…)
+         * open directly in a new tab — never rewritten to the homepage,
+         * never executed as anything but a navigation target. Invalid
+         * URLs get no action (honest dead CTA beats a wrong one). */
+        var chk = _secureHttpsUrl(val);
+        if (!chk.ok) return '';
+        return "SN._trackOpen('notification_card_open','URL');window.open('" + escAttr(chk.url) + "','_blank','noopener')";
+      }
       default:
         return '';
     }
@@ -457,9 +478,16 @@
     ok(title.length >= 3 && title.length <= 65, '<b>Title</b> ' + (title ? '(' + title.length + ' chars)' : '— 3–65 characters'));
     ok(msg.length === 0 || msg.length >= 5, '<b>Message</b>' + (msg.length ? '' : ' (empty is allowed, 5+ recommended)'));
     var dOk = true;
+    var extUrl = false;
     if (kind === 'page') dOk = /^[a-z0-9\-]{1,60}$/i.test(val) && !!resolvePageId(val);
-    else if (kind === 'url') dOk = /^https:\/\/studyria\.qzz\.io(\/|$|\?|#)/.test(val);
-    if (kind) ok(dOk, '<b>Destination</b> ' + (dOk ? 'opens a real Studyria page' : (kind === 'url' ? 'must be https://studyria.qzz.io/…' : 'must be a real Studyria page id (home, library, career-hub…)')));
+    else if (kind === 'url') {
+      var uc = _secureHttpsUrl(val);
+      dOk = uc.ok && val !== '';
+      extUrl = dOk && uc.external;
+    }
+    if (kind) ok(dOk, '<b>Destination</b> ' + (dOk
+      ? (extUrl ? 'valid HTTPS URL — external destination allowed' : 'opens a real Studyria page')
+      : (kind === 'url' ? 'must be a valid https:// URL (external sites allowed)' : 'must be a real Studyria page id (home, library, career-hub…)')));
     ok(!exp || new Date(exp).getTime() > Date.now() + 60000, '<b>Expiry</b>' + (exp ? '' : ' — none'));
     var schedMsg = '';
     if (mode === 'schedule') {
@@ -1106,7 +1134,16 @@
       if (!normPage) return bad('Unknown page "' + val + '" — use a real Studyria page id (home, library, career-hub, brainlab…).');
       dest = 'page:' + normPage; /* normalized + verified */
     }
-    if (kind === 'url' && !/^https:\/\/studyria\.qzz\.io(\/|$|\?|#)/.test(val)) return bad('External URLs are blocked — the destination must be a Studyria page (https://studyria.qzz.io/…).');
+    if (kind === 'url') {
+      /* V2 §1/§2/§19: external HTTPS destinations are permanently
+         supported (WhatsApp, Telegram, YouTube, Instagram, any https
+         site). Only unsafe schemes (javascript:/data:/file:/blob:) and
+         malformed URLs are rejected — the same rule the service worker
+         enforces at click time. */
+      var chk = _secureHttpsUrl(val);
+      if (!chk.ok) return bad(chk.error);
+      val = chk.url; dest = 'url:' + chk.url;
+    }
     var pubVal = (document.getElementById('snPublishAt') || {}).value || '';
     var scheduledAt = null;
     if (mode === 'schedule') {
@@ -1129,6 +1166,11 @@
     meta.poster_style = _presetStyle();
     var ctaVal = ((document.getElementById('snCtaLabel') || {}).value || '').trim();
     if (ctaVal) meta.cta = ctaVal; else delete meta.cta;
+    /* V2 §3: safe default CTA per destination type — external HTTPS
+       with an empty label defaults to 'Open' (Studyria URLs keep the
+       template auto-CTA). 'Join Now' etc. come from the admin input. */
+    if (!meta.cta && kind === 'url' && dest.indexOf('url:https://') === 0 &&
+        dest.indexOf('url:https://studyria.qzz.io') !== 0) meta.cta = 'Open';
 
     var payload = {
       op: st.editingId ? 'update' : 'create',
@@ -1487,11 +1529,24 @@
     }).then(function (sub) {
       if (!sub) return { success: false, reason: 'subscribe_failed' };
       return _userEmail().then(function (email) {
+        /* V2 §7/§22: channel-aware subscription — web vs pwa is detected
+           with real install signals (never assumed from UA), and the
+           stable app-generated device id ties the subscription to this
+           logical device. Fields are additive: the existing pipeline
+           keeps working regardless of backend field support. */
+        var info = _platformInfo();
+        var isPwa = _isPwaContext();
         return _fetch('snPushOps', {
           op: 'subscribe',
           subscription: sub.toJSON(),
           userAgent: navigator.userAgent,
-          userEmail: email
+          userEmail: email,
+          deviceId: _deviceId(),
+          channelType: isPwa ? 'pwa' : 'web',
+          isPwa: isPwa,
+          displayMode: _pwaDisplayMode(),
+          platform: info.platform,
+          browser: info.browser
         });
       }).then(function (res) {
         if (!res || res.ok !== true) return { success: false, reason: 'backend_failed' };
@@ -1526,7 +1581,9 @@
   }
 
   function pushStatus() {
-    var st = { supported: pushSupported(), permission: 'unsupported', subscribed: false };
+    var st = { supported: pushSupported(), permission: 'unsupported', subscribed: false,
+                channelType: _isPwaContext() ? 'pwa' : 'web', displayMode: _pwaDisplayMode(),
+                deviceId: _deviceId(), platform: _platformInfo().platform, browser: _platformInfo().browser };
     if (!st.supported) return Promise.resolve(st);
     st.permission = Notification.permission;
     if (Notification.permission !== 'granted') return Promise.resolve(st);

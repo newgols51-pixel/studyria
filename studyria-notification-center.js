@@ -226,7 +226,22 @@
     },
     pushSelfTest: function () {
       if (window.SN && SN.push && SN.push.selfTest) SN.push.selfTest().then(function (r) {
-        if (typeof showToast === 'function') showToast(r && r.ok ? '✅ Test push sent — check your notification tray.' : 'Self-test failed: ' + ((r && r.error) || 'unknown'), r && r.ok ? 'success' : 'error');
+        /* NOTIFICATION V2 §28: honest device test report — channel,
+           permission and subscription state come from real signals, and
+           the delivery result is the backend's real push-service
+           response, never just an HTTP 200. */
+        var plain = function () { if (typeof showToast === 'function') showToast(r && r.ok ? '✅ Test push sent — check your notification tray.' : 'Self-test failed: ' + ((r && r.error) || 'unknown'), r && r.ok ? 'success' : 'error'); };
+        if (typeof SN.push.status === 'function') {
+          SN.push.status().then(function (st) {
+            var chan = st.channelType === 'pwa' ? 'PWA app channel' : 'web/browser channel';
+            var perm = st.permission;
+            var sub  = st.subscribed ? 'subscription active' : 'NO active subscription';
+            if (typeof showToast === 'function') showToast(r && r.ok
+              ? ('✅ Test push sent via ' + chan + ' (' + sub + ', permission: ' + perm + ') — check your notification tray.')
+              : ('Self-test failed: ' + ((r && r.error) || 'unknown') + ' — ' + sub + ', permission: ' + perm),
+              r && r.ok ? 'success' : 'error');
+          }).catch(plain);
+        } else plain();
       });
     },
     goExplore: function () { if (typeof navigate === 'function') navigate('library'); },
