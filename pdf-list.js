@@ -15,8 +15,9 @@
 // identifiers keep referencing the same object.
 // ══════════════════════════════════════════════════════════════════
 
-(async function () {
+async function pdfListMain() {
   'use strict';
+  window._libFetchFailed = false; // reset at the start of every (re)load — Retry must start clean
 
   const MAX_RETRIES   = 2;       // retry on transient network error
   const PAGE_SIZE     = 200;     // rows per Supabase page (max 1000)
@@ -163,6 +164,10 @@
 
   console.log(`✅ pdf-list.js: ${dbPdfs.length} PDFs loaded (${STATUSES.join(', ')})`);
 
+  // Broadcast so independent consumers (homepage discovery engine,
+  // global search, admin surfaces) can refresh from the real data.
+  try { document.dispatchEvent(new CustomEvent('studyria:pdfs-ready')); } catch (e) {}
+
   // ── 5. Re-render all sections that depend on PDFS ───────────────
   _rerenderAll();
 
@@ -202,4 +207,12 @@
     if (typeof window._refreshFreeButtonLabels === 'function') window._refreshFreeButtonLabels();
   }
 
-})();
+}
+
+// Auto-run once at load
+pdfListMain();
+
+/* Retry hook (Sep 2026 P0 fix): re-runs the whole pipeline — wait-for-client,
+   fetch with retries, re-render. Used by every honest error state's Retry button
+   (Library grid, homepage discovery, global search). */
+window.pdfListReload = pdfListMain;

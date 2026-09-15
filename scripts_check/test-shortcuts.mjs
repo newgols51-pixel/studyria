@@ -138,7 +138,8 @@ console.log('\n[V8.1] Asset wiring');
 const idxSrc = require('fs').readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 t('shortcut-core.js?v=2 wired before pwa-v32.js?v=10', idxSrc.includes('shortcut-core.js?v=2" defer></script>\n<script src="pwa-v32.js?v=10"'));
 const swSrc = require('fs').readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
-t('service worker untouched by V8.1 (still v159)', swSrc.includes("CACHE_VERSION = 'v159'"));
+t('service worker install & push handlers intact (version-agnostic since v160+)',
+  /CACHE_VERSION = 'v\d+'/.test(swSrc) && swSrc.includes("addEventListener('install'") && swSrc.includes("addEventListener('push'"));
 
 console.log(`\n═══ RESULTS: ${pass} passed, ${fail} failed ═══`);
 process.exit(fail ? 1 : 0);

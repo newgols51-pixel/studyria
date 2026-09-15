@@ -337,7 +337,11 @@
     };
     if (cl) {
       cl.from('current_affairs').select('title,description,summary,content,source,created_at').eq('is_deleted', false).eq('status', 'published').order('created_at', { ascending: false }).limit(12)
-        .then(function (r) { start(r.data || []); }).catch(function () { start([]); });
+        /* P0 fix (Sep 2026): on a fetch ERROR the old catch ran start([]),
+           which showed "Not enough current affairs published yet" — an error
+           disguised as a genuine-empty message. Now it toasts the real cause. */
+        .then(function (r) { start(r.data || []); })
+        .catch(function () { BrainLab.toast('Couldn\'t load current affairs — check your connection and try again.'); });
     } else start([]);
   };
 

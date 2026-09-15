@@ -87,10 +87,15 @@ ok(/phrases\[0\]|CANONICAL_SOCIAL_PROOF/.test(idx) &&
 section('1b. Marketing page (homepage.html)');
 ok(!home.includes('1,500+') && !home.includes('12,000+'),
    'old 1,500+/12,000+ student numbers removed');
-ok(home.includes('4.9/5 from 1,200+ students'), 'hero trust line = 1,200+');
-ok((home.match(/1,200\+/g) || []).length === 3,
-   'stat band shows 1,200+ for Students and Selectees');
-ok(home.includes('50+'), 'independent "50+ Categories" metric preserved');
+/* Updated 16 Sep 2026 (P1 honest-data change set): the fabricated 4.9/5
+   rating, "50+" categories claim and the selectee-count tile were removed —
+   the DB has 0 reviews, 28 categories and no verified selectee count. */
+ok(home.includes('Trusted by 1,200+ Assam aspirants'),
+   'hero trust line keeps the canonical 1,200+ (no fabricated rating)');
+ok(home.includes('>1,200+</span>') && home.includes('Students Enrolled'),
+   'stat band Students tile is 1,200+');
+ok(!home.includes('Selectees'), 'fabricated selectee tile removed');
+ok(home.includes('>28</span>'), 'category count is the real DB number (28)');
 
 /* ════════════════ 2. HONEST LIBRARY STATES ════════════════ */
 section('2. Library pipeline (renderLibGrid + pdf-list.js)');

@@ -26,7 +26,8 @@
 // no duplicate notifications, no foreign SDK listeners.
 
 // ── VERSION ───────────────────────────────────────────────────────
-const CACHE_VERSION = 'v161'; // v161: success-stories count truthful labelling (sample vs verified). v160: CANONICAL SOCIAL PROOF ("1,200+" students on every surface) + honest Library/search states — fetch errors show error+Retry instead of silent "0 PDFs"; pdf-list.js waits for the Supabase client (no silent bail); empty-state selectors fixed to .ottlib-*. PWA install / push handlers untouched.
+const CACHE_VERSION = 'v162'; // v162: P0/P1 honest-data change set — Career Spotlight fully wired (CSS+loader, real jobs, honest error/empty states); Global Search waits for the client and its jobs query fixed (jobs.org column doesn't exist — jobs never matched before); PDF-pipeline failure surfaces as error+Retry instead of fake "no results"; PDP marketing mode + seeded ratings + fake review/sales counts DELETED; marketing page stat band/testimonials truthful. PWA install/push handlers untouched.
+// v161: success-stories count truthful labelling (sample vs verified). v160: CANONICAL SOCIAL PROOF ("1,200+" students on every surface) + honest Library/search states — fetch errors show error+Retry instead of silent "0 PDFs"; pdf-list.js waits for the Supabase client (no silent bail); empty-state selectors fixed to .ottlib-*. PWA install / push handlers untouched.
 const CACHE_NAME    = 'studyria-' + CACHE_VERSION;
 const IMG_CACHE     = 'studyria-img-' + CACHE_VERSION;
 const FONT_CACHE    = 'studyria-font-' + CACHE_VERSION;

@@ -1902,21 +1902,7 @@ body.light .pdp-review-textarea {
   padding: 2px 7px;
   flex-shrink: 0;
 }
-.pdp-rev-sample-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 0.60rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  background: rgba(150,150,150,0.14);
-  color: #9a9a9a;
-  border: 1px solid rgba(150,150,150,0.30);
-  border-radius: 20px;
-  padding: 2px 7px;
-  flex-shrink: 0;
-}
+/* sample-badge CSS deleted with the fake PDP review cards (Sep 2026 P1) */
 .pdp-rev-login-prompt {
   font-family: var(--font-ui);
   font-size: 0.78rem;
@@ -10947,6 +10933,9 @@ body.light .sc-tag-new { background: rgba(147,2,5,0.12); }
   <div class="sh-row-outer"><div class="sh-row-track" id="shContinueTrack"></div></div>
 </section>
 
+<!-- Homepage PDF pipeline error host (P0 honest-state fix, Sep 2026) -->
+<div class="container" id="shDiscoveryErrorHost" data-state="loading" aria-live="polite"></div>
+
 <!-- AI Recommended -->
 <section class="sh-row-section" id="shAISection">
   <div class="container">
@@ -11290,6 +11279,65 @@ body.light .sc-tag-new { background: rgba(147,2,5,0.12); }
 </section>
 
 <!-- ── CAREER SPOTLIGHT ──────────────────────────────────────── -->
+<style>
+/* ── CAREER SPOTLIGHT (cs-) — full styling added Sep 2026 P0 fix.
+   Previously this section had NO CSS and NO populator: raw skeleton divs
+   and dead arrow buttons rendered unstyled forever on the homepage. */
+.cs-section { position:relative; padding:64px 0 46px; overflow:hidden;
+  background:radial-gradient(1200px 500px at 80% -10%, rgba(147,2,5,.22), transparent 60%),
+             radial-gradient(900px 420px at 10% 110%, rgba(59,130,246,.10), transparent 60%); }
+.cs-ambient { position:absolute; border-radius:50%; filter:blur(70px); opacity:.5; pointer-events:none; }
+.cs-ambient-1 { width:340px; height:340px; left:-120px; top:-80px; background:rgba(225,29,46,.16); }
+.cs-ambient-2 { width:300px; height:300px; right:-100px; top:20px; background:rgba(59,130,246,.13); }
+.cs-ambient-3 { width:260px; height:260px; left:38%; bottom:-120px; background:rgba(245,158,11,.10); }
+.cs-header { display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap; margin-bottom:26px; }
+.cs-header-left { display:flex; align-items:center; gap:14px; }
+.cs-icon-wrap { width:54px; height:54px; border-radius:16px; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg, rgba(225,29,46,.25), rgba(147,2,5,.35)); border:1px solid rgba(255,255,255,.14); backdrop-filter:blur(10px); }
+.cs-icon { font-size:1.5rem; }
+.cs-eyebrow { display:flex; align-items:center; gap:7px; font-size:.68rem; letter-spacing:.14em; font-weight:800; color:var(--text2,#9aa3b2); }
+.cs-live-dot { width:7px; height:7px; border-radius:50%; background:#e11d2e; box-shadow:0 0 8px rgba(225,29,46,.9); animation:cs-pulse 1.6s infinite; }
+@keyframes cs-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+.cs-title { font-size:1.55rem; font-weight:800; color:var(--text1,#fff); line-height:1.15; }
+.cs-sub { font-size:.8rem; color:var(--text2,#9aa3b2); margin-top:3px; }
+.cs-header-right { display:flex; align-items:center; gap:12px; }
+.cs-nav-btns { display:flex; gap:8px; }
+.cs-nav-btn { width:38px; height:38px; border-radius:12px; border:1px solid rgba(255,255,255,.16);
+  background:var(--glass, rgba(255,255,255,.06)); color:var(--text1,#fff); font-size:1.15rem; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; backdrop-filter:blur(8px); transition:all .2s; }
+.cs-nav-btn:hover { background:rgba(225,29,46,.25); border-color:rgba(225,29,46,.5); }
+.cs-see-all { border:1px solid rgba(255,255,255,.18); background:transparent; color:var(--text1,#fff);
+  padding:10px 18px; border-radius:12px; font-size:.82rem; font-weight:700; cursor:pointer; transition:all .2s; }
+.cs-see-all:hover { background:rgba(255,255,255,.08); }
+.cs-track { display:flex; gap:16px; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; padding:4px 2px 10px; }
+.cs-track::-webkit-scrollbar { display:none; }
+.cs-card { flex:0 0 clamp(240px, 74vw, 300px); scroll-snap-align:start; border-radius:16px; cursor:pointer;
+  background:var(--glass, rgba(255,255,255,.06)); border:1px solid rgba(255,255,255,.12);
+  backdrop-filter:blur(14px); padding:18px; display:flex; flex-direction:column; gap:12px;
+  transition:transform .22s, border-color .22s, box-shadow .22s; }
+.cs-card:hover { transform:translateY(-4px); border-color:rgba(225,29,46,.55); box-shadow:0 14px 34px rgba(0,0,0,.35); }
+.cs-card-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.cs-job-type { font-size:.64rem; font-weight:800; letter-spacing:.06em; padding:4px 10px; border-radius:999px;
+  background:rgba(59,130,246,.16); color:#93c5fd; text-transform:uppercase; }
+.cs-job-type.government { background:rgba(16,185,129,.15); color:#6ee7b7; }
+.cs-job-type.private { background:rgba(168,85,247,.15); color:#c4b5fd; }
+.cs-job-date { font-size:.66rem; color:var(--text3,#6b7484); }
+.cs-job-title { font-size:.95rem; font-weight:700; color:var(--text1,#fff); line-height:1.35;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.cs-job-org { font-size:.76rem; color:var(--text2,#9aa3b2); display:flex; align-items:center; gap:6px; }
+.cs-job-foot { display:flex; align-items:center; justify-content:space-between; margin-top:auto; padding-top:10px; border-top:1px solid rgba(255,255,255,.09); }
+.cs-job-cta { font-size:.78rem; font-weight:700; color:#fca5a5; }
+.cs-skeleton { flex:0 0 clamp(240px, 74vw, 300px); height:170px; border-radius:16px;
+  background:var(--glass, rgba(255,255,255,.05)); border:1px solid rgba(255,255,255,.08); animation:cs-shimmer 1.5s infinite; }
+@keyframes cs-shimmer { 0%,100%{opacity:.55} 50%{opacity:1} }
+.cs-state { flex:1 1 100%; display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; padding:34px 18px; }
+.cs-state-title { font-size:1.02rem; font-weight:700; color:var(--text1,#fff); }
+.cs-state-sub { font-size:.8rem; color:var(--text2,#9aa3b2); max-width:400px; }
+.cs-retry { margin-top:6px; padding:10px 26px; border:0; border-radius:12px; cursor:pointer; font-weight:700; font-size:.88rem; color:#fff;
+  background:linear-gradient(135deg,#e11d2e,#930205); }
+.cs-dots { display:none; }
+@media (max-width:640px){ .cs-section{padding:42px 0 34px} .cs-title{font-size:1.25rem} .cs-nav-btns{display:none} }
+</style>
 <section class="cs-section" id="careerSpotlightSection">
   <div class="cs-ambient cs-ambient-1"></div>
   <div class="cs-ambient cs-ambient-2"></div>
@@ -11321,6 +11369,114 @@ body.light .sc-tag-new { background: rgba(147,2,5,0.12); }
   </div>
   <div class="cs-dots" id="csDots"></div>
 </section>
+<script>
+/* ── CAREER SPOTLIGHT LOADER (Sep 2026 P0) ──────────────────────────
+   Root cause: this section shipped hardcoded skeleton divs with NO CSS
+   and NO JavaScript populator anywhere in the codebase — it sat on
+   "Loading…" forever on the live homepage.
+   Now it loads REAL active jobs from the jobs table with an honest
+   data-state machine: LOADING → DATA | ERROR(+Retry) | GENUINE EMPTY.
+   It never fabricates job cards and never shows "0 jobs" for a fetch error. */
+(function csSpotlight() {
+  var track = document.getElementById('csTrack');
+  if (!track) return;
+  var loadState = 'loading';
+  window._csSpotlightLoad = function _load() {
+    var started = Date.now();
+    (function getClient() {
+      var sb = window.supabaseClient;
+      if (!sb) {
+        if (Date.now() - started > 10000) { _csError(); return; }
+        setTimeout(getClient, 250);
+        return;
+      }
+      sb.from('jobs')
+        /* NOTE: the jobs table has NO org column (verified 16 Sep 2026) —
+           select only real columns or PostgREST 42703s the whole query. */
+        .select('id,title,organization,location,job_type,published_at,created_at')
+        .eq('active', true)
+        .order('published_at', { ascending: false, nullsFirst: false })
+        .limit(8)
+        .then(function (r) {
+          if (r.error) throw r.error;
+          var jobs = r.data || [];
+          if (!jobs.length) { _csEmpty(); return; }
+          _csRender(jobs);
+        })
+        .catch(function () { _csError(); });
+    })();
+  };
+
+  function _esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
+  function _typeOf(j) {
+    var t = String(j.job_type || '').toLowerCase();
+    if (t.indexOf('gov') !== -1) return 'government';
+    if (t.indexOf('priv') !== -1) return 'private';
+    return t || 'job';
+  }
+  function _fmtDate(v) {
+    var d = v ? new Date(v) : null;
+    if (!d || isNaN(d) || d.getFullYear() < 2000) return '';
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  }
+  function _render(jobs) {
+    loadState = 'data';
+    track.innerHTML = jobs.map(function (j) {
+      var type = _typeOf(j);
+      var org = j.org || j.organization || '';
+      var date = _fmtDate(j.published_at || j.created_at);
+      return '<div class="cs-card" data-job-id="' + _esc(j.id) + '">' +
+        '<div class="cs-card-top">' +
+          '<span class="cs-job-type ' + (type === 'government' || type === 'private' ? type : '') + '">' + _esc(type) + '</span>' +
+          (date ? '<span class="cs-job-date">' + date + '</span>' : '') +
+        '</div>' +
+        '<div class="cs-job-title">' + _esc(j.title || 'Job Opportunity') + '</div>' +
+        (org ? '<div class="cs-job-org">🏢 ' + _esc(org) + '</div>' : '') +
+        '<div class="cs-job-foot"><span class="cs-job-cta">View details →</span></div>' +
+        '</div>';
+    }).join('');
+  }
+  function _csRender(j) { _render(j); }
+  function _csError() {
+    loadState = 'error';
+    track.innerHTML = '<div class="cs-state">' +
+      '<div style="font-size:1.7rem">📡</div>' +
+      '<div class="cs-state-title">Couldn\'t load job openings</div>' +
+      '<div class="cs-state-sub">Your connection to the Career Hub failed. The job list is safe — just try again.</div>' +
+      '<button class="cs-retry" onclick="window._csSpotlightLoad()">↻ Retry</button></div>';
+  }
+  function _csEmpty() {
+    loadState = 'empty';
+    track.innerHTML = '<div class="cs-state">' +
+      '<div style="font-size:1.7rem">💼</div>' +
+      '<div class="cs-state-title">No open listings right now</div>' +
+      '<div class="cs-state-sub">New Assam government and private openings are added regularly — check back soon.</div>' +
+      '<button class="cs-see-all" onclick="navigate(\'career-hub\')">Explore Career Hub</button></div>';
+  }
+
+  // Card clicks — event delegation with data-attributes (no inline onclick with IDs)
+  track.addEventListener('click', function (ev) {
+    var card = ev.target.closest('.cs-card');
+    if (!card) return;
+    var id = card.getAttribute('data-job-id');
+    navigate('career-hub');
+    var tries = 0;
+    (function open() {
+      if (typeof csOpenJob === 'function') { csOpenJob(String(id)); return; }
+      if (++tries < 20) setTimeout(open, 150);
+    })();
+  });
+
+  // Arrow controls — scroll the track
+  var prev = document.getElementById('csPrev');
+  var next = document.getElementById('csNext');
+  if (prev) prev.addEventListener('click', function () { track.scrollBy({ left: -320, behavior: 'smooth' }); });
+  if (next) next.addEventListener('click', function () { track.scrollBy({ left: 320, behavior: 'smooth' }); });
+
+  window._csSpotlightLoad();
+})();
+</script>
 
 <!-- ── WHY STUDYRIA ──────────────────────────────────────────── -->
 
@@ -11725,17 +11881,12 @@ function shEsc(s) {
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-function shSeededRating(id) {
-  var h = 5381, s = String(id);
-  for (var i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
-  h ^= h >>> 16; h = Math.imul(h, 0x45d9f3b) >>> 0; h ^= h >>> 16;
-  var seed = (h >>> 0) / 4294967296;
-  return Math.round((4.5 + seed * 0.5) * 10) / 10;
-}
-
-// Keep global compat so Library page cards use same seeded rating
-window._ottSeededRating = shSeededRating;
-window._shSeededRating = shSeededRating;
+/* ── SEEDED-RATING MACHINERY DELETED (Sep 2026 P1 fix) ──────────────
+   This fabricated a deterministic 4.5–5.0 star value from the PDF id and
+   served as a rating fallback on homepage cards, library cards and the PDP
+   header — inflating ratings for PDFs with zero real reviews. Ratings now
+   render ONLY from real pdf_reviews data (window._cardRatingCache /
+   pdf.rating). The compat globals are gone too — no callers remain. */
 
 function shIsOwned(id) {
   return typeof _isOwned === 'function' ? _isOwned(String(id)) : false;
@@ -11791,11 +11942,16 @@ function scardHTML(pdf, opts) {
     : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>';
   var wishBtn = '<button class="' + wishClass + '" id="wish-' + shEsc(pdf.id) + '" onclick="event.stopPropagation();shToggleWish(\'' + shEsc(pdf.id) + '\',event)" aria-label="Wishlist">' + wishIcon + '</button>';
 
-  // Rating
+  // Rating — REAL data only (Sep 2026 P1 fix).
+  // The old code fell back to shSeededRating(pdf.id): a deterministic 4.5-5.0
+  // star value fabricated from the PDF id. That inflated ratings on cards for
+  // PDFs that have zero real reviews. Now the rating row simply doesn't render
+  // until pdf_reviews actually has rows for this PDF.
   var cached = window._cardRatingCache && window._cardRatingCache[String(pdf.id)];
-  var ratingVal = cached ? cached.avgRating : shSeededRating(pdf.id);
-  var ratingCount = cached ? cached.reviewCount : 0;
-  var ratingHTML = '<div class="sc-rating-row"><span class="sc-star">★</span><span class="sc-rating-val">' + ratingVal.toFixed(1) + '</span>' + (ratingCount > 0 ? '<span class="sc-rating-count">(' + ratingCount + ')</span>' : '') + '</div>';
+  var hasRealRating = !!(cached && Number(cached.reviewCount) > 0);
+  var ratingHTML = hasRealRating
+    ? '<div class="sc-rating-row"><span class="sc-star">★</span><span class="sc-rating-val">' + cached.avgRating.toFixed(1) + '</span>' + (cached.reviewCount > 0 ? '<span class="sc-rating-count">(' + cached.reviewCount + ')</span>' : '') + '</div>'
+    : '';
 
   // Progress
   var progressHTML = showProgress
@@ -12155,7 +12311,32 @@ async function shRenderDiscovery(force) {
     return p && p.title && p.status !== 'draft';
   });
 
-  if (!pdfs.length) return;
+  /* ── HONEST DATA-STATE MACHINE (Sep 2026 P0 fix) ─────────────────
+     A. LOADING        → keep skeletons, claim nothing (no "0"/"-")
+     D. FETCH ERROR    → "Couldn't load PDFs" + Retry — NEVER a fake "0 PDFs"
+     C. SUCCESS, 0 ROWS → genuine empty state (only here may "0" appear)
+     B. SUCCESS, DATA  → render (falls through below)
+     The old code silently `return`ed when PDFS was empty — on a failed
+     pipeline that left every homepage section on skeletons forever. */
+  if (!pdfs.length) {
+    if (window._libFetchFailed) {
+      var errHost = document.getElementById('shDiscoveryErrorHost');
+      if (!errHost) return; // page markup not present — nothing to do
+      if (errHost.dataset.state !== 'error') {
+        errHost.dataset.state = 'error';
+        errHost.innerHTML =
+          '<div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:14px;padding:56px 20px;text-align:center">' +
+          '<div style="font-size:2.4rem;line-height:1">📡</div>' +
+          '<div style="font-size:1.15rem;font-weight:700;color:var(--text1,#fff)">Couldn\'t load study materials</div>' +
+          '<div style="font-size:.85rem;color:var(--text2);max-width:420px">Your connection to Studyria\'s library failed. Nothing is wrong with your saved PDFs — try again.</div>' +
+          '<button onclick="window.pdfListReload ? window.pdfListReload() : location.reload()" style="margin-top:4px;padding:11px 26px;border:0;border-radius:12px;background:linear-gradient(135deg,#e11d2e,#930205);color:#fff;font-weight:700;font-size:.9rem;cursor:pointer">↻ Retry</button>' +
+          '</div>';
+      }
+    }
+    return; // LOADING (skeletons stay) or ERROR state above — nothing to render yet
+  }
+  var okHost = document.getElementById('shDiscoveryErrorHost');
+  if (okHost) { okHost.dataset.state = 'ok'; okHost.innerHTML = ''; }
 
   var fp = pdfs.map(function(p) { return p.id; }).join(',');
   if (!force && fp === _shRenderedFingerprint) {
@@ -12363,7 +12544,10 @@ async function shRenderPopularDownloads() {
     return (Number(b.download_count || b.sales || 0)) - (Number(a.download_count || a.sales || 0));
   }).slice(0, 12);
 
-  // Try Supabase for live data
+  /* HONEST DATA-STATE MACHINE (Sep 2026 P0): a live-query failure is an
+     ERROR, not "no data". We only swap in live rows when the query
+     explicitly SUCCEEDS; otherwise we fall back to the already-loaded
+     PDFS array, and only show an error if that is empty AND flagged. */
   try {
     var sb = window.supabaseClient;
     if (sb) {
@@ -12376,10 +12560,19 @@ async function shRenderPopularDownloads() {
         sorted = result.data;
       }
     }
-  } catch(e) {}
+  } catch(e) { /* live refresh failed — keep in-memory data; fall through */ }
 
   if (!sorted.length) {
-    el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text2)">No data yet.</div>';
+    if (window._libFetchFailed) {
+      el.innerHTML = '<div style="text-align:center;padding:34px 16px">' +
+        '<div style="font-size:1.6rem">📡</div>' +
+        '<div style="margin:10px 0 4px;font-weight:700;color:var(--text1,#fff)">Couldn\'t load popular downloads</div>' +
+        '<div style="font-size:.82rem;color:var(--text2)">We couldn\'t reach the library.</div>' +
+        '<button onclick="window.pdfListReload ? window.pdfListReload() : location.reload()" style="margin-top:14px;padding:9px 22px;border:0;border-radius:10px;background:linear-gradient(135deg,#e11d2e,#930205);color:#fff;font-weight:700;cursor:pointer">↻ Retry</button>' +
+        '</div>';
+    } else {
+      el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text2)">Popular downloads will appear here once PDFs are published.</div>';
+    }
     return;
   }
 
@@ -12544,12 +12737,23 @@ window.addEventListener('resize', function() {
 
 // ── BOOT ──────────────────────────────────────────────────────────
 (function shBoot() {
+  /* HONEST BOOT (Sep 2026 P0): the old loop polled every 600ms FOREVER.
+     If pdf-list.js failed, every homepage section sat on skeletons with no
+     error and no retry. Now: poll while the pipeline is still trying, but
+     hand over to the error state as soon as pdf-list flags a failure
+     (it does so after its own retries + client wait). */
+  var _shBootTries = 0;
   function tryRender() {
     if (window.PDFS && window.PDFS.length > 0) {
       shRenderDiscovery(false);
       shUpdateHeroStats();
-    } else {
+    } else if (window._libFetchFailed) {
+      shRenderDiscovery(false); // will render the honest error state + Retry
+    } else if (_shBootTries < 60) { // ~36s of polling while pipeline retries
+      _shBootTries++;
       setTimeout(tryRender, 600);
+    } else {
+      shRenderDiscovery(false); // last-ditch: whatever state, show it honestly
     }
   }
 
@@ -13398,7 +13602,9 @@ function ottlibCardHTML(p, opts = {}) {
   const title = p.title || 'Untitled';
   const cat = p.category || '';
   const downloads = p.download_count || p.sales || 0;
-  const ratingVal = p.rating ? parseFloat(p.rating).toFixed(1) : (window._ottSeededRating ? window._ottSeededRating(p.id).toFixed(1) : '4.8');
+  // Sep 2026 P1: no more seeded 4.5-5.0 fallback — show a rating only when
+  // the DB actually has one (p.rating comes from the pdfs row / review stats).
+  const ratingVal = p.rating ? parseFloat(p.rating).toFixed(1) : '';
   const isFree = !p.price || p.price === 0;
   const price = isFree ? 'FREE' : `₹${p.price}`;
   const origPrice = Number(p.originalPrice ?? p.original_price ?? p.mrp ?? p.list_price ?? 0);
@@ -19382,8 +19588,12 @@ body:not(.light) .sf-stories .srv-star-btn { color:rgba(255,255,255,0.2) !import
     </div>
   </div>
   <div class="sf-stories-rating">
-    <span class="sf-stories-avg" id="srvAvgNum">4.9</span>
-    <span class="sf-stories-stars" id="srvStarsRow">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
+    <!-- P1 fix (Sep 2026): the static "4.9" avg was a fabricated rating —
+         pdf_reviews is empty. The numeric avg + stars now stay hidden until
+         VERIFIED reviews exist; the truthful "N sample reviews" label is
+         the only thing shown for the sample-only wall. -->
+    <span class="sf-stories-avg" id="srvAvgNum" style="display:none">4.9</span>
+    <span class="sf-stories-stars" id="srvStarsRow" style="display:none">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
     <span class="sf-stories-count" id="srvCountTxt">Student reviews</span>
   </div>
   <div class="srv-outer" id="srvOuter" style="position:relative">
@@ -19664,15 +19874,15 @@ body:not(.light) .sf-stories .srv-star-btn { color:rgba(255,255,255,0.2) !import
             </a>
             <!-- YouTube -->
             <a class="sf-social" data-brand="youtube"
-               href="https://youtube.com/@studyriaofficial?si=YE4Lx8DXFA2TmKqA" title="Studyria YouTube — 1.2K+ Students Learning"
+               href="https://youtube.com/@studyriaofficial?si=YE4Lx8DXFA2TmKqA" title="Studyria YouTube — 1,200+ Students Learning"
                target="_blank" rel="noopener noreferrer"
-               aria-label="Studyria YouTube channel — 1.2K+ Students Learning">
+               aria-label="Studyria YouTube channel — 1,200+ Students Learning">
               <div class="sf-social-icon">
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
               </div>
               <div class="sf-social-text">
                 <span class="sf-social-label">YouTube</span>
-                <span class="sf-social-sub">1.2K+ Students Learning</span>
+                <span class="sf-social-sub">1,200+ Students Learning</span>
               </div>
             </a>
             <!-- WhatsApp Community -->
@@ -20820,49 +21030,17 @@ function normalizePdf(p) {
   p.previewPage3 = p.previewPage3 || p.preview_page_3 || '';
   p.previewGenerated = !!(p.preview_generated || p.previewGenerated || false);
 
-  // ── Reviews & Sales — use DB values or generate realistic fallbacks
-  const cached = _pdfFallbackCache[p.id] || {};
-
+  // ── Reviews & Sales — REAL DB VALUES ONLY (Sep 2026 P1 fix) ──────
+  // The old code fabricated "realistic" review counts (13-250) and sales
+  // counts (50-10000) from a deterministic seed whenever a PDF had none,
+  // inflating every product surface with fake numbers. Now we pass through
+  // only what the database actually holds; renderers hide zero/missing
+  // values instead of inventing them.
   const rawReviews = p.reviews || p.review_count || p.total_reviews || p.rating_count || 0;
-  if (rawReviews) {
-    p.reviews = rawReviews;
-  } else {
-    if (!cached.reviews) {
-      // Generate based on tag/badge
-      const tag = (p.tag || p.badge || '').toLowerCase();
-      if (tag.includes('bestseller') || tag.includes('best seller')) {
-        cached.reviews = 80 + Math.floor(seededRand(p.id, 1) * 170);   // 80-250
-      } else if (tag.includes('featured')) {
-        cached.reviews = 50 + Math.floor(seededRand(p.id, 2) * 130);   // 50-180
-      } else if (tag.includes('popular') || tag.includes('trending')) {
-        cached.reviews = 25 + Math.floor(seededRand(p.id, 3) * 50);    // 25-75
-      } else {
-        cached.reviews = 13 + Math.floor(seededRand(p.id, 4) * 12);    // 13-24
-      }
-      _pdfFallbackCache[p.id] = cached;
-    }
-    p.reviews = cached.reviews;
-  }
+  p.reviews = Number(rawReviews) || 0;
 
   const rawSales = p.download_count || p.sales || 0;
-  if (rawSales) {
-    p.sales = rawSales;
-  } else {
-    if (!cached.sales) {
-      const tag = (p.tag || p.badge || '').toLowerCase();
-      if (tag.includes('bestseller') || tag.includes('best seller')) {
-        cached.sales = 1000 + Math.floor(seededRand(p.id, 5) * 9000);  // 1000-10000
-      } else if (tag.includes('featured')) {
-        cached.sales = 300  + Math.floor(seededRand(p.id, 6) * 900);   // 300-1200
-      } else if (tag.includes('popular') || tag.includes('trending')) {
-        cached.sales = 150  + Math.floor(seededRand(p.id, 7) * 650);   // 150-800
-      } else {
-        cached.sales = 50   + Math.floor(seededRand(p.id, 8) * 100);   // 50-150
-      }
-      _pdfFallbackCache[p.id] = cached;
-    }
-    p.sales = cached.sales;
-  }
+  p.sales = Number(rawSales) || 0;
 
   return p;
 }
@@ -21784,11 +21962,11 @@ function pdfCardHTML(pdf) {
 
       <!-- Rating + pages — single elegant row -->
       <div class="pdf-meta">
-        <span class="pdf-rating">
+        ${(pdf.rating ? `<span class="pdf-rating">
                <svg width="11" height="11" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="#f59e0b"/></svg>
-               ${pdf.rating || (window._ottSeededRating ? window._ottSeededRating(pdf.id).toFixed(1) : '4.8')}
-             </span>
-        ${(pdf.reviews != null && pdf.reviews !== '') ? `<span style="color:var(--text3);font-size:0.65rem;font-family:var(--font-ui)">(${Number(pdf.reviews || 0).toLocaleString()})</span>` : ''}
+               ${parseFloat(pdf.rating).toFixed(1)}
+             </span>` : '')}
+        ${(Number(pdf.reviews || 0) > 0 ? `<span style="color:var(--text3);font-size:0.65rem;font-family:var(--font-ui)">(${Number(pdf.reviews).toLocaleString()})</span>` : '')}
         ${pdf.pages ? `<span style="color:var(--text3)">·</span><span style="font-size:0.65rem;font-family:var(--font-ui)">${pdf.pages}p</span>` : ''}
       </div>
 
@@ -22461,87 +22639,12 @@ function _esc(str) {
 
 
 // ── Fetch all live counters + reviews from Supabase in one parallel pass ──
-// ── Seeded deterministic pseudo-random (same pdf → same fake numbers always) ──
-function _pdpSeed(id, salt) {
-  let h = (Number(id) * 2654435769 + salt * 1234567891) >>> 0;
-  h ^= h >>> 16; h = Math.imul(h, 0x45d9f3b) >>> 0; h ^= h >>> 16;
-  return (h >>> 0) / 4294967296;
-}
-
-// ── Marketing mode fake data — realistic Assam student reviews ─────────
-function _pdpMarketingData(pdfId) {
-  const s = (n) => _pdpSeed(pdfId, n);
-
-  // Realistic rating: 4.2 – 4.9 (weighted towards 4.5–4.8)
-  const avgRating = 4.2 + s(1) * 0.7;  // 4.2 → 4.9
-  const revCount  = 3 + Math.floor(s(2) * 3);  // 3, 4, or 5 reviews
-
-  // Rating distribution — realistic bell shape around 4-5 stars
-  const dist = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-  for (let i = 0; i < revCount; i++) {
-    const r = s(10 + i);
-    // 55% → 5★, 30% → 4★, 10% → 3★, 5% → 2★ (no 1★ for marketing)
-    const star = r < 0.55 ? 5 : r < 0.85 ? 4 : r < 0.95 ? 3 : 2;
-    dist[star]++;
-  }
-
-  // Fake download count — realistic for a new PDF (80 – 850)
-  // Based on category/tag: bestseller gets more, new gets less
-  const pdf = selectedPdf || {};
-  const tag = ((pdf.tag || pdf.badge || '')).toLowerCase();
-  let baseDownloads;
-  if (tag.includes('bestseller'))       baseDownloads = 400 + Math.floor(s(3) * 450);
-  else if (tag.includes('featured'))    baseDownloads = 200 + Math.floor(s(3) * 300);
-  else if (tag.includes('popular') || tag.includes('trending'))
-                                         baseDownloads = 150 + Math.floor(s(3) * 200);
-  else                                  baseDownloads =  80 + Math.floor(s(3) * 170);
-
-  // Assam student names + realistic review texts
-  const NAMES = [
-    ['Ankita Bora',     'Guwahati'],
-    ['Rajib Das',       'Dibrugarh'],
-    ['Priyanka Gogoi',  'Jorhat'],
-    ['Bikash Kalita',   'Nagaon'],
-    ['Rupam Nath',      'Tezpur'],
-    ['Sanjukta Deka',   'Kamrup'],
-    ['Dhruba Hazarika', 'Sivasagar'],
-    ['Pallavi Bhuyan',  'Bongaigaon'],
-    ['Himangsu Baruah', 'Nalbari'],
-    ['Rima Sarma',      'Dhubri'],
-  ];
-  const TEXTS = [
-    'Excellent study material! Ekdom helpful hoise exam preparation t. Highly recommend all students ke.',
-    'Crystal clear explanations. Coaching notes r thekio bhalo lagil. Worth every rupee!',
-    'PDF ti khub well structured. Last minute revision r babé perfect. Aro PDF kinibo etia.',
-    'Simple language t explain kora, okol padile bujha jai. Assam r students r babé ideal.',
-    'Previous year questions gulo cover kora ase. Exam r age must buy kora uchit.',
-    'Chapters wise breakdown ase, khub help korse. 3-4 ghonta t porhibo parisa.',
-    'Quality content, no filler. Exactly what I needed for my board preparation.',
-    'Teacher r notes r thekio comprehensive. Smart charts and quick tips included.',
-    'Downloaded it night before exam — covered everything. Scored well! Grateful.',
-    'Trusted source, verified content. Language simple, diagrams helpful.',
-  ];
-
-  // Pick 3–5 unique reviews seeded by pdfId
-  const reviews = [];
-  const usedNames = new Set();
-  for (let i = 0; i < revCount; i++) {
-    let ni = Math.floor(s(20 + i) * NAMES.length);
-    while (usedNames.has(ni)) ni = (ni + 1) % NAMES.length;
-    usedNames.add(ni);
-    const [name, loc] = NAMES[ni];
-    const ti = Math.floor(s(30 + i) * TEXTS.length);
-    const starRoll = s(40 + i);
-    const star = starRoll < 0.55 ? 5 : starRoll < 0.85 ? 4 : 3;
-    // Fake date: 3–90 days ago, deterministic
-    const daysAgo = 3 + Math.floor(s(50 + i) * 87);
-    const d = new Date(); d.setDate(d.getDate() - daysAgo);
-    reviews.push({ name, loc, star, text: TEXTS[ti], date: d });
-  }
-
-  return { avgRating, revCount, dist, baseDownloads, reviews };
-}
-
+/* ── MARKETING MODE REMOVED (Sep 2026 P1 fix) ─────────────────────────
+   _pdpSeed()/_pdpMarketingData() fabricated per-PDF download counts,
+   purchase counts, ratings, rating distributions and fake Assam-student
+   review cards, and were ADDED on top of real counts in real-data mode.
+   They are deleted outright — the PDP now shows only verified DB values
+   (downloads / purchased_pdfs / pdf_reviews) and hides missing metrics. */
 async function _pdpLoadLiveStats(pdfId) {
   const client = window.supabaseClient;
   if (!client || !pdfId) return;
@@ -22568,26 +22671,18 @@ async function _pdpLoadLiveStats(pdfId) {
     const revCount   = revRes.error   ? null : (revRes.count   ?? 0);
     const revRows    = revRowsRes.error ? [] : (revRowsRes.data || []);
 
-    // ── MARKETING MODE ──────────────────────────────────────────────────
-    // Trigger: no real downloads AND no real reviews yet (fresh/upcoming PDF)
-    const isMarketing = (dlCount === 0 || dlCount === null) && (revCount === 0 || revCount === null);
+    /* ── HONEST MODE (Sep 2026 P1 fix) ────────────────────────────────
+       The previous "marketing mode" fabricated, per PDF:
+         • a seeded fake download base (80–850)
+         • fake purchases (~65% of the fake base)
+         • a fake 4.2–4.9 rating with a fake distribution
+         • 3–5 fake "Sample Review" cards with fake names/dates
+       and even in REAL data mode it ADDED the fake base on top of real
+       downloads/purchases. All of that is removed: only verified DB rows
+       are displayed, and missing metrics are hidden rather than invented.
+       _pdpApplyLiveStats already guards each chip behind `> 0`, so a PDF
+       with no real activity shows no download/student/rating claims. */
 
-    if (isMarketing) {
-      const mkt = _pdpMarketingData(pdfId);
-      // Display = fake base (seeded) — no real downloads yet so no addition needed
-      _pdpApplyLiveStats({
-        dlCount:    mkt.baseDownloads,
-        purchCount: Math.floor(mkt.baseDownloads * 0.65),  // ~65% of downloads = purchases
-        revCount:   mkt.revCount,
-        avgRating:  mkt.avgRating,
-        ratingDist: mkt.dist,
-        revRows:    null,           // use fake review cards below
-        fakeReviews: mkt.reviews,
-      });
-      return;
-    }
-
-    // ── REAL DATA MODE ──────────────────────────────────────────────────
     // Real reviews exist → compute real avg
     let avgRating = null;
     let ratingDist = {};
@@ -22599,14 +22694,9 @@ async function _pdpLoadLiveStats(pdfId) {
       }
     }
 
-    // Real downloads: add fake base so counter doesn't reset to 0 after marketing phase
-    const mkt = _pdpMarketingData(pdfId);
-    const displayDl    = (dlCount    || 0) + mkt.baseDownloads;
-    const displayPurch = (purchCount || 0) + Math.floor(mkt.baseDownloads * 0.65);
-
     _pdpApplyLiveStats({
-      dlCount:    displayDl,
-      purchCount: displayPurch,
+      dlCount:    (dlCount    || 0),   // real only — no seeded base
+      purchCount: (purchCount || 0),   // real only — no seeded base
       revCount,
       avgRating,
       ratingDist,
@@ -22686,32 +22776,7 @@ function _pdpApplyLiveStats({ dlCount, purchCount, revCount, avgRating, ratingDi
 
     // ── Review cards: fake (marketing) or real ──
     if (list) {
-      if (fakeReviews && fakeReviews.length > 0) {
-        // Marketing mode: seeded realistic Assam student reviews
-        list.innerHTML = fakeReviews.map(r => {
-          const rStars = '★'.repeat(r.star) + '☆'.repeat(5 - r.star);
-          const initials = r.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
-          const dateStr = r.date.toLocaleDateString('en-IN',{year:'numeric',month:'short',day:'numeric'});
-          return `<div class="pdp-review-card">
-            <div class="pdp-rev-header">
-              <div class="pdp-rev-avatar">${initials}</div>
-              <div class="pdp-rev-meta">
-                <div class="pdp-rev-name" style="display:flex;align-items:center;gap:6px;">
-                  ${_esc(r.name)}
-                  <span class="pdp-rev-sample-badge">Sample Review</span>
-                </div>
-                <div class="pdp-rev-loc">📍 ${_esc(r.loc)}</div>
-              </div>
-              <div class="pdp-rev-stars">${rStars}</div>
-            </div>
-            <div class="pdp-rev-text">${_esc(r.text)}</div>
-          </div>`;
-        }).join('');
-
-        // Write a Review form (also shown in marketing mode)
-        const writeWrapMkt = document.getElementById('pdpWriteReviewWrap');
-        if (writeWrapMkt) _pdpRenderReviewForm(writeWrapMkt);
-      } else if (revRows && revRows.length > 0) {
+      if (revRows && revRows.length > 0) {
         // Real data mode: actual Supabase review rows
         list.innerHTML = revRows.map(r => {
           const rStars   = '★'.repeat(Math.round(r.rating||0)) + '☆'.repeat(5-Math.round(r.rating||0));
@@ -22743,8 +22808,20 @@ function _pdpApplyLiveStats({ dlCount, purchCount, revCount, avgRating, ratingDi
     if (writeWrap) {
       _pdpRenderReviewForm(writeWrap);
     }
+  } else if (revCount === 0) {
+    /* Honest empty state (Sep 2026): the PDP used to fill this gap with 3-5
+       fabricated "Sample Review" cards. Now a PDF with zero real reviews says
+       so plainly and offers the real review form. */
+    const section = document.getElementById('pdpReviewsSection');
+    const summary = document.getElementById('pdpReviewsSummary');
+    const list    = document.getElementById('pdpReviewsList');
+    if (section) section.style.display = '';
+    if (summary) summary.innerHTML = '';
+    if (list) list.innerHTML = '<div style="text-align:center;padding:26px 12px;color:var(--text2,#9aa3b2);font-size:.85rem">No reviews yet — be the first to share your experience.</div>';
+    const writeWrap0 = document.getElementById('pdpWriteReviewWrap');
+    if (writeWrap0) _pdpRenderReviewForm(writeWrap0);
   }
-  // No reviews → section stays display:none
+  // Reviews query failed / no data → section stays display:none (no claims made)
 }
 
 // ── Review submission form ───────────────────────────────────────────────
@@ -43925,18 +44002,26 @@ function _srvRender(list){
   var avgEl=document.getElementById('srvAvgNum');
   var starsEl=document.getElementById('srvStarsRow');
   var countEl=document.getElementById('srvCountTxt');
-  var avg=_srvAvg(list);
-  if(avgEl) avgEl.textContent=avg.toFixed(1);
-  if(starsEl) starsEl.textContent=_srvStars(avg);
+  /* Truthful labelling (Sep 2026): only reviews loaded from pdf_reviews
+     (verified purchases) are "verified". The curated SRV_REVIEWS wall is
+     sample content — each card is badged "Sample Review" — so the header
+     must never claim the whole wall is verified. pdf_reviews is currently
+     empty, so this renders as "N sample reviews" until real ones exist. */
+  var vCount=0;
+  for(var i=0;i<list.length;i++) if(list[i].verified) vCount++;
+  var sCount=list.length-vCount;
+  /* P1 fix (Sep 2026): the numeric average is computed from VERIFIED reviews
+     ONLY. A "4.9" averaged over sample cards would be a fabricated rating. */
+  if(vCount>0){
+    var realOnly=list.filter(function(x){return x.verified;});
+    var avg=_srvAvg(realOnly);
+    if(avgEl){ avgEl.textContent=avg.toFixed(1); avgEl.style.display=''; }
+    if(starsEl){ starsEl.textContent=_srvStars(avg); starsEl.style.display=''; }
+  } else {
+    if(avgEl) avgEl.style.display='none';
+    if(starsEl) starsEl.style.display='none';
+  }
   if(countEl){
-    /* Truthful labelling (Sep 2026): only reviews loaded from pdf_reviews
-       (verified purchases) are "verified". The curated SRV_REVIEWS wall is
-       sample content — each card is badged "Sample Review" — so the header
-       must never claim the whole wall is verified. pdf_reviews is currently
-       empty, so this renders as "N sample reviews" until real ones exist. */
-    var vCount=0;
-    for(var i=0;i<list.length;i++) if(list[i].verified) vCount++;
-    var sCount=list.length-vCount;
     countEl.textContent = (vCount&&sCount) ? vCount+' verified · '+sCount+' sample reviews'
                        : vCount           ? vCount+' verified reviews'
                        :                   list.length+' sample reviews';
@@ -45466,6 +45551,22 @@ window.addEventListener('load', function() {
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function fm(t,q) { if(!t) return false; return String(t).toLowerCase().includes(String(q).toLowerCase()); }
 
+  /* P0 fix (Sep 2026): the old code did `var sb = window.supabaseClient; if (sb){...}`.
+     On a cold load the client often isn't ready yet → jobs & affairs were SILENTLY
+     skipped and search looked like "no job matches" (error masked as empty result).
+     Now we await the client briefly — one slow source still never blocks the rest. */
+  function _gsWaitClient(maxMs) {
+    return new Promise(function(resolve) {
+      if (window.supabaseClient) return resolve(window.supabaseClient);
+      var started = Date.now();
+      (function poll() {
+        if (window.supabaseClient) return resolve(window.supabaseClient);
+        if (Date.now() - started >= (maxMs || 4000)) return resolve(null);
+        setTimeout(poll, 200);
+      })();
+    });
+  }
+
   window.gsSetType = function(type) {
     _currentType = type;
     document.querySelectorAll('.gs-type-tab').forEach(function(tab) {
@@ -45532,10 +45633,12 @@ window.addEventListener('load', function() {
     if (_currentType === 'all' || _currentType === 'job') {
       if (query) {
         try {
-          var sb = window.supabaseClient;
+          var sb = await _gsWaitClient();
           if (sb) {
             var jr = await Promise.race([
-              sb.from('jobs').select('id, title, org, organization, location, job_type, published_at').eq('active', true).or('title.ilike.%'+query+'%,org.ilike.%'+query+'%,organization.ilike.%'+query+'%').order('published_at',{ascending:false,nullsFirst:false}).limit(10),
+              /* P0 fix (16 Sep 2026): 'org' is not a real column — the old query
+                 42703'd and was silently swallowed, so jobs NEVER matched. */
+              sb.from('jobs').select('id, title, organization, location, job_type, published_at').eq('active', true).or('title.ilike.%'+query+'%,organization.ilike.%'+query+'%').order('published_at',{ascending:false,nullsFirst:false}).limit(10),
               new Promise(function(_, reject) { setTimeout(function() { reject(new Error('timeout')); }, 3000); })
             ]);
             if (jr && jr.data) grouped.job = jr.data;
@@ -45558,7 +45661,7 @@ window.addEventListener('load', function() {
     if (_currentType === 'all' || _currentType === 'affair') {
       if (query) {
         try {
-          var sb2 = window.supabaseClient;
+          var sb2 = await _gsWaitClient();
           if (sb2) {
             var ar = await Promise.race([
               sb2.from('current_affairs').select('id, title, created_at').eq('is_deleted', false).or('title.ilike.%'+query+'%').order('created_at',{ascending:false}).limit(10),
@@ -45587,8 +45690,29 @@ window.addEventListener('load', function() {
     var hasAny = false;
     Object.keys(displayGroups).forEach(function(k){ if (displayGroups[k].length > 0) hasAny = true; });
 
+    /* P0 fix: if the PDF pipeline itself failed, a "no results" empty state
+       would be a lie — the PDF source was never queried. Show the honest
+       error with Retry instead. Other sources still render what they have. */
+    if (!hasAny && window._libFetchFailed) {
+      if (de) de.style.display = 'none';
+      if (dl) dl.style.display = 'none';
+      if (derr) {
+        derr.innerHTML = '📡 We couldn\'t reach the library, so PDF results may be missing. <button onclick="window.pdfListReload ? window.pdfListReload() : location.reload()" style="border:0;background:none;color:#fca5a5;font-weight:700;cursor:pointer;text-decoration:underline">Retry</button>';
+        derr.style.display = 'block';
+      }
+      if (dr) dr.innerHTML = '';
+      return;
+    }
     if (!hasAny) { if (de) de.style.display = 'block'; if (dr) dr.innerHTML = ''; return; }
     if (de) de.style.display = 'none';
+    if (window._libFetchFailed) {
+      /* Partial failure with some non-PDF matches → show them, but say clearly
+         that PDF results are unavailable right now. */
+      var notice = document.createElement('div');
+      notice.style.cssText = 'margin:0 0 14px;padding:10px 14px;border-radius:12px;background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.35);color:#fcd34d;font-size:.8rem';
+      notice.innerHTML = '⚠️ The PDF library couldn\'t load, so PDF matches aren\'t shown. <button onclick="window.pdfListReload ? window.pdfListReload() : location.reload()" style="border:0;background:none;color:#fca5a5;font-weight:700;cursor:pointer;text-decoration:underline">Retry</button>';
+      dr.insertBefore(notice, dr.firstChild);
+    }
 
     var typeConfig = {
       pdf:   { icon:'\uD83D\uDCC4', label:'PDFs', seeAll:"navigate('library')" },

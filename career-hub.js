@@ -57,8 +57,19 @@ async function chLoadJobs(notify) {
   if (lst && !s.jobs.length) { lst.innerHTML = _skelHTML(5); lst.style.display = ''; }
   if (ldg) ldg.style.display = 'none';
 
-  const sb = window.supabaseClient;
-  if (!sb) { _chErr('Supabase not available.'); if (lst) lst.innerHTML = ''; return; }
+  /* P0 fix (Sep 2026): the old code errored immediately with "Supabase not
+     available" when the client wasn't ready YET (slow CDN/cold cache), leaving
+     an honest-looking error for a non-error. Now we wait briefly — the client
+     normally appears within milliseconds because supabase.js loads first. */
+  let sb = window.supabaseClient;
+  if (!sb) {
+    const started = Date.now();
+    while (!sb && Date.now() - started < 8000) {
+      await new Promise(r => setTimeout(r, 250));
+      sb = window.supabaseClient;
+    }
+    if (!sb) { _chErr('Supabase not available.'); if (lst) lst.innerHTML = ''; return; }
+  }
 
   try {
     const { data, error } = await sb
