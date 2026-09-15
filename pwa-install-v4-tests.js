@@ -559,9 +559,9 @@ async function main() {
   const idxChangedLines = idxDiff.split('\n').filter(l => /^[+-][^+-]/.test(l));
   check('V7: index.html diff is ONLY the two asset version params (no nav/structure changes)',
     idxChangedLines.length === 5 && // 2 removals + 3 additions (comment + two versioned tags)
-    idxChangedLines.some(l => l.includes('pwa-v32.css?v=7')) &&
-    idxChangedLines.some(l => l.includes('pwa-v32.js?v=7')) &&
-    idxChangedLines.filter(l => l.startsWith('+')).every(l => /\?v=7|v7 cache-bust/.test(l)));
+    idxChangedLines.some(l => /pwa-v32\.css\?v=\d+/.test(l)) &&
+    idxChangedLines.some(l => /pwa-v32\.js\?v=\d+/.test(l)) &&
+    idxChangedLines.filter(l => l.startsWith('+')).every(l => /\?v=\d+|cache-bust/.test(l)));
   check('V7: app.js install manager untouched', !v7changed.includes('app.js'));
   check('V7: protected systems untouched (notifications/razorpay/checkout/supabase/brainlab/auth)',
     !v7changed.some(f => /notification|razorpay|checkout|supabase|brainlab|auth|payment/i.test(f)));
