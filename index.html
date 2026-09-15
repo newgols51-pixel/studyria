@@ -8896,10 +8896,6 @@ function studyriaApp() {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
       </div>
-      <!-- Download App -->
-      <button class="mh-action-btn" onclick="triggerPWAInstall()" aria-label="Download App" title="Download App" id="mhDownloadBtn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      </button>
       <!-- Theme Toggle -->
       <button class="mh-action-btn" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle Theme" id="mhThemeBtn">
         <svg width="18" height="18" id="mhThemeIcon"><use href="#ic-sun"/></svg>
@@ -9065,10 +9061,6 @@ function studyriaApp() {
         <!-- Wishlist (hidden, moved to menu) -->
         <button class="icon-btn" id="dhWishlistBtn" onclick="navigate('wishlist')" aria-label="Wishlist" title="My Wishlist" style="display:none">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-        </button>
-        <!-- PWA install (hidden, moved to menu) -->
-        <button class="icon-btn" id="pwaInstallBtn" title="Install Studyria App" style="display:none" onclick="if(window.PWA&&PWA.installClick)PWA.installClick();else navigate('pwa')">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </button>
         <!-- Search button (hidden, search is now in header) -->
         <button class="icon-btn" id="dhSearchBtn" onclick="dhOpenSearch()" aria-label="Search" title="Search PDFs" style="display:none">

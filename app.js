@@ -51,9 +51,10 @@ const _state = {
   updateCheckTimer: null,
   // V4 — canonical install event trail (real signals only, per-device):
   installEvents: {
-    promptSeen:     false,   // beforeinstallprompt actually captured
-    promptAt:       null,    // timestamp
-    installedEvent: false   // appinstalled actually fired
+    promptSeen:      false,  // beforeinstallprompt actually captured
+    promptAt:        null,   // timestamp
+    promptConsumed:  false,  // prompt() already called on the captured event
+    installedEvent:  false   // appinstalled actually fired
   }
 };
 
@@ -427,15 +428,22 @@ function _installBrowserInfo() {
   var isSamsung = /SamsungBrowser/.test(ua);
   var isOpera = /OPR\//.test(ua);
   var isChrome = /Chrome\/|Chromium\//.test(ua) && !isEdge && !isSamsung && !isOpera && !isOperaMini;
+  // V5: in-app browsers / WebViews (Instagram, FB, Line, WebView "wv)", TikTok,
+  // Snapchat, Telegram, in-app Chrome Custom Tabs) NEVER expose the native
+  // beforeinstallprompt API the way a real browser does — detect honestly.
+  var isAndroidWebView = isAndroid && /;\s*wv\)/.test(ua);
+  var isInAppBrowser = isAndroidWebView || /FBAN|FBAV|Instagram|Line\/|\bSnapchat\b|TikTok|Twitter|Pinterest|LinkedInIn|MicroMessenger|MiuiBrowser.*\bwv\b/i.test(ua);
   // Chromium-family browsers implement beforeinstallprompt (Chrome, Edge,
   // Samsung Internet, Opera). Firefox / iOS / Opera Mini genuinely do NOT.
-  var nativePromptLikely = !isIOS && !isIPadOS && !isFirefox && !isOperaMini &&
+  // In-app browsers/WebView never get the real flow → honest manual state.
+  var nativePromptLikely = !isIOS && !isIPadOS && !isFirefox && !isOperaMini && !isInAppBrowser &&
     (isChrome || isEdge || isSamsung || isOpera || (isAndroid && !isFirefox));
   var platform = isIOS || isIPadOS ? 'ios' : isAndroid ? 'android' : /Windows|Macintosh|Linux|CrOS/.test(ua) ? 'desktop' : 'other';
   var browser = isIOS || isIPadOS ? 'safari-ios' : isFirefox ? 'firefox' : isEdge ? 'edge'
     : isSamsung ? 'samsung' : isOpera ? 'opera' : isOperaMini ? 'opera-mini'
     : isChrome ? 'chrome' : 'other';
   return { isIOS: isIOS || isIPadOS, isAndroid: isAndroid, isFirefox: isFirefox,
+           inAppBrowser: isInAppBrowser, androidWebView: isAndroidWebView,
            nativePromptLikely: nativePromptLikely, platform: platform, browser: browser };
 }
 
@@ -451,6 +459,7 @@ function setupInstallPrompt() {
   if (window._pwaInstallPrompt) {
     _state.deferredPrompt = window._pwaInstallPrompt;
     _state.installEvents.promptSeen = true;
+    _state.installEvents.promptConsumed = false;
     _state.installEvents.promptAt = window.__pwaInstallLog && window.__pwaInstallLog.length
       ? window.__pwaInstallLog[window.__pwaInstallLog.length - 1].t : Date.now();
     console.log('[PWA] beforeinstallprompt already captured (early listener) ✅');
@@ -466,6 +475,7 @@ function setupInstallPrompt() {
     _state.deferredPrompt = p;
     window._pwaInstallPrompt = p;
     _state.installEvents.promptSeen = true;
+    _state.installEvents.promptConsumed = false; // fresh event, usable once
     _state.installEvents.promptAt = Date.now();
     console.log('[PWA] beforeinstallprompt captured ✅ — native prompt ready');
     _updateInstallButtonVisibility();
@@ -481,7 +491,7 @@ function setupInstallPrompt() {
     document.documentElement.setAttribute('data-pwa-installed', 'true');
 
     _markBurgerInstalled();
-    ['pwaInstallBtn', 'pwaHmInstallBtn', 'installAppBtn'].forEach(function(id) {
+    ['pwaHmInstallBtn'].forEach(function(id) {
       var btn = document.getElementById(id);
       if (btn) btn.style.display = 'none';
     });
@@ -607,9 +617,10 @@ function _isAlreadyInstalled() {
  * Safe to call multiple times.
  */
 function _updateInstallButtonVisibility() {
-  // Both pwaHmInstallBtn (burger menu) and pwaInstallBtn (header) now navigate
-  // to the App & Updates page. Show them whenever the app is not installed.
-  ['pwaHmInstallBtn', 'pwaInstallBtn'].forEach(function(id) {
+  // V5: the header install icons (mhDownloadBtn / pwaInstallBtn) are REMOVED —
+  // the App page's 📲 Install App is the one true install CTA. Only legacy
+  // in-menu items (if a design re-adds one) are managed here.
+  ['pwaHmInstallBtn'].forEach(function(id) {
     var btn = document.getElementById(id);
     if (!btn) return;
 
@@ -682,6 +693,7 @@ async function promptInstall() {
 
   try {
     prompt.prompt();
+    _state.installEvents.promptConsumed = true; // event can never be re-used
     var result = await prompt.userChoice;
     console.log('[PWA] Install prompt outcome:', result.outcome);
 
@@ -709,7 +721,7 @@ async function promptInstall() {
  */
 function _markBurgerInstalled() {
   // Hide all known install buttons
-  ['pwaHmInstallBtn', 'pwaInstallBtn', 'installAppBtn'].forEach(function(id) {
+  ['pwaHmInstallBtn'].forEach(function(id) {
     var btn = document.getElementById(id);
     if (!btn) return;
     btn.style.display = 'none';
@@ -839,32 +851,91 @@ function showInstallHelp() {
  *     Firefox, Opera Mini, embedded WebViews): honest platform-specific
  *     install steps — the real, supported mechanism there.
  */
+/**
+ * _noPromptFallback — V5: ONLY for browsers that genuinely have no native
+ * install flow (Firefox, iOS Safari, Opera Mini, in-app browsers/WebView).
+ * Chromium browsers are NEVER routed here — for them installClick runs the
+ * active real-prompt attempt (_awaitLatePrompt) instead.
+ */
 function _noPromptFallback() {
-  var info = _installBrowserInfo();
-  if (info.nativePromptLikely) {
-    if (typeof showToast === 'function') {
-      showToast('Chrome hasn\'t offered the install prompt yet — wait a few seconds and tap Install App again, or use your browser menu (⋮ → Install app).', 'info');
-    } else {
-      console.log('[PWA] install prompt not ready yet on a Chromium browser — retry later');
-    }
-    return;
-  }
   showInstallHelp();
 }
 
 /**
- * installClick — the ONE centralized CTA handler (V4 §9). Every install
- * surface (header button, burger menu item, mhDownloadBtn, App page)
- * routes through this same handler. No duplicate install logic exists.
- *   INSTALLED              → no-op (CTA hidden anyway)
- *   prompt available       → REAL native prompt, from this user gesture
- *   prompt not available   → honest fallback (_noPromptFallback)
+ * _awaitLatePrompt — V5 §4/§9: ACTIVE attempt, run INSIDE the Install App
+ * user gesture. When Chrome has not (yet) dispatched beforeinstallprompt at
+ * tap time, nudge a service-worker update (this re-triggers Chrome's
+ * installability evaluation) and poll for the capture for up to maxWaitMs.
+ * Chrome's transient user-activation window (~5s) keeps prompt() legal for
+ * a call made this close to the tap — so if the event arrives, the user
+ * STILL gets the REAL native install dialog from this same gesture.
+ * Returns a Promise<boolean>: true when a real prompt object is now held.
  */
-function installClick() {
+function _awaitLatePrompt(maxWaitMs) {
+  maxWaitMs = maxWaitMs || window.__pwaLatePromptWaitMs || 3500;
+  return new Promise(function (resolve) {
+    // Nudge Chrome's installability re-evaluation (never blocks, never throws)
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) {
+        navigator.serviceWorker.getRegistration()
+          .then(function (r) { if (r && r.update) r.update().catch(function () {}); })
+          .catch(function () {});
+      }
+    } catch (_) {}
+    var t0 = Date.now();
+    (function poll() {
+      if (window._pwaInstallPrompt || _state.deferredPrompt) { resolve(true); return; }
+      if (Date.now() - t0 >= maxWaitMs) { resolve(false); return; }
+      setTimeout(poll, 150);
+    })();
+  });
+}
+
+/**
+ * _reportWithheldPrompt — V5 §9: reached ONLY after the active attempt
+ * failed on a Chromium browser that passes every installability criterion
+ * (verified by installDiagnostics). At that point diagnostics have PROVEN
+ * Chrome itself is withholding beforeinstallprompt on this device/profile.
+ * Report the exact truthful reason — never "wait a few seconds", never a
+ * fake prompt, never a silent no-op.
+ */
+async function _reportWithheldPrompt() {
+  var d = await installDiagnostics();
+  var msg = 'Studyria is fully install-ready — Chrome itself is currently '
+    + 'withholding the install prompt on this device. '
+    + (d.reason === 'chrome-withheld-beforeinstallprompt'
+        ? 'This is usually Chrome\'s temporary suppression after a recent dismissal/uninstall of the app; it lifts on later visits. The browser menu (⋮ → Install app) may still work.'
+        : 'Reason: ' + d.reason);
+  console.warn('[PWA] Native prompt withheld by the browser:', d.reason);
+  if (typeof showToast === 'function') showToast(msg, 'info');
+}
+
+/**
+ * installClick — the ONE centralized CTA handler (V5). Every install
+ * surface (App page CTA, legacy in-menu items) routes through this same
+ * handler. No duplicate install logic exists.
+ *   INSTALLED                     → no-op (CTA hidden anyway)
+ *   captured prompt               → REAL native prompt, from this gesture
+ *   Chromium, prompt not in hand  → ACTIVE attempt (_awaitLatePrompt):
+ *                                   if Chrome supplies the event within the
+ *                                   gesture window → REAL native prompt;
+ *                                   else truthful withheld reason (§7/§9)
+ *   genuinely unsupported browser → honest platform steps (§10)
+ */
+async function installClick() {
   if (_isAlreadyInstalled()) return; // never prompt when installed
   var prompt = window._pwaInstallPrompt || _state.deferredPrompt;
   if (prompt) { promptInstall(); return; }
-  _noPromptFallback();
+
+  var info = _installBrowserInfo();
+  if (!info.nativePromptLikely || info.inAppBrowser) { _noPromptFallback(); return; }
+
+  // Chromium + installable + no captured event YET → active real attempt
+  var got = await _awaitLatePrompt();
+  if (got) { promptInstall(); return; }
+
+  // Proven-withheld path: diagnostics-backed exact reason (§7)
+  await _reportWithheldPrompt();
 }
 
 /**
@@ -882,19 +953,21 @@ function installState() {
   var swSupported = 'serviceWorker' in navigator;
   var state = installed ? 'installed'
     : promptAvailable ? 'prompt-available'
-    : (info.nativePromptLikely && swSupported) ? 'prompt-not-yet-available'
+    : (info.nativePromptLikely && !info.inAppBrowser && swSupported) ? 'prompt-not-yet-available'
     : swSupported ? 'unsupported-manual'
     : 'unsupported';
   return {
     state: state,
     installed: installed,
     promptAvailable: promptAvailable,
+    promptConsumed: _state.installEvents.promptConsumed,
     promptSeen: _state.installEvents.promptSeen,
     promptAt: _state.installEvents.promptAt,
     installedEvent: _state.installEvents.installedEvent,
     unsupported: state === 'unsupported' || state === 'unsupported-manual',
     browser: info.browser,
     platform: info.platform,
+    inAppBrowser: info.inAppBrowser,
     standalone: standalone,
     displayMode: (window.matchMedia('(display-mode: standalone)').matches && 'standalone')
       || (window.matchMedia('(display-mode: fullscreen)').matches && 'fullscreen')
@@ -906,66 +979,152 @@ function installState() {
 }
 
 /**
- * installDiagnostics — V4 §4 runtime investigation, production-safe:
- * runs ONLY on demand (console: PWA.installDiagnostics()), never logs
- * automatically, exposes no secrets. Reports the exact conditions under
- * which beforeinstallprompt did or did not arrive on this device.
+ * installDiagnostics — V5 §8 machine-readable runtime diagnosis,
+ * production-safe: runs ONLY on demand (console: PWA.installDiagnostics()
+ * or automatically after a proven-withheld prompt), exposes no secrets.
+ * Verifies every real Chrome installability criterion (fetches the
+ * manifest + icons and reads REAL PNG dimensions), then reports the
+ * exact reason beforeinstallprompt did or did not arrive.
  */
 async function installDiagnostics() {
   var info = _installBrowserInfo();
   var d = {
-    userAgent: navigator.userAgent,
-    browserFamily: info.browser,
+    version: 5,
+    captured: null,          // beforeinstallprompt: captured / not captured
+    promptAvailable: null,  // prompt object currently held & unused
+    promptConsumed: null,    // prompt() already called on the captured event
+    installability: null,    // eligible / ineligible + per-criterion results
+    browser: info.browser,
     platform: info.platform,
-    protocol: location.protocol,
-    isSecureContext: window.isSecureContext,
-    promptSeen: _state.installEvents.promptSeen,
-    promptAt: _state.installEvents.promptAt,
-    promptAvailableNow: !!(window._pwaInstallPrompt || _state.deferredPrompt),
-    installedEvent: _state.installEvents.installedEvent,
-    installed: _isAlreadyInstalled(),
-    standalone: detectStandalone(),
     displayMode: null,
-    navigatorStandalone: window.navigator.standalone === true,
-    documentReferrer: document.referrer || '(empty)',
-    listenerMode: window.__pwaEarlyInstallCapture ? 'early-inline' : 'deferred-app-js',
-    eventLog: (window.__pwaInstallLog || []).slice()
+    appInstalled: null,
+    reason: null,           // exact reason
+    details: {}
   };
-  ['standalone', 'fullscreen', 'minimal-ui', 'browser'].forEach(function (m) {
-    if (!d.displayMode && window.matchMedia('(display-mode: ' + m + ')').matches) d.displayMode = m;
-  });
 
-  // Manifest check
+  var details = d.details;
+  details.userAgent = navigator.userAgent;
+  details.inAppBrowser = info.inAppBrowser;
+  details.iframe = (function () { try { return window.top !== window.self; } catch (_) { return true; } })();
+  details.protocol = location.protocol;
+  details.isSecureContext = window.isSecureContext;
+  details.origin = location.origin;
+  details.promptSeen = _state.installEvents.promptSeen;
+  details.promptAt = _state.installEvents.promptAt;
+  details.installedEvent = _state.installEvents.installedEvent;
+  details.navigatorStandalone = window.navigator.standalone === true;
+  details.documentReferrer = document.referrer || '(empty)';
+  details.listenerMode = window.__pwaEarlyInstallCapture ? 'early-inline' : 'deferred-app-js';
+  details.eventLog = (window.__pwaInstallLog || []).slice();
+
+  d.displayMode = (window.matchMedia('(display-mode: standalone)').matches && 'standalone')
+    || (window.matchMedia('(display-mode: fullscreen)').matches && 'fullscreen')
+    || (window.matchMedia('(display-mode: minimal-ui)').matches && 'minimal-ui')
+    || (window.matchMedia('(display-mode: browser)').matches ? 'browser' : 'unknown');
+  d.appInstalled = _isAlreadyInstalled();
+  d.captured = !!(window._pwaInstallPrompt || _state.deferredPrompt) || _state.installEvents.promptSeen;
+  d.promptAvailable = !!(window._pwaInstallPrompt || _state.deferredPrompt);
+  d.promptConsumed = _state.installEvents.promptConsumed;
+
+  // ── Installability criteria — verified, not assumed (V5 §7) ──
+  var criteria = { manifestFetch: false, manifestMime: false, manifestValid: false,
+                   iconsDeclared: false, iconsFetchable: false, iconDims: false,
+                   https: false, inRealBrowser: false };
+  var iconResults = [];
+
+  criteria.https = location.protocol === 'https:' && window.isSecureContext;
+
   try {
     var r = await fetch('/manifest.json', { cache: 'no-store' });
-    d.manifestHttp = r.status;
+    criteria.manifestFetch = r.ok;
+    var ct = r.headers.get('content-type') || '';
+    criteria.manifestMime = /json/.test(ct);
+    details.manifestHttp = r.status;
+    details.manifestContentType = ct;
     var mf = await r.json();
-    d.manifest = {
-      name: mf.name || null, short_name: mf.short_name || null, id: mf.id || null,
-      start_url: mf.start_url || null, scope: mf.scope || null, display: mf.display || null,
-      icons: (mf.icons || []).map(function (i) { return (i.sizes || '') + '/' + (i.type || 'any'); })
-    };
+    criteria.manifestValid = !!(mf.name && mf.short_name && mf.start_url &&
+      (mf.display === 'standalone' || mf.display === 'fullscreen' || mf.display === 'minimal-ui' ||
+       (mf.display_override || []).some(function (x) { return x === 'standalone' || x === 'fullscreen' || x === 'minimal-ui'; })));
+    details.manifest = { name: mf.name || null, short_name: mf.short_name || null,
+      id: mf.id || null, start_url: mf.start_url || null, scope: mf.scope || null,
+      display: mf.display || null };
+    // Chrome requirement: purpose-any icons >=192px AND >=512px declared
+    var need = [192, 512], have = {};
+    (mf.icons || []).forEach(function (ic) {
+      var m = /^(\d+)x(\d+)/.exec(String(ic.sizes || '').trim());
+      if (!m) return;
+      var purpose = String(ic.purpose === undefined ? 'any' : ic.purpose);
+      if (purpose.indexOf('any') === -1) return; // maskable-only doesn't satisfy the any-requirement
+      var size = parseInt(m[1], 10);
+      need.forEach(function (n) { if (size >= n) have[n] = ic.src; });
+    });
+    criteria.iconsDeclared = !!(have[192] && have[512]);
+    details.iconsDeclared = { any192: have[192] || null, any512: have[512] || null };
+    // fetch the declared icons and read REAL pixel dimensions (PNG IHDR)
+    var allDimsOk = true;
+    for (var ni = 0; ni < need.length; ni++) {
+      var n = need[ni];
+      if (!have[n]) { allDimsOk = false; continue; }
+      try {
+        var ir = await fetch(have[n], { cache: 'no-store' });
+        var ict = ir.headers.get('content-type') || '';
+        var buf = new Uint8Array(await ir.arrayBuffer());
+        var isPng = buf.length > 24 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47;
+        var w = isPng ? (((buf[16] << 24) >>> 0) | (buf[17] << 16) | (buf[18] << 8) | buf[19]) >>> 0 : 0;
+        var ok = ir.ok && /^image\//.test(ict) && w >= n;
+        iconResults.push({ size: n, src: have[n], http: ir.status, contentType: ict, realWidth: w, ok: ok });
+        if (!ok) allDimsOk = false;
+      } catch (e) { iconResults.push({ size: n, src: have[n], error: (e && e.message) }); allDimsOk = false; }
+    }
+    criteria.iconsFetchable = iconResults.length > 0 && iconResults.every(function (x) { return x.ok; });
+    criteria.iconDims = allDimsOk && criteria.iconsDeclared;
+    details.iconChecks = iconResults;
   } catch (e) {
-    d.manifestHttp = 'fetch-failed: ' + (e && e.message);
+    details.manifestHttp = 'fetch-failed: ' + (e && e.message);
   }
 
-  // Service worker check
   try {
     var reg = await navigator.serviceWorker.getRegistration();
-    d.swRegistration = reg ? (reg.active ? 'active' : reg.installing ? 'installing' : reg.waiting ? 'waiting' : 'registered') : 'none';
-    d.swController = navigator.serviceWorker.controller ? 'controlled' : 'no-controller';
-    d.swScope = reg ? reg.scope : null;
-  } catch (e) {
-    d.swRegistration = 'unsupported';
-  }
+    details.swRegistration = reg ? (reg.active ? 'active' : reg.installing ? 'installing' : reg.waiting ? 'waiting' : 'registered') : 'none';
+    details.swController = navigator.serviceWorker.controller ? 'controlled' : 'no-controller';
+    details.swScope = reg ? reg.scope : null;
+    details.swScript = (reg && reg.active) ? reg.active.scriptURL : null;
+    // NOTE: Chrome no longer requires a SW for installability — this is
+    // reported for completeness, not as an installability gate.
+  } catch (e) { details.swRegistration = 'unsupported'; }
 
-  d.verdict = d.installed ? 'INSTALLED — install CTA correctly hidden'
-    : d.promptAvailableNow ? 'PROMPT AVAILABLE — native install ready, CTA triggers it'
-    : (info.nativePromptLikely && d.swRegistration !== 'none' && d.swRegistration !== 'unsupported')
-      ? 'ELIGIBLE BUT NO PROMPT YET — Chrome has not supplied beforeinstallprompt at this moment; this is browser-timing (early capture holds it if/when it fires). If it never fires, Chrome itself withheld it (e.g. recently uninstalled) — not an app defect.'
-    : 'BROWSER WITHOUT NATIVE INSTALL FLOW — honest manual fallback is correct here';
+  criteria.inRealBrowser = !info.inAppBrowser && !details.iframe;
 
-  console.log('[PWA] Install diagnostics:', d);
+  d.installability = {
+    eligible: criteria.manifestFetch && criteria.manifestMime && criteria.manifestValid &&
+              criteria.iconsDeclared && criteria.iconsFetchable && criteria.iconDims &&
+              criteria.https && criteria.inRealBrowser,
+    criteria: criteria
+  };
+
+  // ── Exact reason (V5 §8) ──
+  d.reason =
+    d.appInstalled ? 'already-installed' :
+    d.promptAvailable ? 'prompt-captured-ready' :
+    !criteria.inRealBrowser ? (details.iframe ? 'inside-iframe' : 'in-app-browser-or-webview') :
+    !info.nativePromptLikely ? 'browser-has-no-native-install-flow:' + info.browser :
+    !criteria.https ? 'not-https-or-insecure-context' :
+    !criteria.manifestFetch ? 'manifest-fetch-failed' :
+    !criteria.manifestMime ? 'manifest-wrong-mime-type' :
+    !criteria.manifestValid ? 'manifest-invalid-missing-required-fields' :
+    !criteria.iconsDeclared ? 'manifest-missing-192-or-512-any-icons' :
+    !criteria.iconsFetchable ? 'install-icons-not-fetchable-or-wrong-mime' :
+    !criteria.iconDims ? 'icon-real-dimensions-too-small' :
+    'chrome-withheld-beforeinstallprompt';
+  // If reason === 'chrome-withheld-beforeinstallprompt' with eligible:true,
+  // every app-side criterion passed and the early capture was armed from
+  // page start — Chrome itself chose not to dispatch the event. The most
+  // common causes are Chrome's suppression heuristics (recent dismissal of
+  // the prompt / recent uninstall of the WebAPK / low site engagement).
+  // Chrome exposes no API to query this suppression state — this diagnosis
+  // is the truthful boundary of what the page can know.
+
+  console.log('[PWA] Install diagnostics (V5):', d);
   return d;
 }
 
