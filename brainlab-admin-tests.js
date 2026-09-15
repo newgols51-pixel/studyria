@@ -38,7 +38,7 @@
       document.body.removeChild(ta);
     } catch (e) {}
   }
-  function normQ(t) { return String(t || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 120); }
+  function normQ(t) { return String(t || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '').slice(0, 120); }
   function djb2(str) { var h = 5381; for (var i = 0; i < str.length; i++) { h = ((h << 5) + h + str.charCodeAt(i)) >>> 0; } return h.toString(16).padStart(8, '0'); }
   function qhash(q) { return djb2(normQ(q[0]) + '|' + String(q[5] || '').toLowerCase()); }
   function BT() { return window.BrainLabTests || null; }

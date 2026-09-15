@@ -65,6 +65,11 @@
   var REASONING = ['Reasoning', 'Series', 'Coding-Decoding', 'Classification', 'Number Logic', 'Calendar', 'Blood Relations', 'Direction Sense', 'Ranking'];
   var GA = ['Assam GK', 'General Knowledge', 'World GK', 'Indian GK', 'Sports', 'Persons', 'Inventions', 'Important Days', 'Arts', 'Literature', 'Nature', 'Polity', 'Indian Polity', 'History', 'Indian History', 'World History', 'Geography', 'Indian Geography', 'World Geography', 'Economy', 'Indian Economy', 'World Economy', 'Environment', 'Climate Change', 'Ecology', 'Conservation', 'Pollution', 'Energy'];
   var SCI = ['Biology', 'Chemistry', 'Physics', 'Astronomy'];
+  /* Assam TET (LP) — CDP + Language I scopes. Cats used by the TET practice
+     pools only; deliberately disjoint from GA/MATH/EVS lists (no topic of a
+     CDP/Lang-I question may equal a GA/EVS keyword — authoring rule). */
+  var CDP = ['Child Development & Pedagogy', 'Educational Psychology', 'Pedagogy'];
+  var LANG1 = ['Language I (Assamese)', 'Assamese'];
   var EVS = ['Environment', 'Nature', 'Climate Change', 'Ecology', 'Conservation', 'Pollution', 'Energy', 'Science', 'Biology', 'Chemistry', 'Physics', 'Astronomy', 'Geography', 'Indian Geography', 'World Geography'];
   /* Social Studies (ADRE) — history/geography/polity/economy incl. Assam */
   var SOCIAL_STUDIES = ['History', 'Indian History', 'World History', 'Geography', 'Indian Geography', 'World Geography', 'Polity', 'Indian Polity', 'Economy', 'Indian Economy', 'World Economy'];
@@ -202,8 +207,8 @@
       cycle: 'Assam TET (LP)', total: 150, durationMin: 150, marks: 150, neg: 0,
       source: 'Assam TET official pattern — 150 Q, 150 marks, 150 min, five sections × 30 (LP paper)',
       dist: [
-        { k: 'Child Development & Pedagogy', n: 30, match: function (q) { return false; } },
-        { k: 'Language I (Mother Tongue)', n: 30, match: function (q) { return false; } },
+        { k: 'Child Development & Pedagogy', n: 30, match: function (q) { return hasAny(CDP, q); } },
+        { k: 'Language I (Mother Tongue)', n: 30, match: function (q) { return hasAny(LANG1, q); } },
         { k: 'Language II (English)', n: 30, match: function (q) { return hasAny(ENGLISH, q); } },
         { k: 'Mathematics', n: 30, match: function (q) { return hasAny(MATH, q); } },
         { k: 'Environmental Studies', n: 30, match: function (q) { return hasAny(EVS, q); } }
@@ -670,7 +675,7 @@
   /* deterministic question hash — normalized text + answer key.
      SAME normalization as the admin import tool (normQ) so hashes match
      across catalog, admin panel and QA scripts. */
-  function normQ(t) { return String(t || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 120); }
+  function normQ(t) { return String(t || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '').slice(0, 120); }
   function djb2(str) {
     var h = 5381;
     for (var i = 0; i < str.length; i++) { h = ((h << 5) + h + str.charCodeAt(i)) >>> 0; }
