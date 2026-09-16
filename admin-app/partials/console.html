@@ -1,0 +1,277 @@
+<div class="page" id="page-admin">
+
+  <div class="admin-topbar">
+    <div class="admin-topbar-inner">
+      <div class="admin-topbar-left">
+        <div class="admin-topbar-logo">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Admin Console
+        </div>
+        <div class="admin-topbar-breadcrumb" id="adminBreadcrumb">Dashboard</div>
+      </div>
+      <div class="admin-topbar-right">
+        <div class="admin-realtime-badge"><span class="live-dot" style="width:7px;height:7px;margin-right:6px"></span>Live Sync</div>
+        <div class="admin-topbar-user" id="adminTopbarUser">
+          <div class="admin-topbar-avatar" id="adminTopbarAvatar">A</div>
+          <div>
+            <div style="font-size:.8rem;font-weight:600" id="adminTopbarName">Admin</div>
+            <div style="font-size:.7rem;color:var(--text2)" id="adminTopbarEmail"></div>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="adminLogout()" style="color:var(--danger);font-size:.78rem">
+          <svg width="13" height="13"><use href="#ic-logout"/></svg>Logout
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-layout">
+
+    <div class="admin-sidebar" id="adminSidebar">
+      <nav class="admin-nav">
+        <div class="admin-nav-section-label">OVERVIEW</div>
+        <button class="admin-nav-item active" data-atab="dashboard" onclick="switchAdminTab('dashboard')">
+          <svg width="16" height="16"><use href="#ic-dashboard"/></svg>Dashboard
+        </button>
+        <button class="admin-nav-item" data-atab="analytics" onclick="switchAdminTab('analytics')">
+          <svg width="16" height="16"><use href="#ic-trending"/></svg>Analytics
+          <span class="admin-nav-badge">Live</span>
+        </button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">CONTENT</div>
+        <button class="admin-nav-item" data-atab="pdfs" onclick="switchAdminTab('pdfs')">
+          <svg width="16" height="16"><use href="#ic-library"/></svg>PDF Management
+        </button>
+        <button class="admin-nav-item" data-atab="add-pdf" onclick="switchAdminTab('add-pdf')">
+          <svg width="16" height="16"><use href="#ic-plus"/></svg>Add New PDF
+        </button>
+        <button class="admin-nav-item" data-atab="smart-publish" onclick="switchAdminTab('smart-publish')" style="background:linear-gradient(90deg,rgba(147,2,5,.14),rgba(16,217,142,.07));border-left:2px solid #930205" title="Upload → Edit → Publish workflow">
+          <span style="font-size:.85rem">⚡</span> Smart Publish
+        </button>
+        <button class="admin-nav-item" data-atab="categories" onclick="switchAdminTab('categories')">
+          <svg width="16" height="16"><use href="#ic-tag"/></svg>Classification Manager
+          <span class="admin-nav-badge" style="background:rgba(16,217,142,.1);color:var(--success);border-color:rgba(16,217,142,.2)">6 Levels</span>
+        </button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">COMMERCE</div>
+        <button class="admin-nav-item" data-atab="orders" onclick="switchAdminTab('orders')">
+          <svg width="16" height="16"><use href="#ic-cart"/></svg>Orders
+          <span class="admin-nav-badge admin-nav-badge-orange" id="adminOrdersBadge">0</span>
+        </button>
+        <button class="admin-nav-item" data-atab="memberships" onclick="switchAdminTab('memberships')" style="background:linear-gradient(90deg,rgba(245,158,11,0.12),rgba(251,191,36,0.07));border-left:2px solid #f59e0b">
+          👑 Memberships
+          <span class="admin-nav-badge" id="adminMemBadge" style="background:rgba(245,158,11,0.15);color:#fbbf24;border-color:rgba(245,158,11,0.35);display:none">0</span>
+        </button>
+        <button class="admin-nav-item" data-atab="users" onclick="switchAdminTab('users')">
+          <svg width="16" height="16"><use href="#ic-users"/></svg>Users
+        </button>
+        <button class="admin-nav-item" data-atab="revenue" onclick="switchAdminTab('revenue')">
+          <svg width="16" height="16"><use href="#ic-trending"/></svg>Revenue
+        </button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">SYSTEM</div>
+        <button class="admin-nav-item" data-atab="activity" onclick="switchAdminTab('activity')">
+          <svg width="16" height="16"><use href="#ic-bell"/></svg>Activity Logs
+        </button>
+        <button class="admin-nav-item" data-atab="settings" onclick="switchAdminTab('settings')">
+          <svg width="16" height="16"><use href="#ic-settings"/></svg>Settings
+        </button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">STUDYRIA CLOUD</div>
+        <button class="admin-nav-item" data-atab="cloud-storage" onclick="switchAdminTab('cloud-storage')" style="background:linear-gradient(90deg,rgba(201,154,60,.14),rgba(147,2,5,.07));border-left:2px solid #c99a3c">
+          ☁️ Cloud Storage
+          <span class="admin-nav-badge" style="background:rgba(201,154,60,.15);color:#946b1d;border-color:rgba(201,154,60,.35)">Cloud</span>
+        </button>
+        <div class="admin-nav-section-label" style="margin-top:16px">🚀 PLATFORM CONTROL</div>
+        <button class="admin-nav-item" data-atab="hero-designer" onclick="switchAdminTab('hero-designer')" style="background:linear-gradient(90deg,rgba(139,92,246,0.12),rgba(147,2,5,0.08));border-left:2px solid #8b5cf6">
+          🎨 Hero Designer
+          <span class="admin-nav-badge" style="background:rgba(139,92,246,0.15);color:#a78bfa;border-color:rgba(139,92,246,0.3)">New</span>
+        </button>
+        <button class="admin-nav-item" data-atab="pdf-manager-pro" onclick="switchAdminTab('pdf-manager-pro')">
+          <svg width="16" height="16"><use href="#ic-library"/></svg>Advanced PDF Manager
+        </button>
+        <button class="admin-nav-item" data-atab="category-manager-pro" onclick="switchAdminTab('category-manager-pro')">
+          <svg width="16" height="16"><use href="#ic-tag"/></svg>Advanced Category Mgr
+        </button>
+        <button class="admin-nav-item" data-atab="homepage-manager" onclick="switchAdminTab('homepage-manager')">
+          <svg width="16" height="16"><use href="#ic-home"/></svg>Homepage Manager
+        </button>
+        <button class="admin-nav-item" data-atab="home-layout-manager" onclick="switchAdminTab('home-layout-manager')" style="background:linear-gradient(90deg,rgba(245,158,11,0.12),rgba(249,115,22,0.08));border-left:2px solid #f59e0b">
+          🏠 Home Layout Manager
+          <span class="admin-nav-badge" style="background:rgba(245,158,11,0.15);color:#fdd049;border-color:rgba(245,158,11,0.35)">OTT</span>
+        </button>
+        <button class="admin-nav-item" data-atab="header-manager" onclick="switchAdminTab('header-manager')">
+          <svg width="16" height="16"><use href="#ic-settings"/></svg>⚙️ Header Manager
+          <span class="admin-nav-badge" style="background:rgba(147,2,5,0.12);color:#c99a3c;border-color:rgba(147,2,5,0.3)">New</span>
+        </button>
+        <button class="admin-nav-item" data-atab="nav-manager" onclick="switchAdminTab('nav-manager')">
+          <svg width="16" height="16"><use href="#ic-library"/></svg>🍔 Navigation Manager
+          <span class="admin-nav-badge" style="background:rgba(147,2,5,0.12);color:#c99a3c;border-color:rgba(147,2,5,0.3)">New</span>
+        </button>
+        <button class="admin-nav-item" data-atab="customization" onclick="switchAdminTab('customization')">
+          <svg width="16" height="16"><use href="#ic-settings"/></svg>Website Customization
+        </button>
+        <button class="admin-nav-item" data-atab="users-pro" onclick="switchAdminTab('users-pro')">
+          <svg width="16" height="16"><use href="#ic-users"/></svg>User Management Pro
+        </button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">💰 FINANCE & MARKETING</div>
+        <button class="admin-nav-item" data-atab="finance" onclick="switchAdminTab('finance')">
+          <svg width="16" height="16"><use href="#ic-trending"/></svg>Sales & Finance Center
+        </button>
+        <button class="admin-nav-item" data-atab="coupons" onclick="switchAdminTab('coupons')">
+          <svg width="16" height="16"><use href="#ic-tag"/></svg>Coupons & Offers
+        </button>
+        <button class="admin-nav-item" data-atab="blog" onclick="switchAdminTab('blog')">
+          <svg width="16" height="16"><use href="#ic-library"/></svg>Blog Manager
+        </button>
+        <button class="admin-nav-item" data-atab="announcements" onclick="switchAdminTab('announcements')">
+          <svg width="16" height="16"><use href="#ic-bell"/></svg>Announcements
+          <span class="admin-nav-badge">New</span>
+        </button>
+        <button class="admin-nav-item" data-atab="live-feed" onclick="switchAdminTab('live-feed')">
+          <svg width="16" height="16"><use href="#ic-bell"/></svg>Live Feed Notifications
+        </button>
+        <button class="admin-nav-item" data-atab="branding" onclick="switchAdminTab('branding')">
+          <svg width="16" height="16"><use href="#ic-star"/></svg>Branding Manager
+          <span class="admin-nav-badge" style="background:rgba(139,92,246,0.12);color:#a78bfa;border-color:rgba(139,92,246,0.25)">New</span>
+        </button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">🚀 PWA SYSTEM</div>
+        <button class="admin-nav-item" data-atab="pwa-control" onclick="switchAdminTab('pwa-control')" style="background:linear-gradient(90deg,rgba(147,2,5,0.12),rgba(16,217,142,0.07));border-left:2px solid #930205">
+          🚀 PWA Control Center
+        </button>
+        <div class="admin-nav-section-label" style="margin-top:16px">📚 LIBRARY</div>
+        <button class="admin-nav-item" data-atab="library-manager" onclick="switchAdminTab('library-manager')" style="background:linear-gradient(90deg,rgba(147,2,5,0.13),rgba(201,154,60,0.07));border-left:2px solid #930205">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+          Library Manager
+          <span class="admin-nav-badge" style="background:rgba(147,2,5,0.12);color:#930205;border-color:rgba(147,2,5,0.3)">New</span>
+        </button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">🕯️ TRIBUTE</div>
+        <button class="admin-nav-item" data-atab="zubeen-legacy" onclick="switchAdminTab('zubeen-legacy')" style="background:linear-gradient(90deg,rgba(147,2,5,0.12),rgba(201,154,60,0.08));border-left:2px solid #c99a3c">
+          🕯️ Zubeen Da Legacy
+          <span class="admin-nav-badge" style="background:rgba(201,154,60,0.12);color:#c99a3c;border-color:rgba(201,154,60,0.3)">New</span>
+        </button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">🧪 EXAM TEST ENGINE</div>
+        <button class="admin-nav-item" data-atab="brainlab-test-engine" onclick="switchAdminTab('brainlab-test-engine')" style="background:linear-gradient(90deg,rgba(147,2,5,0.12),rgba(201,154,60,0.08));border-left:2px solid #c99a3c">
+          🧪 Test Engine
+          <span class="admin-nav-badge" style="background:rgba(201,154,60,0.12);color:#c99a3c;border-color:rgba(201,154,60,0.3)">New</span>
+        </button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">🏆 ENGAGEMENT</div>
+        <button class="admin-nav-item" data-atab="testimonials" onclick="switchAdminTab('testimonials')">
+          <svg width="16" height="16"><use href="#ic-star"/></svg>Testimonials
+        </button>
+            <button class="admin-nav-item" data-atab="reviews" onclick="switchAdminTab('reviews')">Reviews<span class="arv-pending-count" id="arvPendingBadge" style="display:none">0</span></button>
+        <button class="admin-nav-item" data-atab="achievements" onclick="switchAdminTab('achievements')">
+          <svg width="16" height="16"><use href="#ic-award"/></svg>Achievement System
+        </button>
+        <button class="admin-nav-item" data-atab="notifications-pro" onclick="switchAdminTab('notifications-pro')">
+          <svg width="16" height="16"><use href="#ic-bell"/></svg>Notification Center
+        </button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">🔬 INTELLIGENCE</div>
+        <button class="admin-nav-item" data-atab="seo-manager" onclick="switchAdminTab('seo-manager')">
+          <svg width="16" height="16"><use href="#ic-globe"/></svg>SEO Manager
+        </button>
+        <button class="admin-nav-item" data-atab="live-analytics" onclick="switchAdminTab('live-analytics')">
+          <svg width="16" height="16"><use href="#ic-trending"/></svg>Live Analytics Center
+          <span class="admin-nav-badge" style="background:rgba(16,217,142,.12);color:var(--success);border-color:rgba(16,217,142,.2)">Live</span>
+        </button>
+        <button class="admin-nav-item" data-atab="ai-center" onclick="switchAdminTab('ai-center')">
+          <svg width="16" height="16"><use href="#ic-shield"/></svg>AI Control Center
+        </button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">🛡 SECURITY & INFRA</div>
+        <button class="admin-nav-item" data-atab="security" onclick="switchAdminTab('security')">
+          <svg width="16" height="16"><use href="#ic-shield"/></svg>Security Center
+        </button>
+        <button class="admin-nav-item" data-atab="system-advanced" onclick="switchAdminTab('system-advanced')">
+          <svg width="16" height="16"><use href="#ic-settings"/></svg>Advanced System Settings
+        </button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">💼 CAREER HUB</div>
+        <button class="admin-nav-item" data-atab="career-hub-manager" onclick="switchAdminTab('career-hub-manager')" style="background:linear-gradient(90deg,rgba(147,2,5,0.13),rgba(255,77,109,0.06));border-left:2px solid var(--accent)">
+          <svg width="16" height="16"><use href="#ic-cart"/></svg>Career Hub Manager
+          <span class="admin-nav-badge" style="background:rgba(255,77,109,0.12);color:var(--danger);border-color:rgba(255,77,109,0.3)">New</span>
+        </button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">🌐 COMMUNITY</div>
+        <button class="admin-nav-item" data-atab="community-manager" onclick="switchAdminTab('community-manager')" style="background:linear-gradient(90deg,rgba(16,217,142,0.13),rgba(37,211,102,0.07));border-left:2px solid #10d98e">
+          🌐 Community Manager
+          <span class="admin-nav-badge" style="background:rgba(16,217,142,0.12);color:#10d98e;border-color:rgba(16,217,142,0.3)">New</span>
+        </button>
+        <button class="admin-nav-item" data-atab="whatsapp-community" onclick="switchAdminTab('whatsapp-community')" style="background:linear-gradient(90deg,rgba(37,211,102,0.13),rgba(16,217,142,0.07));border-left:2px solid #25d366">
+          <span style="font-size:1rem">📱</span>WhatsApp Community
+          <span class="admin-nav-badge" style="background:rgba(37,211,102,0.12);color:#25d366;border-color:rgba(37,211,102,0.3)">New</span>
+        </button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">🎓 CREATOR PROGRAM</div>
+        <button class="admin-nav-item" data-atab="pass-management" onclick="switchAdminTab('pass-management')" style="background:linear-gradient(90deg,rgba(251,191,36,0.15),rgba(245,158,11,0.08));border-left:2px solid #fbbf24"> Pass Management
+        </button>
+        <button class="admin-nav-item" data-atab="creator-manager" onclick="switchAdminTab('creator-manager')" style="background:linear-gradient(90deg,rgba(16,217,142,0.13),rgba(6,182,212,0.07));border-left:2px solid #10d98e">
+          <span style="font-size:1rem">🎓</span>Creator Manager
+          <span class="admin-nav-badge" style="background:rgba(16,217,142,.12);color:#10d98e;border-color:rgba(16,217,142,.2)">NEW</span>
+        </button
+        <button class="admin-nav-item" data-atab="campus-manager" onclick="switchAdminTab('campus-manager')" style="background:linear-gradient(90deg,rgba(147,2,5,0.13),rgba(99,102,241,0.06));border-left:2px solid #930205">
+          🏫 Campus Manager
+        </button>
+        <button class="admin-nav-item" data-atab="brainlab-manager" onclick="switchAdminTab('brainlab-manager')" style="background:linear-gradient(90deg,rgba(139,92,246,0.13),rgba(251,191,36,0.06));border-left:2px solid #8b5cf6">
+          🧠 BrainLab Manager
+        </button>>
+      </nav>
+    </div>
+
+    <div class="admin-main" id="adminMain">
+
+    
+    <!-- ═══ Campus Manager Panel ═══ -->
+    <div id="atab-campus-manager" class="admin-tab-content" style="display:none">
+      <div style="margin-bottom:20px">
+        <h2 style="font-size:1.3rem;font-weight:800;margin:0 0 4px">🏫 Campus Manager</h2>
+        <p style="font-size:0.82rem;color:var(--text-secondary,#94a3b8);margin:0">Manage campus feed, study plans, reminders & analytics</p>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">
+        <button class="focus-btn focus-btn-primary" onclick="CampusAdmin.switchSection('feed')" style="padding:8px 14px;font-size:0.78rem">📋 Feed</button>
+        <button class="focus-btn focus-btn-secondary" onclick="CampusAdmin.switchSection('plans')" style="padding:8px 14px;font-size:0.78rem">📅 Study Plans</button>
+        <button class="focus-btn focus-btn-secondary" onclick="CampusAdmin.switchSection('reminders')" style="padding:8px 14px;font-size:0.78rem">🔔 Reminders</button>
+        <button class="focus-btn focus-btn-secondary" onclick="CampusAdmin.switchSection('notifications')" style="padding:8px 14px;font-size:0.78rem">📢 Notifications</button>
+        <button class="focus-btn focus-btn-secondary" onclick="CampusAdmin.switchSection('goals')" style="padding:8px 14px;font-size:0.78rem">🎯 Goals</button>
+        <button class="focus-btn focus-btn-secondary" onclick="CampusAdmin.switchSection('analytics')" style="padding:8px 14px;font-size:0.78rem">📊 Analytics</button>
+      </div>
+      <div id="campus-admin-content" style="min-height:300px">
+        <div style="text-align:center;padding:40px 20px;color:var(--text-secondary,#94a3b8)">
+          <div style="font-size:2rem;margin-bottom:8px">🏫</div>
+          <div style="font-size:0.85rem">Select a section above to manage campus content</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ BrainLab Manager Panel ═══ -->
+    <div id="atab-brainlab-manager" class="admin-tab-content" style="display:none">
+      <div style="margin-bottom:20px">
+        <h2 style="font-size:1.3rem;font-weight:800;margin:0 0 4px">🧠 BrainLab Manager</h2>
+        <p style="font-size:0.82rem;color:var(--text-secondary,#94a3b8);margin:0">Manage quiz bank, mock tests, flashcards & analytics</p>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">
+        <button class="focus-btn focus-btn-secondary" onclick="BrainLabAdmin.switchSection('tests')" style="padding:8px 14px;font-size:0.78rem">📝 Tests</button>
+        <button class="focus-btn focus-btn-primary" onclick="BrainLabAdmin.switchSection('quizzes')" style="padding:8px 14px;font-size:0.78rem">🧩 Quizzes</button>
+        <button class="focus-btn focus-btn-secondary" onclick="BrainLabAdmin.switchSection('mocks')" style="padding:8px 14px;font-size:0.78rem">📝 Mock Tests</button>
+        <button class="focus-btn focus-btn-secondary" onclick="BrainLabAdmin.switchSection('flashcards')" style="padding:8px 14px;font-size:0.78rem">🎴 Flashcards</button>
+        <button class="focus-btn focus-btn-secondary" onclick="BrainLabAdmin.switchSection('affairs')" style="padding:8px 14px;font-size:0.78rem">📰 Current Affairs</button>
+        <button class="focus-btn focus-btn-secondary" onclick="BrainLabAdmin.switchSection('leaderboard')" style="padding:8px 14px;font-size:0.78rem">🏆 Leaderboard</button>
+        <button class="focus-btn focus-btn-secondary" onclick="BrainLabAdmin.switchSection('analytics')" style="padding:8px 14px;font-size:0.78rem">📊 Analytics</button>
+      </div>
+      <div id="brainlab-admin-content" style="min-height:300px">
+        <div style="text-align:center;padding:40px 20px;color:var(--text-secondary,#94a3b8)">
+          <div style="font-size:2rem;margin-bottom:8px">🧠</div>
+          <div style="font-size:0.85rem">Select a section above to manage BrainLab content</div>
+        </div>
+      </div>
+    </div>
+</div>
+  </div>
+</div>
+

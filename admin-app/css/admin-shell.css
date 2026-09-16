@@ -1,0 +1,69 @@
+/* ══════════════════════════════════════════════════════════════════
+   admin-shell.css — Studyria Admin App shell additions
+   (mobile drawer, admin logo, planned badges). All base tokens and
+   components come from admin-base.css (extracted from production).
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Pages: only .active is visible (matches production .page system) */
+.admin-app-body { background: var(--bg, #080c14); }
+
+/* Drawer toggle — hidden on desktop, visible on mobile */
+.admin-drawer-toggle {
+  display: none;
+  background: none;
+  border: 1px solid var(--glass-border, rgba(255,255,255,.08));
+  border-radius: 10px;
+  padding: 7px 10px;
+  color: var(--text2, #94a3b8);
+  cursor: pointer;
+  align-items: center;
+  margin-right: 6px;
+}
+.admin-drawer-toggle:hover { color: var(--text); }
+
+/* Admin logo in topbar + login shield */
+.admin-topbar-logo { display: flex; align-items: center; gap: 8px; }
+.admin-topbar-logo img { display: block; }
+.admin-login-shield { line-height: 0; }
+
+/* Backdrop when drawer is open */
+.admin-drawer-backdrop {
+  display: none;
+  position: fixed; inset: 0; z-index: 90;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(2px);
+}
+
+@media (max-width: 900px) {
+  .admin-drawer-toggle { display: inline-flex; }
+  .admin-layout { position: relative; }
+  .admin-sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 100;
+    width: min(300px, 84vw);
+    transform: translateX(-102%);
+    transition: transform .25s ease;
+    overflow-y: auto;
+    box-shadow: 0 0 40px rgba(0,0,0,.5);
+  }
+  body.admin-drawer-open .admin-sidebar { transform: translateX(0); }
+  body.admin-drawer-open::after {
+    content: '';
+    position: fixed; inset: 0; z-index: 99;
+    background: rgba(0,0,0,.55);
+  }
+  .admin-topbar-breadcrumb { display: none; }
+  .admin-topbar-right .admin-realtime-badge { display: none; }
+}
+
+/* Toast container (safety if base css omits it) */
+.toast-container {
+  position: fixed;
+  top: 18px; right: 18px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(360px, calc(100vw - 36px));
+}

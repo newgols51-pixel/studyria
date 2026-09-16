@@ -1,0 +1,48 @@
+<div class="page" id="page-admin-login">
+  <div class="admin-login-wrap">
+    <div class="admin-login-orb admin-login-orb-1"></div>
+    <div class="admin-login-orb admin-login-orb-2"></div>
+    <div class="admin-login-card" id="adminLoginCard">
+      <div class="admin-login-shield">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+      </div>
+      <div class="admin-login-brand">Studyria <span>Admin</span></div>
+      <div class="admin-login-title">Secure Admin Access</div>
+      <div class="admin-login-sub">Only authorized admin accounts can proceed. Your access is logged.</div>
+      <div id="adminLoginError" class="admin-login-error" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <span id="adminLoginErrorMsg">Invalid credentials or not authorized.</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="color:var(--text2)">Admin Email</label>
+        <div style="position:relative">
+          <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text2);pointer-events:none;display:flex">
+            <svg width="16" height="16"><use href="#ic-mail"/></svg>
+          </span>
+          <input class="form-input" id="adminLoginEmail" type="email" placeholder="admin@studyria.com" style="padding-left:40px" onkeydown="if(event.key==='Enter')adminDoLogin()" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="color:var(--text2)">Password</label>
+        <div style="position:relative">
+          <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text2);pointer-events:none;display:flex">
+            <svg width="16" height="16"><use href="#ic-lock"/></svg>
+          </span>
+          <input class="form-input" id="adminLoginPass" type="password" placeholder="Your admin password" style="padding-left:40px" onkeydown="if(event.key==='Enter')adminDoLogin()" />
+        </div>
+      </div>
+      <button class="btn btn-primary btn-lg btn-full" id="adminLoginBtn" onclick="adminDoLogin()" style="margin-top:8px;background:linear-gradient(135deg,#930205,#c99a3c);box-shadow:0 6px 28px rgba(147,2,5,0.4)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Access Admin Panel
+      </button>
+      <div style="margin-top:20px;text-align:center">
+        <button class="btn btn-ghost btn-sm" onclick="navigate('home')" style="color:var(--text2);font-size:.8rem">
+          ← Back to Studyria
+        </button>
+      </div>
+      <div style="margin-top:20px;padding:12px;background:rgba(147,2,5,0.05);border:1px solid rgba(147,2,5,0.15);border-radius:var(--radius-sm);font-size:.75rem;color:var(--text2);text-align:center;line-height:1.6">
+        🔐 All login attempts are recorded.<br>Unauthorized access is strictly prohibited.
+      </div>
+    </div>
+  </div>
+</div>

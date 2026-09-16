@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Studyria Admin — Operations Console</title>
+  <meta name="description" content="Studyria administration console.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#930205">
+  <link rel="icon" href="favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest-admin.json">
+  <link rel="stylesheet" href="css/admin-base.css?v=1">
+  <link rel="stylesheet" href="css/cloud-manager.css?v=1">
+  <link rel="stylesheet" href="css/admin-shell.css?v=1">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://qsdfmgcekdpjdcyqhuhi.supabase.co" crossorigin>
+</head>
+<body>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="ic-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></symbol>
+  <symbol id="ic-library" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></symbol>
+  <symbol id="ic-dashboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></symbol>
+  <symbol id="ic-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></symbol>
+  <symbol id="ic-heartfill" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></symbol>
+  <symbol id="ic-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  <symbol id="ic-star" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
+  <symbol id="ic-award" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></symbol>
+  <symbol id="ic-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+  <symbol id="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol>
+  <symbol id="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></symbol>
+  <symbol id="ic-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></symbol>
+  <symbol id="ic-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="ic-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  <symbol id="ic-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></symbol>
+  <symbol id="ic-trending" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></symbol>
+  <symbol id="ic-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+  <symbol id="ic-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="ic-cart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></symbol>
+  <symbol id="ic-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="ic-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></symbol>
+  <symbol id="ic-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></symbol>
+  <symbol id="ic-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+  <symbol id="ic-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></symbol>
+  <symbol id="ic-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></symbol>
+  <symbol id="ic-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></symbol>
+  <symbol id="ic-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+  <symbol id="ic-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="ic-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></symbol>
+  <symbol id="ic-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></symbol>
+  <symbol id="ic-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></symbol>
+  <symbol id="ic-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></symbol>
+</svg>
+
+
+<div id="toastContainer" class="toast-container"></div>
+
+<div class="page" id="page-admin-login">
+  <div class="admin-login-wrap">
+    <div class="admin-login-orb admin-login-orb-1"></div>
+    <div class="admin-login-orb admin-login-orb-2"></div>
+    <div class="admin-login-card" id="adminLoginCard">
+      <div class="admin-login-shield"><img src="icons/admin-logo.png" alt="Studyria Admin" width="52" height="52" style="border-radius:12px"></div>
+      <div class="admin-login-brand">Studyria <span>Admin</span></div>
+      <div class="admin-login-title">Secure Admin Access</div>
+      <div class="admin-login-sub">Only authorized admin accounts can proceed. Your access is logged.</div>
+      <div id="adminLoginError" class="admin-login-error" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <span id="adminLoginErrorMsg">Invalid credentials or not authorized.</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="color:var(--text2)">Admin Email</label>
+        <div style="position:relative">
+          <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text2);pointer-events:none;display:flex">
+            <svg width="16" height="16"><use href="#ic-mail"/></svg>
+          </span>
+          <input class="form-input" id="adminLoginEmail" type="email" placeholder="admin@studyria.com" style="padding-left:40px" onkeydown="if(event.key==='Enter')adminDoLogin()" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="color:var(--text2)">Password</label>
+        <div style="position:relative">
+          <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text2);pointer-events:none;display:flex">
+            <svg width="16" height="16"><use href="#ic-lock"/></svg>
+          </span>
+          <input class="form-input" id="adminLoginPass" type="password" placeholder="Your admin password" style="padding-left:40px" onkeydown="if(event.key==='Enter')adminDoLogin()" />
+        </div>
+      </div>
+      <button class="btn btn-primary btn-lg btn-full" id="adminLoginBtn" onclick="adminDoLogin()" style="margin-top:8px;background:linear-gradient(135deg,#930205,#c99a3c);box-shadow:0 6px 28px rgba(147,2,5,0.4)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Access Admin Panel
+      </button>
+      <div style="margin-top:20px;text-align:center">
+        <button class="btn btn-ghost btn-sm" onclick="navigate('home')" style="color:var(--text2);font-size:.8rem">
+          ← Back to Studyria
+        </button>
+      </div>
+      <div style="margin-top:20px;padding:12px;background:rgba(147,2,5,0.05);border:1px solid rgba(147,2,5,0.15);border-radius:var(--radius-sm);font-size:.75rem;color:var(--text2);text-align:center;line-height:1.6">
+        🔐 All login attempts are recorded.<br>Unauthorized access is strictly prohibited.
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="page" id="page-admin">
+  <div class="admin-topbar">
+    <div class="admin-topbar-inner">
+      <div class="admin-topbar-left">
+        <button id="adminDrawerToggle" class="admin-drawer-toggle" aria-label="Toggle menu" onclick="document.body.classList.toggle('admin-drawer-open')">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="admin-topbar-logo">
+          <img src="icons/admin-logo.png" alt="Studyria Admin" width="26" height="26" style="border-radius:6px"> Admin Console
+        </div>
+        <div class="admin-topbar-breadcrumb" id="adminBreadcrumb">Dashboard</div>
+      </div>
+      <div class="admin-topbar-right">
+        <div class="admin-realtime-badge"><span class="live-dot" style="width:7px;height:7px;margin-right:6px"></span>Live Sync</div>
+        <div class="admin-topbar-user" id="adminTopbarUser">
+          <div class="admin-topbar-avatar" id="adminTopbarAvatar">A</div>
+          <div>
+            <div style="font-size:.8rem;font-weight:600" id="adminTopbarName">Admin</div>
+            <div style="font-size:.7rem;color:var(--text2)" id="adminTopbarEmail"></div>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="adminLogout()" style="color:var(--danger);font-size:.78rem">
+          <svg width="13" height="13"><use href="#ic-logout"/></svg>Logout
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-layout">
+
+    <div class="admin-sidebar" id="adminSidebar">
+      <nav class="admin-nav">
+        <div class="admin-nav-section-label">OVERVIEW</div>
+        <button class="admin-nav-item active" data-atab="dashboard" onclick="switchAdminTab('dashboard')"><svg width="16" height="16"><use href="#ic-dashboard"/></svg>Dashboard</button>
+        <button class="admin-nav-item" data-atab="analytics" onclick="switchAdminTab('analytics')"><svg width="16" height="16"><use href="#ic-trending"/></svg>Analytics<span class="admin-nav-badge">Live</span></button>
+        <button class="admin-nav-item" data-atab="activity" onclick="switchAdminTab('activity')"><svg width="16" height="16"><use href="#ic-bell"/></svg>Activity Logs</button>
+        <button class="admin-nav-item" data-atab="live-analytics" onclick="switchAdminTab('live-analytics')"><svg width="16" height="16"><use href="#ic-trending"/></svg>Live Analytics Center<span class="admin-nav-badge" style="background:rgba(16,217,142,.12);color:var(--success);border-color:rgba(16,217,142,.2)">Live</span></button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">CONTENT &amp; LIBRARY</div>
+        <button class="admin-nav-item" data-atab="pdfs" onclick="switchAdminTab('pdfs')"><svg width="16" height="16"><use href="#ic-library"/></svg>PDF Management</button>
+        <button class="admin-nav-item" data-atab="add-pdf" onclick="switchAdminTab('add-pdf')"><svg width="16" height="16"><use href="#ic-plus"/></svg>Add New PDF</button>
+        <button class="admin-nav-item" data-atab="smart-publish" onclick="switchAdminTab('add-pdf')" style="background:linear-gradient(90deg,rgba(147,2,5,.14),rgba(16,217,142,.07));border-left:2px solid #930205" title="Upload &rarr; Edit &rarr; Publish workflow (lives inside Add New PDF)"><span style="font-size:.85rem">&#9889;</span> Smart Publish</button>
+        <button class="admin-nav-item" data-atab="categories" onclick="switchAdminTab('categories')"><svg width="16" height="16"><use href="#ic-tag"/></svg>Classification Manager<span class="admin-nav-badge" style="background:rgba(16,217,142,.1);color:var(--success);border-color:rgba(16,217,142,.2)">6 Levels</span></button>
+        <button class="admin-nav-item" data-atab="pdf-manager-pro" onclick="switchAdminTab('pdf-manager-pro')"><svg width="16" height="16"><use href="#ic-library"/></svg>Advanced PDF Manager</button>
+        <button class="admin-nav-item" data-atab="category-manager-pro" onclick="switchAdminTab('category-manager-pro')"><svg width="16" height="16"><use href="#ic-tag"/></svg>Advanced Category Mgr</button>
+        <button class="admin-nav-item" data-atab="homepage-manager" onclick="switchAdminTab('homepage-manager')"><svg width="16" height="16"><use href="#ic-home"/></svg>Homepage Manager</button>
+        <button class="admin-nav-item" data-atab="hero-designer" onclick="switchAdminTab('hero-designer')" style="background:linear-gradient(90deg,rgba(139,92,246,0.12),rgba(147,2,5,0.08));border-left:2px solid #8b5cf6">&#127912; Hero Designer</button>
+        <button class="admin-nav-item" data-atab="library-manager" onclick="switchAdminTab('library-manager')" style="background:linear-gradient(90deg,rgba(147,2,5,.13),rgba(201,154,60,0.07));border-left:2px solid #930205"><svg width="16" height="16"><use href="#ic-library"/></svg>Library Manager</button>
+        <button class="admin-nav-item" data-atab="blog" onclick="switchAdminTab('blog')"><svg width="16" height="16"><use href="#ic-library"/></svg>Blog Manager</button>
+        <button class="admin-nav-item" data-atab="seo-manager" onclick="switchAdminTab('seo-manager')"><svg width="16" height="16"><use href="#ic-globe"/></svg>SEO Manager</button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">COMMERCE &amp; FINANCE</div>
+        <button class="admin-nav-item" data-atab="orders" onclick="switchAdminTab('orders')"><svg width="16" height="16"><use href="#ic-cart"/></svg>Orders<span class="admin-nav-badge admin-nav-badge-orange" id="adminOrdersBadge">0</span></button>
+        <button class="admin-nav-item" data-atab="revenue" onclick="switchAdminTab('revenue')"><svg width="16" height="16"><use href="#ic-trending"/></svg>Revenue</button>
+        <button class="admin-nav-item" data-atab="finance" onclick="switchAdminTab('finance')"><svg width="16" height="16"><use href="#ic-trending"/></svg>Sales &amp; Finance Center</button>
+        <button class="admin-nav-item" data-atab="memberships" onclick="switchAdminTab('memberships')" style="background:linear-gradient(90deg,rgba(245,158,11,0.12),rgba(251,191,36,0.07));border-left:2px solid #f59e0b">&#128081; Memberships<span class="admin-nav-badge" id="adminMemBadge" style="background:rgba(245,158,11,0.15);color:#fbbf24;border-color:rgba(245,158,11,0.35);display:none">0</span></button>
+        <button class="admin-nav-item" data-atab="pass-management" onclick="switchAdminTab('pass-management')" style="background:linear-gradient(90deg,rgba(251,191,36,0.15),rgba(245,158,11,0.08));border-left:2px solid #fbbf24">Pass Management</button>
+        <button class="admin-nav-item" data-atab="coupons" onclick="switchAdminTab('coupons')"><svg width="16" height="16"><use href="#ic-tag"/></svg>Coupons &amp; Offers</button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">USERS &amp; ENGAGEMENT</div>
+        <button class="admin-nav-item" data-atab="users" onclick="switchAdminTab('users')"><svg width="16" height="16"><use href="#ic-users"/></svg>Users</button>
+        <button class="admin-nav-item" data-atab="users-pro" onclick="switchAdminTab('users-pro')"><svg width="16" height="16"><use href="#ic-users"/></svg>User Management Pro</button>
+        <button class="admin-nav-item" data-atab="reviews" onclick="switchAdminTab('reviews')">Reviews<span class="arv-pending-count" id="arvPendingBadge" style="display:none">0</span></button>
+        <button class="admin-nav-item" data-atab="testimonials" onclick="switchAdminTab('testimonials')"><svg width="16" height="16"><use href="#ic-star"/></svg>Testimonials</button>
+        <button class="admin-nav-item" data-atab="achievements" onclick="switchAdminTab('achievements')"><svg width="16" height="16"><use href="#ic-award"/></svg>Achievement System</button>
+        <button class="admin-nav-item" data-atab="notifications-pro" onclick="switchAdminTab('notifications-pro')"><svg width="16" height="16"><use href="#ic-bell"/></svg>Notification Center</button>
+        <button class="admin-nav-item" data-atab="announcements" onclick="switchAdminTab('announcements')"><svg width="16" height="16"><use href="#ic-bell"/></svg>Announcements</button>
+        <button class="admin-nav-item" data-atab="live-feed" onclick="switchAdminTab('live-feed')"><svg width="16" height="16"><use href="#ic-bell"/></svg>Live Feed Notifications</button>
+        <button class="admin-nav-item" data-atab="branding" onclick="switchAdminTab('branding')"><svg width="16" height="16"><use href="#ic-star"/></svg>Branding Manager</button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">EXAM &amp; LEARNING</div>
+        <button class="admin-nav-item" data-atab="brainlab-manager" onclick="switchAdminTab('brainlab-manager')" style="background:linear-gradient(90deg,rgba(139,92,246,0.13),rgba(251,191,36,0.06));border-left:2px solid #8b5cf6">&#129504; BrainLab Manager</button>
+        <button class="admin-nav-item" data-atab="brainlab-test-engine" onclick="switchAdminTab('brainlab-test-engine')" style="background:linear-gradient(90deg,rgba(147,2,5,0.12),rgba(201,154,60,0.08));border-left:2px solid #c99a3c">&#129514; Test Engine<span class="admin-nav-badge" style="background:rgba(201,154,60,.12);color:#c99a3c;border-color:rgba(201,154,60,.3)">New</span></button>
+        <button class="admin-nav-item" data-atab="career-hub-manager" onclick="switchAdminTab('career-hub-manager')" style="background:linear-gradient(90deg,rgba(147,2,5,0.13),rgba(255,77,109,0.06));border-left:2px solid var(--accent)"><svg width="16" height="16"><use href="#ic-cart"/></svg>Career Hub Manager</button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">COMMUNITY &amp; CREATORS</div>
+        <button class="admin-nav-item" data-atab="community-manager" onclick="switchAdminTab('community-manager')" style="background:linear-gradient(90deg,rgba(16,217,142,0.13),rgba(37,211,102,0.07));border-left:2px solid #10d98e">&#127760; Community Manager</button>
+        <button class="admin-nav-item" data-atab="whatsapp-community" onclick="switchAdminTab('whatsapp-community')" style="background:linear-gradient(90deg,rgba(37,211,102,0.13),rgba(16,217,142,0.07));border-left:2px solid #25d366"><span style="font-size:1rem">&#128241;</span>WhatsApp Community</button>
+        <button class="admin-nav-item" data-atab="campus-manager" onclick="switchAdminTab('campus-manager')" style="background:linear-gradient(90deg,rgba(147,2,5,0.13),rgba(99,102,241,0.06));border-left:2px solid #930205">&#127979; Campus Manager</button>
+        <button class="admin-nav-item" data-atab="creator-manager" onclick="switchAdminTab('creator-manager')" style="background:linear-gradient(90deg,rgba(16,217,142,0.13),rgba(6,182,212,0.07));border-left:2px solid #10d98e"><span style="font-size:1rem">&#127891;</span>Creator Manager</button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">PLATFORM &amp; INFRA</div>
+        <button class="admin-nav-item" data-atab="settings" onclick="switchAdminTab('settings')"><svg width="16" height="16"><use href="#ic-settings"/></svg>Settings</button>
+        <button class="admin-nav-item" data-atab="customization" onclick="switchAdminTab('customization')"><svg width="16" height="16"><use href="#ic-settings"/></svg>Website Customization</button>
+        <button class="admin-nav-item" data-atab="pwa-control" onclick="switchAdminTab('pwa-control')" style="background:linear-gradient(90deg,rgba(147,2,5,0.12),rgba(16,217,142,0.07));border-left:2px solid #930205">&#128640; PWA Control Center</button>
+        <button class="admin-nav-item" data-atab="cloud-storage" onclick="switchAdminTab('cloud-storage')" style="background:linear-gradient(90deg,rgba(201,154,60,.14),rgba(147,2,5,.07));border-left:2px solid #c99a3c">&#9729;&#65039; Cloud Storage<span class="admin-nav-badge" style="background:rgba(201,154,60,.15);color:#946b1d;border-color:rgba(201,154,60,.35)">Cloud</span></button>
+        <button class="admin-nav-item" data-atab="zubeen-legacy" onclick="switchAdminTab('zubeen-legacy')" style="background:linear-gradient(90deg,rgba(147,2,5,0.12),rgba(201,154,60,0.08));border-left:2px solid #c99a3c">&#128366;&#65039; Zubeen Da Legacy</button>
+        <button class="admin-nav-item" data-atab="ai-center" onclick="switchAdminTab('ai-center')"><svg width="16" height="16"><use href="#ic-shield"/></svg>AI Control Center</button>
+        <button class="admin-nav-item" data-atab="security" onclick="switchAdminTab('security')"><svg width="16" height="16"><use href="#ic-shield"/></svg>Security Center</button>
+        <button class="admin-nav-item" data-atab="system-advanced" onclick="switchAdminTab('system-advanced')"><svg width="16" height="16"><use href="#ic-settings"/></svg>Advanced System Settings</button>
+
+        <div class="admin-nav-section-label" style="margin-top:16px">PLANNED (not yet in production)</div>
+        <button class="admin-nav-item" data-atab="header-manager" onclick="switchAdminTab('header-manager')" title="No renderer exists in production yet">&#9881;&#65039; Header Manager<span class="admin-nav-badge">Planned</span></button>
+        <button class="admin-nav-item" data-atab="nav-manager" onclick="switchAdminTab('nav-manager')" title="No renderer exists in production yet">&#127854; Navigation Manager<span class="admin-nav-badge">Planned</span></button>
+        <button class="admin-nav-item" data-atab="home-layout-manager" onclick="switchAdminTab('home-layout-manager')" title="No renderer exists in production yet">&#127968; Home Layout Manager<span class="admin-nav-badge">Planned</span></button>
+      </nav>
+    </div>
+
+    <div class="admin-main" id="adminMain">
+    <div id="atab-campus-manager" class="admin-tab-content" style="display:none">
+      <div style="margin-bottom:20px">
+        <h2 style="font-size:1.3rem;font-weight:800;margin:0 0 4px">🏫 Campus Manager</h2>
+        <p style="font-size:0.82rem;color:var(--text-secondary,#94a3b8);margin:0">Manage campus feed, study plans, reminders & analytics</p>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">
+        <button class="focus-btn focus-btn-primary" onclick="CampusAdmin.switchSection('feed')" style="padding:8px 14px;font-size:0.78rem">📋 Feed</button>
+        <button class="focus-btn focus-btn-secondary" onclick="CampusAdmin.switchSection('plans')" style="padding:8px 14px;font-size:0.78rem">📅 Study Plans</button>
+        <button class="focus-btn focus-btn-secondary" onclick="CampusAdmin.switchSection('reminders')" style="padding:8px 14px;font-size:0.78rem">🔔 Reminders</button>
+        <button class="focus-btn focus-btn-secondary" onclick="CampusAdmin.switchSection('notifications')" style="padding:8px 14px;font-size:0.78rem">📢 Notifications</button>
+        <button class="focus-btn focus-btn-secondary" onclick="CampusAdmin.switchSection('goals')" style="padding:8px 14px;font-size:0.78rem">🎯 Goals</button>
+        <button class="focus-btn focus-btn-secondary" onclick="CampusAdmin.switchSection('analytics')" style="padding:8px 14px;font-size:0.78rem">📊 Analytics</button>
+      </div>
+      <div id="campus-admin-content" style="min-height:300px">
+        <div style="text-align:center;padding:40px 20px;color:var(--text-secondary,#94a3b8)">
+          <div style="font-size:2rem;margin-bottom:8px">🏫</div>
+          <div style="font-size:0.85rem">Select a section above to manage campus content</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ BrainLab Manager Panel ═══ -->
+    <div id="atab-brainlab-manager" class="admin-tab-content" style="display:none">
+      <div style="margin-bottom:20px">
+        <h2 style="font-size:1.3rem;font-weight:800;margin:0 0 4px">🧠 BrainLab Manager</h2>
+        <p style="font-size:0.82rem;color:var(--text-secondary,#94a3b8);margin:0">Manage quiz bank, mock tests, flashcards & analytics</p>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">
+        <button class="focus-btn focus-btn-secondary" onclick="BrainLabAdmin.switchSection('tests')" style="padding:8px 14px;font-size:0.78rem">📝 Tests</button>
+        <button class="focus-btn focus-btn-primary" onclick="BrainLabAdmin.switchSection('quizzes')" style="padding:8px 14px;font-size:0.78rem">🧩 Quizzes</button>
+        <button class="focus-btn focus-btn-secondary" onclick="BrainLabAdmin.switchSection('mocks')" style="padding:8px 14px;font-size:0.78rem">📝 Mock Tests</button>
+        <button class="focus-btn focus-btn-secondary" onclick="BrainLabAdmin.switchSection('flashcards')" style="padding:8px 14px;font-size:0.78rem">🎴 Flashcards</button>
+        <button class="focus-btn focus-btn-secondary" onclick="BrainLabAdmin.switchSection('affairs')" style="padding:8px 14px;font-size:0.78rem">📰 Current Affairs</button>
+        <button class="focus-btn focus-btn-secondary" onclick="BrainLabAdmin.switchSection('leaderboard')" style="padding:8px 14px;font-size:0.78rem">🏆 Leaderboard</button>
+        <button class="focus-btn focus-btn-secondary" onclick="BrainLabAdmin.switchSection('analytics')" style="padding:8px 14px;font-size:0.78rem">📊 Analytics</button>
+      </div>
+      <div id="brainlab-admin-content" style="min-height:300px">
+        <div style="text-align:center;padding:40px 20px;color:var(--text-secondary,#94a3b8)">
+          <div style="font-size:2rem;margin-bottom:8px">🧠</div>
+          <div style="font-size:0.85rem">Select a section above to manage BrainLab content</div>
+        </div>
+      </div>
+    </div>
+</div>
+  </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>window.supabaseLib = window.supabase;</script>
+<script src="https://cdn.tailwindcss.com" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js" defer></script>
+<script>
+  window.addEventListener('DOMContentLoaded', function () {
+    var lib = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
+    if (lib) lib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+  });
+</script>
+
+<script src="js/admin-boot.js?v=1"></script>
+<script src="js/admin-console-inline.js?v=1"></script>
+<script src="js/modules/question-bank.js?v=1"></script>
+<script src="js/modules/vfa-practice-pool.js?v=1"></script>
+<script src="js/modules/vfa-practice-pool-b2.js?v=1"></script>
+<script src="js/modules/vfa-practice-pool-b3.js?v=1"></script>
+<script src="js/modules/vfa-practice-pool-b4.js?v=1"></script>
+<script src="js/modules/vfa-practice-pool-b5.js?v=1"></script>
+<script src="js/modules/adre-road-transport-pool.js?v=1"></script>
+<script src="js/modules/si-history-practice-pool-b1.js?v=1"></script>
+<script src="js/modules/tet-practice-pool-b1.js?v=1"></script>
+<script src="js/modules/studyria-notifications.js?v=1"></script>
+<script src="js/modules/cloud-manager.js?v=1"></script>
+<script src="js/modules/website-customization.js?v=1"></script>
+<script src="js/modules/smart-publish-manager.js?v=1"></script>
+<script src="js/modules/pdf-classification-refactor.js?v=1"></script>
+<script src="js/modules/premium-edit-pdf-ui.js?v=1"></script>
+<script src="js/modules/library-expansion-uploader.js?v=1"></script>
+<script src="js/modules/admin-membership-manager.js?v=1"></script>
+<script src="js/modules/pass-management.js?v=1"></script>
+<script src="js/modules/pwa-admin-v32.js?v=1"></script>
+<script src="js/modules/campus-admin.js?v=1"></script>
+<script src="js/modules/zubeen-legacy-admin.js?v=1"></script>
+<script src="js/modules/brainlab-exam-import.js?v=1"></script>
+<script src="js/modules/brainlab-admin-tests.js?v=1"></script>
+<script src="js/modules/career-hub-poster-engine.js?v=1"></script>
+<script src="js/modules/creator-program.js?v=1"></script>
+</body>
+</html>
