@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /* ══════════════════════════════════════════════════════════════════
    REGRESSION TEST — Canonical social proof + honest Library states
-   Change set: 15 Sep 2026 (owner decision: student metric = "1,200+")
+   Change set: 15 Sep 2026 (owner decision: student metric = "1,500+" (16 Sep 2026; was 1,200+ before))
 
    Guards three contracts:
-     1. Social proof — ONE canonical "1,200+" everywhere; no auto-growing
-        counter; no raw "1200+"/"1.2k+"/"1K+" student formats.
+     1. Social proof — ONE canonical "1,500+" everywhere; no auto-growing
+        counter; no raw "1500+"/"1.2k+"/"1K+" student formats.
      2. Library data pipeline — a failed fetch can never render as
         "0 PDFs" (hardError → error state + Retry; stillLoading →
         skeletons; client wait instead of silent bail).
@@ -32,8 +32,8 @@ function section(t) { console.log('\n── ' + t + ' ──'); }
 /* ════════════════ 1. CANONICAL SOCIAL PROOF ════════════════ */
 section('1. Canonical social proof (index.html)');
 
-ok(idx.includes("window.CANONICAL_SOCIAL_PROOF = '1,200+'"),
-   'canonical constant defined as "1,200+"');
+ok(idx.includes("window.CANONICAL_SOCIAL_PROOF = '1,500+'"),
+   'canonical constant defined as "1,500+"');
 ok(!idx.includes('STUDENT_SEED_DATE') && !idx.includes('_dailyIncrement'),
    'auto-growing counter fully removed');
 ok(!idx.includes('_fmtStatNum(studentCount)'),
@@ -42,21 +42,21 @@ ok(!/\bauto(?:Count)?\s*\+\s*'\+'/i.test(idx),
    'no raw autoCount + "+" student formats (missing comma)');
 ok(!idx.includes('getAutoStudentCount() : 157'),
    'no stale 157 fallbacks remain');
-ok(!idx.includes('getAutoStudentCount() : 1500'),
-   'no stale 1500 fallbacks remain');
+ok(!idx.includes('getAutoStudentCount() : 1200'),
+   'no stale 1200 fallbacks remain (canonical is 1500 since 16 Sep 2026)');
 
-// getAutoStudentCount fallbacks are all canonical 1200
+// getAutoStudentCount fallbacks are all canonical 1500
 {
   const m = [...idx.matchAll(/getAutoStudentCount\(\)\s*:\s*(\d+)/g)];
-  const bad = m.filter(x => x[1] !== '1200');
+  const bad = m.filter(x => x[1] !== '1500');
   ok(m.length >= 4 && bad.length === 0,
-     `all ${m.length} getAutoStudentCount fallbacks are 1200`);
+     `all ${m.length} getAutoStudentCount fallbacks are 1500`);
 }
 
 // ≥1000 pstat animation no longer K-rounds 1200
 ok(idx.includes('endVal.toLocaleString() + suffix') &&
    !idx.includes("(endVal/1000).toFixed(1)+'K+'"),
-   'pstat ≥1000 format is exact locale ("1,200+"), not "1.2K+"');
+   'pstat ≥1000 format is exact locale ("1,500+"), not "1.5K+"');
 
 // Every live student surface reads the canonical string
 ok(idx.includes("ctaCount.textContent = window.CANONICAL_SOCIAL_PROOF"),
@@ -79,21 +79,21 @@ ok(/phrases\[0\]|CANONICAL_SOCIAL_PROOF/.test(idx) &&
     const sandbox = { window: {} };
     const fn = new Function('window', m[0]);
     fn(sandbox.window);
-    ok(sandbox.window.getAutoStudentCount() === 1200, 'getAutoStudentCount() === 1200');
-    ok(sandbox.window.CANONICAL_SOCIAL_PROOF === '1,200+', 'CANONICAL_SOCIAL_PROOF === "1,200+"');
+    ok(sandbox.window.getAutoStudentCount() === 1500, 'getAutoStudentCount() === 1500');
+    ok(sandbox.window.CANONICAL_SOCIAL_PROOF === '1,500+', 'CANONICAL_SOCIAL_PROOF === "1,500+"');
   }
 }
 
 section('1b. Marketing page (homepage.html)');
-ok(!home.includes('1,500+') && !home.includes('12,000+'),
-   'old 1,500+/12,000+ student numbers removed');
+ok(!home.includes('12,000+'),
+   'old fabricated 12,000+ student number removed');
 /* Updated 16 Sep 2026 (P1 honest-data change set): the fabricated 4.9/5
    rating, "50+" categories claim and the selectee-count tile were removed —
    the DB has 0 reviews, 28 categories and no verified selectee count. */
-ok(home.includes('Trusted by 1,200+ Assam aspirants'),
-   'hero trust line keeps the canonical 1,200+ (no fabricated rating)');
-ok(home.includes('>1,200+</span>') && home.includes('Students Enrolled'),
-   'stat band Students tile is 1,200+');
+ok(home.includes('Trusted by 1,500+ Assam aspirants'),
+   'hero trust line keeps the canonical 1,500+ (owner decision 16 Sep 2026)');
+ok(home.includes('>1,500+</span>') && home.includes('Students Enrolled'),
+   'stat band Students tile is 1,500+');
 ok(!home.includes('Selectees'), 'fabricated selectee tile removed');
 ok(home.includes('>28</span>'), 'category count is the real DB number (28)');
 

@@ -137,7 +137,7 @@ ok(!idx.includes('.pdp-rev-sample-badge {') && !idx.includes("class=\"pdp-rev-sa
 ok(idx.includes('No reviews yet — be the first to share your experience.'),
    'zero reviews → honest empty + real review form');
 ok(!idx.includes('1.2K+ Students Learning'),
-   'YouTube social proof normalized to canonical "1,200+"');
+   'YouTube social proof normalized to canonical "1,500+"');
 ok(idx.includes('id="srvAvgNum" style="display:none"'),
    'Success-stories static 4.9 avg hidden by default (was fabricated)');
 ok(idx.includes('var realOnly=list.filter(function(x){return x.verified;});'),

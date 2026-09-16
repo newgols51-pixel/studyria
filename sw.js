@@ -26,7 +26,10 @@
 // no duplicate notifications, no foreign SDK listeners.
 
 // ── VERSION ───────────────────────────────────────────────────────
-const CACHE_VERSION = 'v165'; // v165: job card "posts" counts fixed (old parser concatenated every digit in vacancy article blobs →
+const CACHE_VERSION = 'v166'; // v166: canonical social proof unified to "1,500+" (owner decision 16 Sep 2026; was 1,200+) —
+// STUDENT_BASE/CANONICAL_SOCIAL_PROOF and every fallback, hero, About, community, stat band,
+// YouTube labels and the /homepage marketing page now show one number.
+// v165: job card "posts" counts fixed (old parser concatenated every digit in vacancy article blobs →
 // "2026152026142026 posts"); _map now exposes lowercased jobType so homepage Govt/Private sections filter correctly.
 // v164: Homepage job sections (Latest/Trending/Govt/Private/Admit Cards/Results) populated for real —
 // chInit never ran on the homepage so _ch.jobs stayed empty (sections sat on skeletons forever).

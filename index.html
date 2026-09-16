@@ -12660,7 +12660,7 @@ function shUpdateHeroStats() {
   if (pdfEl && pdfs.length) pdfEl.textContent = pdfs.length + '+';
 
   var auto = typeof window.getAutoStudentCount === 'function'
-    ? window.getAutoStudentCount() : 1200;
+    ? window.getAutoStudentCount() : 1500;
   var _sp = window.CANONICAL_SOCIAL_PROOF || auto.toLocaleString() + '+';
   var studEl = document.getElementById('heroStatStudents');
   if (studEl) studEl.textContent = _sp;
@@ -19874,15 +19874,15 @@ body:not(.light) .sf-stories .srv-star-btn { color:rgba(255,255,255,0.2) !import
             </a>
             <!-- YouTube -->
             <a class="sf-social" data-brand="youtube"
-               href="https://youtube.com/@studyriaofficial?si=YE4Lx8DXFA2TmKqA" title="Studyria YouTube — 1,200+ Students Learning"
+               href="https://youtube.com/@studyriaofficial?si=YE4Lx8DXFA2TmKqA" title="Studyria YouTube — 1,500+ Students Learning"
                target="_blank" rel="noopener noreferrer"
-               aria-label="Studyria YouTube channel — 1,200+ Students Learning">
+               aria-label="Studyria YouTube channel — 1,500+ Students Learning">
               <div class="sf-social-icon">
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
               </div>
               <div class="sf-social-text">
                 <span class="sf-social-label">YouTube</span>
-                <span class="sf-social-sub">1,200+ Students Learning</span>
+                <span class="sf-social-sub">1,500+ Students Learning</span>
               </div>
             </a>
             <!-- WhatsApp Community -->
@@ -38145,7 +38145,7 @@ function heroApplySettings(s) {
     subEl.textContent = '';
     subEl.classList.remove('hero-cursor');
     if(window._heroTypingTimer) clearTimeout(window._heroTypingTimer);
-    const _liveStudentCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1200;
+    const _liveStudentCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1500;
     // Bug fix: some hero_settings rows in the DB were saved as a JSON-array
     // string (e.g. ["phrase one", "phrase two"]) instead of the expected
     // pipe-separated format ("phrase one|phrase two"). Splitting a JSON
@@ -40069,7 +40069,7 @@ function _animatePstatEl(numEl, endVal, opts) {
     if (progress < 1) requestAnimationFrame(step);
     else numEl.textContent = decimal !== null
       ? decimal.toFixed(1) + suffix
-      // Exact locale format (1200 → "1,200+") — matches the canonical
+      // Exact locale format (1500 → "1,500+") — matches the canonical
       // social-proof display instead of rounding to "1.2K+"
       : endVal.toLocaleString() + suffix;
   }
@@ -40083,7 +40083,7 @@ function _animatePstatEl(numEl, endVal, opts) {
 // read the same numbers without duplicating DB round-trips.
 
 // ── CANONICAL SOCIAL PROOF (owner decision, 15 Sep 2026) ──────────────
-// The public student/selectee social-proof metric is "1,200+" — ONE
+// The public student/selectee social-proof metric is "1,500+" — ONE
 // canonical value shown consistently on every surface (hero CTA
 // subtitle, About tile, community hub, stat band, /homepage marketing
 // page). Replaces the former auto-growing counter (157 + 2-5/day),
@@ -40091,12 +40091,12 @@ function _animatePstatEl(numEl, endVal, opts) {
 // numbers and showed a different figure every day. Never change this
 // value without an explicit owner decision.
 (function() {
-  var STUDENT_BASE = 1200; // canonical "1,200+" — students metric
+  var STUDENT_BASE = 1500; // canonical "1,500+" — students metric (owner decision 16 Sep 2026)
   function getAutoStudentCount() { return STUDENT_BASE; }
   window.getAutoStudentCount = getAutoStudentCount;
   // Exact display string — shared formatters round 1200 to "1K+"/"1.2K+",
   // so student surfaces use this string directly.
-  window.CANONICAL_SOCIAL_PROOF = '1,200+';
+  window.CANONICAL_SOCIAL_PROOF = '1,500+';
 })();
 
 /**
@@ -40163,7 +40163,7 @@ function _applyPlatformStats(stats) {
   // (Home, About, Connect with, CTA, Footer, Hero, Library, etc).
   // It is intentionally NOT replaced by live Supabase row counts,
   // so every surface always shows the same number.
-  const studentCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1200;
+  const studentCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1500;
 
   // ── Homepage pstat cards ─────────────────────────────────────
   const card0 = document.getElementById('pstatNum0');
@@ -40191,7 +40191,7 @@ function _applyPlatformStats(stats) {
   // ── About page stat tiles ────────────────────────────────────
   const aboutStudents = document.getElementById('aboutStatStudents');
   if (aboutStudents) {
-    aboutStudents.textContent = window.CANONICAL_SOCIAL_PROOF || '1,200+';
+    aboutStudents.textContent = window.CANONICAL_SOCIAL_PROOF || '1,500+';
   }
 
   const aboutPdfs = document.getElementById('aboutStatPdfs');
@@ -40204,19 +40204,19 @@ function _applyPlatformStats(stats) {
   // ── Home CTA subtitle ────────────────────────────────────────
   const ctaCount = document.getElementById('homeCtaStudentCount');
   if (ctaCount) {
-    ctaCount.textContent = window.CANONICAL_SOCIAL_PROOF || '1,200+';
+    ctaCount.textContent = window.CANONICAL_SOCIAL_PROOF || '1,500+';
   }
 
   // ── Community hub title ──────────────────────────────────────
   const communityCount = document.getElementById('communityStudentCount');
   if (communityCount) {
-    communityCount.textContent = (window.CANONICAL_SOCIAL_PROOF || '1,200+') + ' Students';
+    communityCount.textContent = (window.CANONICAL_SOCIAL_PROOF || '1,500+') + ' Students';
   }
 
   // ── Homepage stat band (dynamic) ────────────────────────────
   const sbStudents = document.getElementById('statBandStudents');
   if (sbStudents) {
-    sbStudents.textContent = window.CANONICAL_SOCIAL_PROOF || '1,200+';
+    sbStudents.textContent = window.CANONICAL_SOCIAL_PROOF || '1,500+';
   }
   const sbPdfs = document.getElementById('statBandPdfs');
   if (sbPdfs && pdfCount > 0) {
@@ -40239,7 +40239,7 @@ function initPlatformStats() {
   if (!cards.length) return;
 
   // Auto student count for static fallback
-  const autoStudentCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1200;
+  const autoStudentCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1500;
 
   // Immediately start count-up with current data-target values (static fallback)
   const observer = new IntersectionObserver((entries) => {
@@ -40273,7 +40273,7 @@ function initPlatformStats() {
     _applyPlatformStats(stats);
   }).catch(() => {
     // Even on error, show the canonical social proof on community + CTA
-    const _sp = window.CANONICAL_SOCIAL_PROOF || '1,200+';
+    const _sp = window.CANONICAL_SOCIAL_PROOF || '1,500+';
     const cta  = document.getElementById('homeCtaStudentCount');
     if (cta) cta.textContent = _sp;
     const cc   = document.getElementById('communityStudentCount');
@@ -40305,13 +40305,13 @@ function initAboutStats() {
       _applyPlatformStats(stats);
     } else {
       // No DB data — use canonical social-proof fallback
-      const autoCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1200;
-      if (aboutStudents) aboutStudents.textContent = window.CANONICAL_SOCIAL_PROOF || '1,200+';
+      const autoCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1500;
+      if (aboutStudents) aboutStudents.textContent = window.CANONICAL_SOCIAL_PROOF || '1,500+';
       if (aboutPdfs)     aboutPdfs.textContent = '—';
     }
   }).catch(() => {
-    const autoCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1200;
-    if (aboutStudents) aboutStudents.textContent = window.CANONICAL_SOCIAL_PROOF || '1,200+';
+    const autoCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1500;
+    if (aboutStudents) aboutStudents.textContent = window.CANONICAL_SOCIAL_PROOF || '1,500+';
     if (aboutPdfs)     aboutPdfs.textContent = '—';
   });
 }
@@ -40397,7 +40397,7 @@ function renderHome() {
 // (PDF counts/downloads) when it resolves; the student number stays
 // canonical everywhere by design.
 document.addEventListener('DOMContentLoaded', function _initStudentCounters() {
-  var autoCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1200;
+  var autoCount = (typeof window.getAutoStudentCount === 'function') ? window.getAutoStudentCount() : 1500;
   var _sp = window.CANONICAL_SOCIAL_PROOF || autoCount.toLocaleString() + '+';
   var ctaEl = document.getElementById('homeCtaStudentCount');
   if (ctaEl) ctaEl.textContent = _sp;
