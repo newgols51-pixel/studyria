@@ -406,7 +406,7 @@
       if (!items[i]) { el.style.display = 'none'; continue; }
       var mk = items[i];
       setCard(el, mk.title, mk.icon,
-        "HBH.mockCard('" + mk.exam + "', '" + String(mk.title).replace(/'/g, "\\'") + " Mock')",
+        "HBH.mockCard('" + mk.exam + "', '" + String(mk.title).replace(/'/g, "\\'") + "')",
         n2(bl.filterQuestions({ exam: mk.exam }).length) + '-question pool · timed exam simulation');
     }
 

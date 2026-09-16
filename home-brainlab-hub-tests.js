@@ -133,6 +133,8 @@ console.log('\n── 5. card clicks reuse production flows ──');
 check('exam card → BrainLabUniverse.openOrg (exam hub)', hubjs.includes('openOrg'));
 check('test card → BrainLabTests.openSeries (test series page)', hubjs.includes('openSeries'));
 check('mock card → BrainLab.startPickedMock (attempt flow)', hubjs.includes('startPickedMock'));
+var mockRuntimeLine = (hubjs.match(/String\(mk\.title\)[^\n]*/) || ['x Mock'])[0];
+check('mock runtime card passes SM title as-is (no double Mock)', mockRuntimeLine.indexOf(' Mock') === -1);
 check('quiz card → BrainLab.startCategoryQuiz', hubjs.includes('startCategoryQuiz'));
 check('PYQ card → BrainLabV7.startExamPYQ', hubjs.includes('startExamPYQ'));
 check('subject card → BrainLabPages.openSubject', hubjs.includes('openSubject'));
