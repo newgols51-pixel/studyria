@@ -93,6 +93,11 @@ body.light .sv2-see-all { color: #930205; }
 body.light .sv2-see-all:hover { background: rgba(147,2,5,0.08); color: #930205; }
 
 /* ── HORIZONTAL SCROLL ────────────────────────────────────────── */
+/* 🔥 Trending Now — subtitle strip + live IST clock */
+.sv2-trendnow-sub { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 2px 20px 12px; max-width: 1200px; margin: 0 auto; box-sizing: border-box; color: #94a3b8; font-size: .85rem; font-weight: 600; letter-spacing: .01em; }
+.sv2-trendnow-clock { font-variant-numeric: tabular-nums; color: #f59e0b; font-weight: 700; font-size: .78rem; background: rgba(245, 158, 11, .12); padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(245, 158, 11, .28); white-space: nowrap; margin-left: auto; }
+@media (max-width: 768px) { .sv2-trendnow-sub { padding: 2px 16px 10px; } .sv2-trendnow-clock { margin-left: 0; } }
+
 .sv2-hscroll { display: flex; gap: 12px; overflow-x: auto; overflow-y: visible; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 4px 20px 16px; max-width: 1200px; margin: 0 auto; box-sizing: border-box; scroll-snap-type: x proximity; }
 .sv2-hscroll::-webkit-scrollbar { display: none; }
 

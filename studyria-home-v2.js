@@ -544,6 +544,15 @@
     // Notifications ticker
     html += '<div id="sv2NotifTicker"></div>';
 
+    // 🔥 Trending Now — Assam's Most-Watched (real views_count ranking,
+    // fallback to admin trending flag + newest; auto-refreshes every visit)
+    html += sectionHTML('sv2TrendingNow', 'red', '🔥', 'Trending Now', 'Hot', 'hot',
+      '<div class="sv2-trendnow-sub">Assam\'s Most-Watched Jobs &amp; Notifications'
+      + '<span class="sv2-trendnow-clock" id="sv2TrendClock" role="timer" aria-label="Current time in India">🕐 --:--:-- IST</span>'
+      + '</div>'
+      + '<div id="sv2TrendingNowContent">' + skeletonJobRow(6) + '</div>',
+      'navigate(\'career-hub\')');
+
     // Latest Jobs
     html += sectionHTML('sv2LatestJobs', 'blue', '⚡', 'Latest Jobs', 'Live', 'live',
       '<div id="sv2LatestJobsContent">' + skeletonJobRow(4) + '</div>',
@@ -651,6 +660,23 @@
     var newsletter = document.getElementById('sv2Newsletter');
     if (newsletter) renderNewsletter(newsletter);
 
+    // 🔥 Trending Now live IST clock — ticks every second
+    var tclock = document.getElementById('sv2TrendClock');
+    if (tclock && !window._sv2TrendClockOn) {
+      window._sv2TrendClockOn = true;
+      var tickClock = function() {
+        try {
+          var t = new Intl.DateTimeFormat('en-IN', {
+            timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit',
+            second: '2-digit', hour12: true
+          }).format(new Date());
+          tclock.textContent = '🕐 ' + t + ' IST';
+        } catch (_) {}
+      };
+      tickClock();
+      setInterval(tickClock, 1000);
+    }
+
     // Reveal all sections
     document.querySelectorAll('.sv2-section').forEach(revealSection);
   }
@@ -659,6 +685,30 @@
   function renderJobsSections() {
     var jobs = getJobs();
     if (!jobs.length) return; // Career Hub hasn't loaded jobs yet
+
+    // 🔥 Trending Now — top 12 by REAL views_count (DB), auto-updated on every
+    // visit (so at least every 24h). Until the views_count column exists the
+    // ranking falls back honestly to admin trending flag, then newest first.
+    var tnow = document.getElementById('sv2TrendingNowContent');
+    if (tnow) {
+      var pool = jobs.filter(function(j) {
+        return !/^test\b/i.test(String(j.title || '').trim()); // never surface test rows
+      });
+      var byViews = pool.slice().sort(function(a, b) {
+        var av = Number(a.views) || 0, bv = Number(b.views) || 0;
+        if (bv !== av) return bv - av;                       // 1. most-watched first
+        var at = a.isTrending ? 1 : 0, bt = b.isTrending ? 1 : 0;
+        if (bt !== at) return bt - at;                       // 2. admin trending pick
+        return String(b.pubAt || '').localeCompare(String(a.pubAt || '')); // 3. newest
+      });
+      var topTrend = byViews.slice(0, 12);
+      if (topTrend.length) {
+        tnow.innerHTML = '<div class="sv2-hscroll">' + topTrend.map(jobCardHTML).join('') + '</div>';
+        revealSection(tnow.parentElement);
+      } else {
+        tnow.parentElement.style.display = 'none';
+      }
+    }
 
     // Latest Jobs
     var latest = document.getElementById('sv2LatestJobsContent');
