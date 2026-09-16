@@ -123,78 +123,6 @@
     return (s && Array.isArray(s.jobs)) ? s.jobs : [];
   }
 
-  function isGovtJob(j) {
-    if (!j) return false;
-    return j.jobType === 'government' ||
-      (j.category || []).map(function(c) { return c.toLowerCase(); }).some(function(c) {
-        return c.indexOf('govt') >= 0 || c.indexOf('government') >= 0;
-      }) ||
-      /\bgovt\b|\bgovernment\b|\bpsu\b/i.test(j.title || '');
-  }
-
-  function isPrivateJob(j) {
-    if (!j) return false;
-    return j.jobType === 'private' ||
-      (j.category || []).map(function(c) { return c.toLowerCase(); }).some(function(c) {
-        return c.indexOf('private') >= 0;
-      });
-  }
-
-  function isAdmitJob(j) {
-    if (!j) return false;
-    return (j.category || []).map(function(c) { return c.toLowerCase(); }).some(function(c) {
-      return c.indexOf('admit') >= 0;
-    }) || /admit\s*card/i.test(j.title || '');
-  }
-
-  function isResultJob(j) {
-    if (!j) return false;
-    return (j.category || []).map(function(c) { return c.toLowerCase(); }).some(function(c) {
-      return c.indexOf('result') >= 0;
-    }) || /result/i.test(j.title || '');
-  }
-
-  // ── JOB CARD HTML ──────────────────────────────────────────────
-  function jobCardHTML(j) {
-    if (!j) return '';
-    var dl = daysLeft(j.lastDate || j.deadline || j.application_end_date);
-    var dlCls = deadlineClass(dl);
-    var dlLabel = deadlineLabel(dl, j.lastDate || j.deadline || '');
-
-    var badges = '';
-    if (j.isTrending) badges += '<span class="sv2-job-badge trending">🔥 Trending</span>';
-    if (j.isNew) badges += '<span class="sv2-job-badge new">✨ New</span>';
-    if (isGovtJob(j)) badges += '<span class="sv2-job-badge govt">Govt</span>';
-    else if (isPrivateJob(j)) badges += '<span class="sv2-job-badge private">Private</span>';
-    if (dl !== null && dl >= 0 && dl <= 3) badges += '<span class="sv2-job-badge urgent">⚡ Urgent</span>';
-
-    var orgIcon = j.orgIcon || '🏢';
-    var title = esc(j.title || 'Untitled Position');
-    var org = esc(j.org || j.organization || '');
-    var location = esc(j.location || 'Not specified');
-    var posts = j.posts || j.vacancies || '';
-    var postsText = posts ? (posts + ' posts') : '';
-
-    // Deadline progress bar
-    var barWidth = dl !== null && dl >= 0 ? Math.max(5, Math.min(100, 100 - (dl / 30 * 100))) : 100;
-
-    return '<div class="sv2-job-card" onclick="chOpenDetail(\'' + esc(j.id) + '\')">' +
-      (badges ? '<div class="sv2-job-badges">' + badges + '</div>' : '') +
-      '<div class="sv2-job-org">' +
-        '<div class="sv2-job-org-icon">' + esc(orgIcon) + '</div>' +
-        '<div class="sv2-job-org-name">' + org + '</div>' +
-      '</div>' +
-      '<div class="sv2-job-title">' + title + '</div>' +
-      '<div class="sv2-job-meta">' +
-        '<div class="sv2-job-meta-row"><span>📍</span><span>' + location + '</span></div>' +
-        (postsText ? '<div class="sv2-job-meta-row"><span>👥</span><span>' + esc(postsText) + '</span></div>' : '') +
-        '<div class="sv2-job-meta-row ' + (dlCls === 'urgent' ? 'urgent' : '') + '"><span>📅</span><span>' + esc(dlLabel) + '</span></div>' +
-      '</div>' +
-      '<div class="sv2-job-deadline-bar"><div class="sv2-job-deadline-fill ' + dlCls + '" style="width:' + barWidth + '%"></div></div>' +
-    '</div>';
-  }
-
-  // ── PDF CARD HTML ──────────────────────────────────────────────
   function pdfCardHTML(pdf) {
     if (!pdf) return '';
     var isFree = pdf.free || !pdf.price || Number(pdf.price) === 0;
@@ -252,18 +180,6 @@
     '</section>';
   }
 
-  function skeletonJobRow(count) {
-    var cards = '';
-    for (var i = 0; i < (count || 4); i++) {
-      cards += '<div class="sv2-skeleton-card sv2-skel-job">' +
-        '<div class="sv2-skel-line medium"></div>' +
-        '<div class="sv2-skel-line"></div>' +
-        '<div class="sv2-skel-line short"></div>' +
-      '</div>';
-    }
-    return '<div class="sv2-hscroll">' + cards + '</div>';
-  }
-
   function skeletonPDFRow(count) {
     var cards = '';
     for (var i = 0; i < (count || 5); i++) {
@@ -276,47 +192,6 @@
   }
 
   // ── RENDER: LATEST JOBS ────────────────────────────────────────
-  function renderLatestJobs(container) {
-    var jobs = getJobs().slice(0, 10);
-    if (!jobs.length) { container.innerHTML = '<div class="sv2-empty">Loading latest jobs…</div>'; return; }
-    var cards = jobs.map(jobCardHTML).join('');
-    container.innerHTML = '<div class="sv2-hscroll">' + cards + '</div>';
-    revealSection(container.parentElement);
-  }
-
-  // ── RENDER: GOVERNMENT JOBS ────────────────────────────────────
-  function renderGovtJobs(container) {
-    var jobs = getJobs().filter(isGovtJob).slice(0, 10);
-    if (!jobs.length) { container.parentElement.style.display = 'none'; return; }
-    container.innerHTML = '<div class="sv2-hscroll">' + jobs.map(jobCardHTML).join('') + '</div>';
-    revealSection(container.parentElement);
-  }
-
-  // ── RENDER: PRIVATE JOBS ───────────────────────────────────────
-  function renderPrivateJobs(container) {
-    var jobs = getJobs().filter(isPrivateJob).slice(0, 10);
-    if (!jobs.length) { container.parentElement.style.display = 'none'; return; }
-    container.innerHTML = '<div class="sv2-hscroll">' + jobs.map(jobCardHTML).join('') + '</div>';
-    revealSection(container.parentElement);
-  }
-
-  // ── RENDER: ADMIT CARDS ────────────────────────────────────────
-  function renderAdmitCards(container) {
-    var jobs = getJobs().filter(isAdmitJob).slice(0, 10);
-    if (!jobs.length) { container.parentElement.style.display = 'none'; return; }
-    container.innerHTML = '<div class="sv2-hscroll">' + jobs.map(jobCardHTML).join('') + '</div>';
-    revealSection(container.parentElement);
-  }
-
-  // ── RENDER: RESULTS ────────────────────────────────────────────
-  function renderResults(container) {
-    var jobs = getJobs().filter(isResultJob).slice(0, 10);
-    if (!jobs.length) { container.parentElement.style.display = 'none'; return; }
-    container.innerHTML = '<div class="sv2-hscroll">' + jobs.map(jobCardHTML).join('') + '</div>';
-    revealSection(container.parentElement);
-  }
-
-  // ── RENDER: FREE PDFs ──────────────────────────────────────────
   function renderFreePDFs(container) {
     var pdfs = (window.PDFS || []).filter(function(p) {
       return p && p.title && (p.free || !p.price || Number(p.price) === 0);
@@ -406,31 +281,6 @@
     }).join('');
 
     container.innerHTML = '<div class="sv2-grid">' + html + '</div>';
-    revealSection(container.parentElement);
-  }
-
-  // ── RENDER: DAILY QUIZ / MOCK TESTS ─────────────────────────────
-  function renderQuiz(container) {
-    var quizzes = [
-      { title: 'Daily Current Affairs Quiz', desc: '10 questions · 5 min · Test your daily GA knowledge', icon: '⚡', meta: '10 Qs' },
-      { title: 'ADRE General Studies Mock', desc: 'Full-length mock · 100 questions · 120 min', icon: '🎯', meta: '100 Qs' },
-      { title: 'APSC Prelims GS Practice', desc: 'Topic-wise practice sets for APSC Prelims', icon: '⚖️', meta: '50 Qs' },
-      { title: 'Assam GK Special Quiz', desc: 'Assam history, geography & culture quiz', icon: '🏛️', meta: '20 Qs' },
-      { title: 'English Comprehension Test', desc: 'Grammar & comprehension for competitive exams', icon: '📖', meta: '25 Qs' },
-      { title: 'Mathematics & Reasoning', desc: 'Quantitative aptitude & logical reasoning', icon: '🔢', meta: '30 Qs' }
-    ];
-
-    var html = quizzes.map(function(q) {
-      return '<div class="sv2-quiz-card" onclick="navigate(\'brainlab\')">' +
-        '<div class="sv2-quiz-icon">' + q.icon + '</div>' +
-        '<div class="sv2-quiz-title">' + esc(q.title) + '</div>' +
-        '<div class="sv2-quiz-desc">' + esc(q.desc) + '</div>' +
-        '<div class="sv2-quiz-meta"><div class="sv2-quiz-meta-item">📝 ' + esc(q.meta) + '</div></div>' +
-        '<button class="sv2-quiz-btn">Start Now</button>' +
-      '</div>';
-    }).join('');
-
-    container.innerHTML = '<div class="sv2-hscroll">' + html + '</div>';
     revealSection(container.parentElement);
   }
 
@@ -544,49 +394,8 @@
     // Notifications ticker
     html += '<div id="sv2NotifTicker"></div>';
 
-    // 🔥 Trending Now — Assam's Most-Watched (real views_count ranking,
-    // fallback to admin trending flag + newest; auto-refreshes every visit)
-    html += sectionHTML('sv2TrendingNow', 'red', '🔥', 'Trending Now', 'Hot', 'hot',
-      '<div class="sv2-trendnow-sub">Assam\'s Most-Watched Jobs &amp; Notifications'
-      + '<span class="sv2-trendnow-clock" id="sv2TrendClock" role="timer" aria-label="Current time in India">🕐 --:--:-- IST</span>'
-      + '</div>'
-      + '<div id="sv2TrendingNowContent">' + skeletonJobRow(6) + '</div>',
-      'navigate(\'career-hub\')');
-
-    // Latest Jobs
-    html += sectionHTML('sv2LatestJobs', 'blue', '⚡', 'Latest Jobs', 'Live', 'live',
-      '<div id="sv2LatestJobsContent">' + skeletonJobRow(4) + '</div>',
-      'navigate(\'career-hub\')');
-
-    // Trending Jobs
-    html += sectionHTML('sv2TrendingJobs', 'red', '🔥', 'Trending Jobs', 'Hot', 'hot',
-      '<div id="sv2TrendingJobsContent">' + skeletonJobRow(4) + '</div>',
-      'navigate(\'career-hub\')');
-
-    // Government Jobs
-    html += sectionHTML('sv2GovtJobs', 'blue', '🏛️', 'Government Jobs', 'Govt', 'govt',
-      '<div id="sv2GovtJobsContent">' + skeletonJobRow(4) + '</div>',
-      'sv2NavGovtJobs()');
-
-    // Private Jobs
-    html += sectionHTML('sv2PrivateJobs', 'green', '🏢', 'Private Jobs', '', '',
-      '<div id="sv2PrivateJobsContent">' + skeletonJobRow(4) + '</div>',
-      'navigate(\'career-hub\')');
-
-    // Admit Cards
-    html += sectionHTML('sv2AdmitCards', 'orange', '🎫', 'Admit Cards', '', '',
-      '<div id="sv2AdmitCardsContent">' + skeletonJobRow(4) + '</div>',
-      'sv2NavAdmit()');
-
-    // Results
-    html += sectionHTML('sv2Results', 'purple', '📊', 'Results', '', '',
-      '<div id="sv2ResultsContent">' + skeletonJobRow(4) + '</div>',
-      'sv2NavResults()');
-
-    // Current Affairs (blog)
-    html += sectionHTML('sv2CurrentAffairs', 'teal', '📰', 'Current Affairs', '', '',
-      '<div id="sv2CurrentAffairsContent"><div class="sv2-empty">Loading current affairs…</div></div>',
-      'navigate(\'blog\')');
+    // BrainLab learning hub (home-brainlab-hub.js renders 9 real-count sections here)
+    html += '<div id="sv2BrainLabHub"></div>';
 
     // Free PDFs
     html += sectionHTML('sv2FreePDFs', 'green', '🎁', 'Free PDFs', '', '',
@@ -607,11 +416,6 @@
     html += sectionHTML('sv2PopularExams', 'purple', '🏆', 'Popular Exams', '', '',
       '<div id="sv2PopularExamsContent"></div>',
       'navigate(\'career-hub\')');
-
-    // Daily Quiz & Mock Tests
-    html += sectionHTML('sv2Quiz', 'purple', '🧠', 'Daily Quiz & Mock Tests', 'New', 'quiz',
-      '<div id="sv2QuizContent"></div>',
-      'navigate(\'brainlab\')');
 
     // Install App CTA
     html += '<div id="sv2InstallCTA"></div>';
@@ -645,9 +449,6 @@
     var notifTicker = document.getElementById('sv2NotifTicker');
     if (notifTicker) renderNotifTicker(notifTicker);
 
-    var quizContent = document.getElementById('sv2QuizContent');
-    if (quizContent) renderQuiz(quizContent);
-
     var catContent = document.getElementById('sv2PopularCategoriesContent');
     if (catContent) renderPopularCategories(catContent);
 
@@ -660,109 +461,19 @@
     var newsletter = document.getElementById('sv2Newsletter');
     if (newsletter) renderNewsletter(newsletter);
 
-    // 🔥 Trending Now live IST clock — ticks every second
-    var tclock = document.getElementById('sv2TrendClock');
-    if (tclock && !window._sv2TrendClockOn) {
-      window._sv2TrendClockOn = true;
-      var tickClock = function() {
-        try {
-          var t = new Intl.DateTimeFormat('en-IN', {
-            timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit',
-            second: '2-digit', hour12: true
-          }).format(new Date());
-          tclock.textContent = '🕐 ' + t + ' IST';
-        } catch (_) {}
-      };
-      tickClock();
-      setInterval(tickClock, 1000);
-    }
-
     // Reveal all sections
     document.querySelectorAll('.sv2-section').forEach(revealSection);
   }
 
   // ── RENDER JOBS DATA ───────────────────────────────────────────
+  /* Homepage job/notification SECTION presentation removed (owner spec,
+     16 Sep 2026). The 🔔 Live ticker stays and needs the real jobs data —
+     Career Hub, DB and pipelines are untouched. */
   function renderJobsSections() {
     var jobs = getJobs();
     if (!jobs.length) return; // Career Hub hasn't loaded jobs yet
-
-    // 🔥 Trending Now — top 12 by REAL views_count (DB), auto-updated on every
-    // visit (so at least every 24h). Until the views_count column exists the
-    // ranking falls back honestly to admin trending flag, then newest first.
-    var tnow = document.getElementById('sv2TrendingNowContent');
-    if (tnow) {
-      var pool = jobs.filter(function(j) {
-        return !/^test\b/i.test(String(j.title || '').trim()); // never surface test rows
-      });
-      var byViews = pool.slice().sort(function(a, b) {
-        var av = Number(a.views) || 0, bv = Number(b.views) || 0;
-        if (bv !== av) return bv - av;                       // 1. most-watched first
-        var at = a.isTrending ? 1 : 0, bt = b.isTrending ? 1 : 0;
-        if (bt !== at) return bt - at;                       // 2. admin trending pick
-        return String(b.pubAt || '').localeCompare(String(a.pubAt || '')); // 3. newest
-      });
-      var topTrend = byViews.slice(0, 12);
-      if (topTrend.length) {
-        tnow.innerHTML = '<div class="sv2-hscroll">' + topTrend.map(jobCardHTML).join('') + '</div>';
-        revealSection(tnow.parentElement);
-      } else {
-        tnow.parentElement.style.display = 'none';
-      }
-    }
-
-    // Latest Jobs
-    var latest = document.getElementById('sv2LatestJobsContent');
-    if (latest) renderLatestJobs(latest);
-
-    // Trending
-    var trending = document.getElementById('sv2TrendingJobsContent');
-    if (trending) {
-      var trendingJobs = jobs.filter(function(j) { return j.isTrending || j.isNew; }).slice(0, 10);
-      if (trendingJobs.length) {
-        trending.innerHTML = '<div class="sv2-hscroll">' + trendingJobs.map(jobCardHTML).join('') + '</div>';
-        revealSection(trending.parentElement);
-      } else {
-        trending.parentElement.style.display = 'none';
-      }
-    }
-
-    // Govt
-    var govt = document.getElementById('sv2GovtJobsContent');
-    if (govt) renderGovtJobs(govt);
-
-    // Private
-    var priv = document.getElementById('sv2PrivateJobsContent');
-    if (priv) renderPrivateJobs(priv);
-
-    // Admit
-    var admit = document.getElementById('sv2AdmitCardsContent');
-    if (admit) renderAdmitCards(admit);
-
-    // Results
-    var results = document.getElementById('sv2ResultsContent');
-    if (results) renderResults(results);
-
-    // Current Affairs — use blog posts if available
-    var ca = document.getElementById('sv2CurrentAffairsContent');
-    if (ca) {
-      var blogPosts = (window._blogPosts || window.BLOG_POSTS || []);
-      if (blogPosts.length) {
-        var posts = blogPosts.slice(0, 6).map(function(p) {
-          return '<div class="sv2-pdf-card" onclick="navigate(\'blog\');setTimeout(function(){if(typeof openBlogPost===\'function\')openBlogPost(\'' + esc(p.id || p.slug || '') + '\')},200)">' +
-            '<div class="sv2-pdf-cover" style="height:140px">' +
-              (p.cover_image ? '<img src="' + esc(p.cover_image) + '" alt="' + esc(p.title) + '" loading="lazy" decoding="async">' : '<div class="sv2-pdf-cover-fallback">📰</div>') +
-              '<div class="sv2-pdf-cover-scrim"></div>' +
-            '</div>' +
-            '<div class="sv2-pdf-body"><div class="sv2-pdf-title">' + esc(p.title || '') + '</div>' +
-            '<div class="sv2-pdf-meta">' + esc((p.created_at || '').split('T')[0] || '') + '</div></div>' +
-          '</div>';
-        }).join('');
-        ca.innerHTML = '<div class="sv2-hscroll">' + posts + '</div>';
-        revealSection(ca.parentElement);
-      } else {
-        ca.parentElement.style.display = 'none';
-      }
-    }
+    var ticker = document.getElementById('sv2NotifTicker');
+    if (ticker) renderNotifTicker(ticker);
   }
 
   // ── RENDER PDFs ───────────────────────────────────────────────

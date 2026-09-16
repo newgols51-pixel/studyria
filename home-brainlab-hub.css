@@ -1,0 +1,190 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   STUDYRIA HOMEPAGE — BRAINLAB LEARNING HUB STYLES (home-brainlab-hub.js)
+   Visual identity: Paper Cream surfaces · Royal Maroon accents (#930205,
+   via --accent) · Premium Gold highlights (via --gold). All colors come
+   from the site's runtime theme tokens with cream-safe fallbacks — no
+   hardcoded theme colors.
+   LAYOUT RULE (owner spec §3/§8): a VERTICAL list of full-width cards
+   at every breakpoint — 1 / 2 / 3 / 4 stacked, never a horizontal carousel.
+   Mobile-first: readable at 320px, no horizontal overflow, ≥44px tap targets.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.hbh-hub-banner {
+  margin: 18px 0 6px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg,
+    rgba(147, 2, 5, 0.94),
+    rgba(147, 2, 5, 0.82) 55%,
+    rgba(147, 2, 5, 0.68));
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.hbh-hub-banner::after {
+  content: '';
+  position: absolute;
+  right: -30px;
+  top: -30px;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.35), transparent 70%);
+  pointer-events: none;
+}
+.hbh-hub-title {
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: -.01em;
+}
+.hbh-hub-sub {
+  font-size: .72rem;
+  opacity: .85;
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+.hbh-section { margin: 22px 0 4px; }
+
+.hbh-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.hbh-head-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hbh-title {
+  font-size: 1.0rem;
+  font-weight: 800;
+  color: var(--text, #1c1b1a);
+  letter-spacing: -.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hbh-title::after {
+  content: '';
+  display: block;
+  width: 34px;
+  height: 3px;
+  border-radius: 2px;
+  margin-top: 4px;
+  background: linear-gradient(90deg, var(--accent, #930205), var(--gold, #f59e0b));
+}
+.hbh-sub {
+  font-size: .72rem;
+  color: var(--text2, #6b6660);
+  line-height: 1.35;
+}
+.hbh-viewall {
+  flex-shrink: 0;
+  font-size: .74rem;
+  font-weight: 700;
+  color: var(--accent, #930205);
+  background: transparent;
+  border: 1px solid rgba(147, 2, 5, 0.35);
+  border-radius: 999px;
+  padding: 7px 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .2s ease, color .2s ease;
+  min-height: 32px;
+}
+.hbh-viewall:hover { background: var(--accent, #930205); color: #fff; }
+
+/* ── VERTICAL CARD LIST — the core layout rule ── */
+.hbh-list {
+  display: flex;
+  flex-direction: column;   /* 1 ↓ 2 ↓ 3 ↓ 4 — never a horizontal carousel */
+  gap: 10px;
+}
+
+.hbh-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 13px 14px;
+  min-height: 64px;
+  border-radius: 12px;
+  background: var(--bg2, #fffdf8);
+  border: 1px solid var(--glass-border, rgba(0, 0, 0, 0.09));
+  box-shadow: 0 1px 6px rgba(28, 27, 26, 0.05);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color .2s ease, transform .15s ease, box-shadow .2s ease;
+  font: inherit;
+}
+.hbh-card:hover {
+  border-color: rgba(147, 2, 5, 0.45);
+  box-shadow: 0 3px 14px rgba(147, 2, 5, 0.10);
+}
+.hbh-card:active { transform: scale(0.995); }
+
+.hbh-card-ic {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  border-radius: 11px;
+  background: rgba(147, 2, 5, 0.06);
+  border: 1px solid rgba(147, 2, 5, 0.12);
+}
+.hbh-card-main {
+  flex: 1;
+  min-width: 0;              /* allows clean wrapping instead of overflow */
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hbh-card-title {
+  font-size: .88rem;
+  font-weight: 700;
+  color: var(--text, #1c1b1a);
+  line-height: 1.3;
+}
+.hbh-card-meta {
+  font-size: .7rem;
+  color: var(--text2, #6b6660);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.hbh-card-chev {
+  flex-shrink: 0;
+  font-size: 1.15rem;
+  color: var(--text2, #6b6660);
+  line-height: 1;
+}
+
+/* ── Wide-screen refinement: still vertical, just more breathing room ── */
+@media (min-width: 768px) {
+  .hbh-hub-banner { padding: 18px 22px; }
+  .hbh-hub-title { font-size: 1.12rem; }
+  .hbh-hub-sub { font-size: .78rem; }
+  .hbh-title { font-size: 1.08rem; }
+  .hbh-sub { font-size: .76rem; }
+  .hbh-card { padding: 15px 18px; min-height: 70px; }
+  .hbh-card-ic { width: 48px; height: 48px; font-size: 1.3rem; }
+  .hbh-card-title { font-size: .95rem; }
+  .hbh-card-meta { font-size: .74rem; }
+  .hbh-list { gap: 12px; }
+}
+
+/* Very small screens: keep everything readable at 320px */
+@media (max-width: 359px) {
+  .hbh-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .hbh-viewall { align-self: flex-start; }
+  .hbh-card { gap: 9px; padding: 11px 11px; }
+  .hbh-card-ic { width: 38px; height: 38px; }
+}
+
+/* Motion sensitivity */
+@media (prefers-reduced-motion: reduce) {
+  .hbh-card, .hbh-viewall, .hbh-hub-banner::after { transition: none; animation: none; }
+  .hbh-card:active { transform: none; }
+}

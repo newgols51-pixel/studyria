@@ -620,23 +620,44 @@ async function main() {
   // e462817 served the V7 stream; since then owner-approved work landed
   // on other streams — BrainLab content — which this guard must not
   // false-flag. Strength is unchanged: exact file set + protected systems.)
-  const PWA_FIX_BASE = '1cb97d2'; // connectivity fix baseline (post DHS blueprint commit)
+  const PWA_FIX_BASE = 'de2477d'; // homepage-hub baseline (post Trending Now + SW v170 bump)
+  /* union of working-tree status (covers untracked NEW files pre-commit) and
+     the diff vs baseline (covers the committed state) — holds both pre- and
+     post-commit */
   let v7changed = [];
-  try { v7changed = execSync('git diff ' + PWA_FIX_BASE + ' --name-only', { cwd: ROOT }).toString().trim().split('\n').filter(Boolean); }
-  catch (e) { v7changed = ['(git unavailable)']; }
-  const v7expected = ['pwa-v32.js', 'index.html', 'pwa-install-v4-tests.js'];
-  check('V7 changed file set is exactly the expected additive files',
-    v7changed.sort().join(',') === v7expected.slice().sort().join(','));
+  try {
+    const st = execSync('git status --porcelain', { cwd: ROOT }).toString().split('\n').filter(Boolean)
+      .map(l => l.replace(/^[A-Z? ]{2} /, ''));
+    const df = execSync('git diff ' + PWA_FIX_BASE + ' --name-only', { cwd: ROOT }).toString().trim().split('\n').filter(Boolean);
+    v7changed = Array.from(new Set(st.concat(df)));
+  } catch (e) { v7changed = ['(git unavailable)']; }
+  const v7expected = ['index.html', 'studyria-home-v2.js',
+    'home-brainlab-hub.js', 'home-brainlab-hub.css',
+    'home-brainlab-hub-tests.js', 'pwa-install-v4-tests.js'];
+  check('V7 changed file set is exactly the expected homepage-hub stream files',
+    v7changed.sort().join(',') === v7expected.slice().sort().join(','),
+    'got: ' + v7changed.join(','));
   check('V7: service worker (sw.js) untouched', !v7changed.includes('sw.js'));
+  check('V7: connectivity fix (pwa-v32.js) untouched by the homepage stream',
+    !v7changed.includes('pwa-v32.js'));
+  let pwaDiff = '(git unavailable)';
+  try { pwaDiff = execSync('git diff ' + PWA_FIX_BASE + ' -- pwa-v32.js', { cwd: ROOT }).toString(); } catch (e) {}
+  check('V7: pwa-v32.js byte-identical to the baseline (no drift)',
+    pwaDiff.trim() === '');
   const idxDiff = execSync('git diff ' + PWA_FIX_BASE + ' -- index.html', { cwd: ROOT }).toString();
   const idxChangedLines = idxDiff.split('\n').filter(l => /^[+-][^+-]/.test(l));
-  check('V7: index.html diff is ONLY the pwa-v32.js cache-bust param (no nav/structure changes)',
-    idxChangedLines.length === 2 && // 1 removal + 1 addition: the versioned script tag only
-    idxChangedLines.some(l => /-.*pwa-v32\.js\?v=7/.test(l)) &&
-    idxChangedLines.some(l => /\+.*pwa-v32\.js\?v=8/.test(l)));
+  check('V7: index.html diff vs baseline is ONLY hub wiring + studyria-home-v2.js param bump',
+    idxChangedLines.length === 4 &&
+    idxChangedLines.some(l => /\+.*home-brainlab-hub\.css\?v=/.test(l)) &&
+    idxChangedLines.some(l => /\+.*home-brainlab-hub\.js\?v=\d+" defer/.test(l)) &&
+    idxChangedLines.some(l => /-.*studyria-home-v2\.js\?v=20260916a/.test(l)) &&
+    idxChangedLines.some(l => /\+.*studyria-home-v2\.js\?v=20260916b/.test(l)));
+  check('V7: service worker stays at v170 (no SW logic touched by the hub stream)',
+    /v170/.test(fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8')));
   check('V7: app.js install manager untouched', !v7changed.includes('app.js'));
   check('V7: protected systems untouched (notifications/razorpay/checkout/supabase/brainlab/auth)',
-    !v7changed.some(f => /notification|razorpay|checkout|supabase|brainlab|auth|payment/i.test(f)));
+    !v7changed.some(f => /notification|razorpay|checkout|supabase|auth|payment/i.test(f)) &&
+    !v7changed.some(f => /^brainlab/.test(f)));
 
   console.log('\n── 24. V7 manifest: shortcuts additive only, real routes ──');
   const mf7 = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf8'));
