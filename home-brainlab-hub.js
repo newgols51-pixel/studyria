@@ -51,13 +51,8 @@
 
   /* View All → dedicated module page (#brainlab/<module> V8 sub-route) */
   HBH.view = function (module) { navigate('brainlab/' + module); };
-  /* Daily Practice lives on the BrainLab Home by design → Home + scroll */
-  HBH.viewDaily = function () {
-    navigate('brainlab');
-    HBH._wait(['BrainLab'], function () {
-      window.BrainLab.scrollToSection('bl-sec-challenge');
-    });
-  };
+  /* Daily Practice → its own dedicated page (brainlab-pages.js PAGES.daily) */
+  HBH.viewDaily = function () { HBH.view('daily'); };
 
   HBH.examCard = function (orgId) {
     navigate('brainlab/exams');

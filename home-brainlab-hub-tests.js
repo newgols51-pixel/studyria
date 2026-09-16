@@ -73,10 +73,11 @@ let hubDiff = [];
 try { hubDiff = execSync('git status --porcelain', { cwd: ROOT }).toString().split('\n').filter(Boolean); } catch (e) { hubDiff = []; }
 const changed = hubDiff.map(l => l.replace(/^[A-Z? ]{2} /, ''));
 check('change set touches ONLY homepage presentation + hub + tests (no engine files)',
-  changed.every(f => /^(index\.html|studyria-home-v2\.js|home-brainlab-hub\.(js|css)|home-brainlab-hub-tests\.js|pwa-install-v4-tests\.js|_surgery)/.test(f) || f === '' || f === undefined),
+  changed.every(f => /^(index\.html|studyria-home-v2\.js|brainlab-pages\.js|home-brainlab-hub\.(js|css)|home-brainlab-hub-tests\.js|pwa-install-v4-tests\.js|_surgery)/.test(f) || f === '' || f === undefined),
   'changed: ' + changed.join(', '));
-check('BrainLab engine files untouched (no brainlab*.js in change set)',
-  !changed.some(f => /^brainlab/.test(f)));
+/* routing-fix stream may touch ONLY the V8 page-router layer — never the engines */
+check('BrainLab ENGINES untouched (only brainlab-pages.js routing layer allowed)',
+  !changed.some(f => /^brainlab/.test(f) && f !== 'brainlab-pages.js'));
 check('checkout/Razorpay/payment files untouched',
   !changed.some(f => /razorpay|checkout|payment|pco/i.test(f)));
 check('service worker untouched', !changed.some(f => f === 'sw.js'));
@@ -101,22 +102,31 @@ console.log('\n── 4. View All routes to dedicated pages ──');
 const ROUTES = {
   'exams': 'brainlab/exams', 'tests': 'brainlab/tests', 'mocks': 'brainlab/mock-tests',
   'quizzes': 'brainlab/quizzes', 'pyq': 'brainlab/pyq', 'mcq': 'brainlab/mcqs',
-  'subjects': 'brainlab/subjects', 'flashcards': 'brainlab/flashcards'
+  'subjects': 'brainlab/subjects', 'flashcards': 'brainlab/flashcards', 'daily': 'brainlab/daily'
 };
 Object.keys(ROUTES).forEach(sec => {
   check('View All ' + sec + ' → #' + ROUTES[sec],
     hubjs.includes("HBH.view('" + ROUTES[sec].split('/')[1] + "')"));
 });
-check('View All daily → BrainLab Home + Daily Challenge section',
-  hubjs.includes('bl-sec-challenge') && hubjs.includes('viewDaily'));
+check('View All daily → dedicated Daily Practice page (not the dashboard)',
+  hubjs.includes("HBH.viewDaily = function () { HBH.view('daily'); }"));
 check('hub never routes everything to plain #brainlab (dedicated modules used)',
-  Object.keys(ROUTES).length === 8);
+  Object.keys(ROUTES).length === 9);
 /* routes must exist in the V8 sub-router */
 const blPages = read('brainlab-pages.js');
-['exams', 'tests', 'mock-tests', 'quizzes', 'pyq', 'mcqs', 'subjects', 'flashcards'].forEach(m => {
+['exams', 'tests', 'mock-tests', 'quizzes', 'pyq', 'mcqs', 'subjects', 'flashcards', 'daily'].forEach(m => {
   check("route module '" + m + "' exists in BrainLabPages V8 router",
     blPages.includes("'" + m + "':"));
 });
+/* navigate() keeps the full sub-hash so the module URL stays bookmarkable */
+check("navigate() preserves '#brainlab/<module>' (blSubRoute, not collapsed to '#brainlab')",
+  idx.includes('blSubRoute') && idx.includes("'#brainlab/' + blSubRoute"));
+check("brainlab-pages.js: dedicated daily page registered + rendered (PAGES.daily, renderersFor, P.renderDaily)",
+  blPages.includes("'daily':") && blPages.includes("case 'daily':") && blPages.includes('P.renderDaily'));
+check("brainlab-pages.js: daily page uses ONLY existing flows (no new engine)",
+  /startDailyChallenge|startCategoryQuiz|startAffairsQuiz|startArenaMode/.test(blPages));
+check("brainlab-pages.js: daily page is fail-closed (hides missing flows)",
+  blPages.includes('Daily practice will appear here.'));
 
 /* ── §6 card click routing ── */
 console.log('\n── 5. card clicks reuse production flows ──');
@@ -360,9 +370,9 @@ check('fail-closed: no card was left showing fake numbers',
 /* §5/§6 routing behavior */
 console.log('\n── 10. routing behavior ──');
 HBH.view('exams'); HBH.view('tests'); HBH.view('mock-tests'); HBH.view('quizzes');
-HBH.view('pyq'); HBH.view('mcqs'); HBH.view('subjects'); HBH.view('flashcards');
-const want = ['brainlab/exams','brainlab/tests','brainlab/mock-tests','brainlab/quizzes','brainlab/pyq','brainlab/mcqs','brainlab/subjects','brainlab/flashcards'];
-check('View All routes hit the 8 dedicated module routes',
+HBH.view('pyq'); HBH.view('mcqs'); HBH.view('subjects'); HBH.view('flashcards'); HBH.viewDaily();
+const want = ['brainlab/exams','brainlab/tests','brainlab/mock-tests','brainlab/quizzes','brainlab/pyq','brainlab/mcqs','brainlab/subjects','brainlab/flashcards','brainlab/daily'];
+check('View All routes hit the 9 dedicated module routes',
   want.every(w => navCalls.includes(w)), navCalls.join(','));
 check('no View All routes to plain #brainlab', !navCalls.includes('brainlab'));
 
@@ -370,8 +380,9 @@ check('no View All routes to plain #brainlab', !navCalls.includes('brainlab'));
 console.log('\n── 11. index.html wiring ──');
 check('index.html loads hub CSS (versioned)', /home-brainlab-hub\.css\?v=/.test(idx));
 check('index.html loads hub JS (versioned, defer)', /home-brainlab-hub\.js\?v=\d+" defer/.test(idx));
+const hubScriptAt = (idx.match(/home-brainlab-hub\.js\?v=\d+" defer/) || { index: -1 }).index;
 check('hub JS loads AFTER studyria-home-v2.js',
-  idx.indexOf('studyria-home-v2.js?v=20260916b" defer') < idx.indexOf('home-brainlab-hub.js?v=1" defer'));
+  idx.indexOf('studyria-home-v2.js?v=20260916b" defer') < hubScriptAt);
 
 console.log(`\n═══ SUMMARY: ${passed.length} passed, ${failed.length} failed ═══`);
 if (failed.length) { console.log('\nFAILURES:'); failed.forEach(f => console.log(' ✗ ' + f)); process.exit(1); }

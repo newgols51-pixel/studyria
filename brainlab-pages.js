@@ -36,13 +36,14 @@
     'performance':  { sec: 'bl-sec-performance',   label: 'Performance',  icon: '📊' },
     'leaderboard':  { sec: 'bl-sec-leaderboard',   label: 'Leaderboard',  icon: '🏆' },
     'subjects':     { sec: null,                   label: 'Subject-wise',  icon: '📚' },
+    'daily':        { sec: null,                   label: 'Daily Practice',  icon: '⚡' },
     'tests':        { sec: null,                   label: 'Tests',        icon: '📝' }
   };
   /* sections that stay on Home */
   var HOME_SECS = ['bl-sec-continue', 'bl-sec-challenge', 'bl-sec-recommended', 'bl-sec-streak', 'bl-sec-tools'];
   /* nav order: page pills + home-scroll pills */
   var NAV = [
-    { p: 'exams', label: '🎯 Exams' }, { h: 'bl-sec-challenge', label: '⚡ Daily' },
+    { p: 'exams', label: '🎯 Exams' }, { p: 'daily', label: '⚡ Daily' },
     { h: 'bl-sec-continue', label: '📚 Continue' }, { p: 'mock-tests', label: '📝 Mock Tests' },
     { p: 'tests', label: '📝 Tests' }, { p: 'quizzes', label: '🧩 Quizzes' }, { p: 'mcqs', label: '📋 MCQs' },
     { p: 'pyq', label: '📚 PYQ' }, { p: 'flashcards', label: '🎴 Flashcards' },
@@ -75,6 +76,7 @@
       case 'performance':  return [fn('renderPerformance'), P.renderTrend];
       case 'leaderboard':  return [fn('renderLeaderboard')];
       case 'subjects':     return [P.renderSubjects];
+      case 'daily':        return [P.renderDaily];
       case 'tests':        return [window.BrainLabTests ? window.BrainLabTests.renderCatalog : null];
       default:             return [];
     }
@@ -213,6 +215,65 @@
   };
 
   /* sync view from URL hash — used after navigate()/popstate */
+  /* ═══════════ DAILY PRACTICE page (real flows only, fail-closed) ═══════════
+     Aggregates the existing daily practice surfaces into one dedicated page:
+     Today's Challenge (real device status), Daily GK Quiz (real category
+     count), Today's Affairs Quiz (BrainLabV7 real blog-affairs flow) and
+     Quick 10 (real arena mode). No new engine — each card launches the
+     existing production flow. A flow that is missing/empty simply hides. */
+  P.renderDaily = function () {
+    var w = document.getElementById('blv8-daily'); if (!w) return;
+    var bl = B(); if (!bl) return;
+    var cards = [];
+    var esc = function (t) { return bl ? bl.escape(t) : String(t); };
+
+    /* 1 — Today's Challenge (real device daily status) */
+    var st = null; try { st = bl.getDailyStatus(); } catch (e) {}
+    cards.push('<div class="bl-card bl-fade-in" onclick="BrainLab.startDailyChallenge()">'
+      + '<div class="bl-card-icon">⚡</div>'
+      + '<div class="bl-card-title">Today\'s Challenge</div>'
+      + '<div class="bl-card-subtitle">' + (st && st.completed_at
+          ? 'Completed today — ' + st.correct + '/' + st.total + ' correct'
+          : '10 mixed questions · builds your streak') + '</div>'
+      + '<div class="bl-card-meta"><span class="bl-card-tag">Daily</span></div>'
+      + '<button class="bl-card-cta">' + (st && st.completed_at ? 'Retry Today' : 'Start Now') + '</button></div>');
+
+    /* 2 — Daily GK Quiz (real category count from the question bank) */
+    var gkN = 0; try { gkN = bl.countByCategory('General Knowledge'); } catch (e) {}
+    if (gkN > 0) cards.push('<div class="bl-card bl-fade-in" onclick="BrainLab.startCategoryQuiz(\'sq-gk\')">'
+      + '<div class="bl-card-icon">🧠</div>'
+      + '<div class="bl-card-title">Daily GK Quiz</div>'
+      + '<div class="bl-card-subtitle">' + gkN + ' general knowledge questions available</div>'
+      + '<div class="bl-card-meta"><span class="bl-card-tag">Quiz</span></div>'
+      + '<button class="bl-card-cta">Start Quiz</button></div>');
+
+    /* 3 — Today's Affairs Quiz (real blog-affairs flow, BrainLabV7) */
+    if (window.BrainLabV7 && window.BrainLabV7.startAffairsQuiz) {
+      cards.push('<div class="bl-card bl-fade-in" onclick="BrainLabV7.startAffairsQuiz()">'
+        + '<div class="bl-card-icon">📰</div>'
+        + '<div class="bl-card-title">Today\'s Affairs Quiz</div>'
+        + '<div class="bl-card-subtitle">Built from today\'s current affairs updates</div>'
+        + '<div class="bl-card-meta"><span class="bl-card-tag">Current Affairs</span></div>'
+        + '<button class="bl-card-cta">Test Affairs</button></div>');
+    }
+
+    /* 4 — Quick 10 (real arena mode) */
+    if (bl.startArenaMode) {
+      cards.push('<div class="bl-card bl-fade-in" onclick="BrainLab.startArenaMode(\'quick10\')">'
+        + '<div class="bl-card-icon">🎯</div>'
+        + '<div class="bl-card-title">Quick 10</div>'
+        + '<div class="bl-card-subtitle">10 random questions · any time</div>'
+        + '<div class="bl-card-meta"><span class="bl-card-tag">Arena</span></div>'
+        + '<button class="bl-card-cta">Start</button></div>');
+    }
+
+    w.innerHTML = '<div class="bl-section-header"><h2 class="bl-section-title">⚡ Daily Practice</h2>'
+      + '<span class="bl-section-sub">A little every day — streaks that stick</span></div>'
+      + (cards.length
+          ? '<div class="bl-carousel">' + cards.join('') + '</div>'
+          : '<div class="bl-empty">Daily practice will appear here.</div>');
+  };
+
   P.syncFromHash = function () {
     var m = (location.hash || '').match(/^#brainlab\/([a-z-]+)(?:\/([a-z0-9-]+))?(?:\/([a-z0-9-]+))?/);
     if (m && P.PAGES[m[1]]) { P.show(m[1], false); if (m[1] === 'subjects' && m[2]) P.openSubject(m[2], false); var mk = (location.hash || '').match(/^#brainlab\/exams\/mock\/([a-z0-9-]+)\/(\d+)/); if (mk && window.BrainLabTestPage) { window.BrainLabTestPage.open(mk[1], parseInt(mk[2], 10) || 1, false); } else if (m[1] === 'tests' && m[2] && window.BrainLabTests) { if (m[3] && /^\d+$/.test(m[3])) { window.BrainLabTests.openTest(m[2], parseInt(m[3], 10) || 1, false); } else { window.BrainLabTests.openSeries(m[2], false); } } else if (m[1] === 'exams' && m[2] === 'org' && m[3] && window.BrainLabUniverse) { window.BrainLabUniverse.openOrg(m[3], false); } else if (m[1] === 'exams' && m[2] === 'cycle' && m[3] && window.BrainLabUniverse) { window.BrainLabUniverse.openCycle(m[3], false); } else if (m[1] === 'exams' && m[2] && m[2] !== 'org' && m[2] !== 'cycle' && m[2] !== 'mock' && window.BrainLabUniverse) { window.BrainLabUniverse.openExam(m[2], false); } return true; }

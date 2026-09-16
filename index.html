@@ -352,7 +352,7 @@ window.__blReady = function (fn) {
   })();
 };
 window.ROUTE_SCRIPTS = {
-  brainlab:      ['question-bank.js?v=20260816exp3', 'vfa-practice-pool.js?v=2', 'vfa-practice-pool-b2.js?v=1', 'vfa-practice-pool-b3.js?v=1', 'vfa-practice-pool-b4.js?v=1', 'vfa-practice-pool-b5.js?v=1', 'adre-road-transport-pool.js?v=1', 'si-history-practice-pool-b1.js?v=1', 'tet-practice-pool-b1.js?v=1', 'brainlab-icons.js?v=20260901gs', 'brainlab.js?v=20260914a', 'brainlab-ext.js?v=20260910a', 'arena.js?v=20260903fix2', 'brainlab-v7.js?v=20260910b', 'brainlab-pages.js?v=20260911a', 'brainlab-exams.js?v=20260910f', 'brainlab-mock.js?v=20260914a', 'brainlab-testpage.js?v=20260914a', 'brainlab-activity.js?v=20260910b', 'brainlab-tr-server.js?v=20260910b', 'brainlab-tests.js?v=20260915a'],
+  brainlab:      ['question-bank.js?v=20260816exp3', 'vfa-practice-pool.js?v=2', 'vfa-practice-pool-b2.js?v=1', 'vfa-practice-pool-b3.js?v=1', 'vfa-practice-pool-b4.js?v=1', 'vfa-practice-pool-b5.js?v=1', 'adre-road-transport-pool.js?v=1', 'si-history-practice-pool-b1.js?v=1', 'tet-practice-pool-b1.js?v=1', 'brainlab-icons.js?v=20260901gs', 'brainlab.js?v=20260914a', 'brainlab-ext.js?v=20260910a', 'arena.js?v=20260903fix2', 'brainlab-v7.js?v=20260910b', 'brainlab-pages.js?v=20260916b', 'brainlab-exams.js?v=20260910f', 'brainlab-mock.js?v=20260914a', 'brainlab-testpage.js?v=20260914a', 'brainlab-activity.js?v=20260910b', 'brainlab-tr-server.js?v=20260910b', 'brainlab-tests.js?v=20260915a'],
   campus:        ['campus.js?v=20260731a', 'campus-admin.js?v=20260914a'],
   'adre-papers': ['adre-papers-data.js?v=20260827d', 'adre-papers-config.js?v=20260827d', 'adre-paper1-data.js?v=20260827d', 'adre-paper2-data.js?v=20260827d', 'adre-paper5-data.js?v=20260827d', 'adre-paper1-2022-data.js?v=20260827d', 'adre-paper2-2022-data.js?v=20260827d', 'adre-paper3-2022-data.js?v=20260827d', 'adre-paper4-2022-data.js?v=20260827d', 'adre-paper5-2022-data.js?v=20260827d', 'adre-exam.js?v=20260828a'],
   admin:         ['brainlab-exam-import.js?v=20260910e', 'smart-publish-manager.js', 'pdf-classification-refactor.js?v=20260912a', 'premium-edit-pdf-ui.js', 'admin-membership-manager.js', 'pwa-admin-v32.js', 'library-expansion-uploader.js', 'campus-admin.js?v=20260914a', 'zubeen-legacy-admin.js?v=20260912c', 'vfa-practice-pool.js?v=2', 'vfa-practice-pool-b2.js?v=1', 'vfa-practice-pool-b3.js?v=1', 'vfa-practice-pool-b4.js?v=1', 'vfa-practice-pool-b5.js?v=1', 'adre-road-transport-pool.js?v=1', 'si-history-practice-pool-b1.js?v=1', 'tet-practice-pool-b1.js?v=1', 'brainlab-admin-tests.js?v=7'],
@@ -21444,11 +21444,16 @@ function _setPageCanonical(page) {
 
 async function navigate(page) {
   window._realNavigate = navigate; // expose for stub flush
+  let blSubRoute = null; // 'exams' | 'tests' | … from 'brainlab/<module>'
   // ── BrainLab V8 sub-routes: #brainlab/<module> → brainlab route + module page ──
   // Normalizes BEFORE the lazy preload so the brainlab bundle always loads.
   // BrainLabPages.syncFromHash() (brainlab-pages.js) opens the module page.
   if (typeof page === 'string' && page.indexOf('brainlab/') === 0) {
-    window._blPendingSub = page.slice('brainlab/'.length).split('/')[0];
+    /* keep the FULL sub-route — the URL must stay bookmarkable
+       (#brainlab/exams) so syncFromHash() re-reads it after the lazy
+       bundle resolves and the browser Back button works normally */
+    blSubRoute = page.slice('brainlab/'.length);
+    window._blPendingSub = blSubRoute.split('/')[0];
     page = 'brainlab';
   }
   // Route-level lazy bundle (Issue #1) — heavy route code loads on demand.
@@ -21522,7 +21527,9 @@ async function navigate(page) {
 
   // ── Hash-based SPA routing (public pages only) ────────────────
   if (_SPA_PUBLIC_PAGES.has(page) || page === 'adre-papers') {
-    const hash = page === 'home' ? '#' : '#' + page;
+    /* BrainLab sub-routes keep their module URL (#brainlab/exams) —
+       never collapse to '#brainlab', or the V8 sub-router falls back home */
+    const hash = page === 'home' ? '#' : (page === 'brainlab' && blSubRoute) ? '#brainlab/' + blSubRoute : '#' + page;
     // BrainLab V8 sub-routes: never clobber '#brainlab/<module>' — the
     // sub-router (brainlab-pages.js) owns the URL while a module page is open.
     const blSub = page === 'brainlab' && /^#brainlab\//.test(location.hash);
@@ -44816,7 +44823,7 @@ if(document.readyState === 'loading') document.addEventListener('DOMContentLoade
 <script src="studyria-ui-2.0.js?v=20260730a" defer></script>
 <script src="studyria-me-v3.js" defer></script>
 <script src="studyria-home-v2.js?v=20260916b" defer></script>
-<script src="home-brainlab-hub.js?v=1" defer></script>
+<script src="home-brainlab-hub.js?v=2" defer></script>
 
 <!-- ═══ V5.1 REVENUE MODULES ═══ -->
 

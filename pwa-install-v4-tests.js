@@ -631,7 +631,7 @@ async function main() {
     const df = execSync('git diff ' + PWA_FIX_BASE + ' --name-only', { cwd: ROOT }).toString().trim().split('\n').filter(Boolean);
     v7changed = Array.from(new Set(st.concat(df)));
   } catch (e) { v7changed = ['(git unavailable)']; }
-  const v7expected = ['index.html', 'studyria-home-v2.js',
+  const v7expected = ['index.html', 'studyria-home-v2.js', 'brainlab-pages.js',
     'home-brainlab-hub.js', 'home-brainlab-hub.css',
     'home-brainlab-hub-tests.js', 'pwa-install-v4-tests.js'];
   check('V7 changed file set is exactly the expected homepage-hub stream files',
@@ -646,18 +646,22 @@ async function main() {
     pwaDiff.trim() === '');
   const idxDiff = execSync('git diff ' + PWA_FIX_BASE + ' -- index.html', { cwd: ROOT }).toString();
   const idxChangedLines = idxDiff.split('\n').filter(l => /^[+-][^+-]/.test(l));
-  check('V7: index.html diff vs baseline is ONLY hub wiring + studyria-home-v2.js param bump',
-    idxChangedLines.length === 4 &&
+  check('V7: index.html diff vs baseline is ONLY hub wiring + param bump + navigate() sub-hash fix',
+    idxChangedLines.length === 17 &&
+    idxChangedLines.some(l => /-.*brainlab-pages\.js\?v=20260911a/.test(l)) &&
+    idxChangedLines.some(l => /\+.*brainlab-pages\.js\?v=20260916b/.test(l)) &&
     idxChangedLines.some(l => /\+.*home-brainlab-hub\.css\?v=/.test(l)) &&
     idxChangedLines.some(l => /\+.*home-brainlab-hub\.js\?v=\d+" defer/.test(l)) &&
     idxChangedLines.some(l => /-.*studyria-home-v2\.js\?v=20260916a/.test(l)) &&
-    idxChangedLines.some(l => /\+.*studyria-home-v2\.js\?v=20260916b/.test(l)));
+    idxChangedLines.some(l => /\+.*studyria-home-v2\.js\?v=20260916b/.test(l)) &&
+    idxChangedLines.some(l => /\+.*blSubRoute = null/.test(l)) &&
+    idxChangedLines.some(l => /\+.*'#brainlab\/' \+ blSubRoute/.test(l)));
   check('V7: service worker stays at v170 (no SW logic touched by the hub stream)',
     /v170/.test(fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8')));
   check('V7: app.js install manager untouched', !v7changed.includes('app.js'));
   check('V7: protected systems untouched (notifications/razorpay/checkout/supabase/brainlab/auth)',
     !v7changed.some(f => /notification|razorpay|checkout|supabase|auth|payment/i.test(f)) &&
-    !v7changed.some(f => /^brainlab/.test(f)));
+    !v7changed.some(f => /^brainlab/.test(f) && f !== 'brainlab-pages.js'));
 
   console.log('\n── 24. V7 manifest: shortcuts additive only, real routes ──');
   const mf7 = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf8'));
