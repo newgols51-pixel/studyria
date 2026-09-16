@@ -1,0 +1,29 @@
+{
+  "syncedAt": "2026-09-16T06:05:34.840Z",
+  "source": "https://qsdfmgcekdpjdcyqhuhi.supabase.co/rest/v1/pdfs (anonymous, status=published)",
+  "pdfCount": 12,
+  "categoryCount": 5,
+  "downloadAggregate": 560,
+  "categories": [
+    "Premium Handwritten Notes",
+    "Business & Finance",
+    "Government Exams",
+    "Higher Education",
+    "Spiritual"
+  ],
+  "pdfIds": [
+    "5925344a-3d90-4687-be20-6665e35837f5",
+    "d4d939c7-7d66-4eeb-ad3f-00a2d84cafeb",
+    "c5d5e550-8ca0-4e1b-be6b-badc4ec044d0",
+    "172880be-054d-4861-9d55-a2031130984b",
+    "d562523a-3b26-4824-9d48-92e6cb717270",
+    "050164ee-ff44-49f7-932e-68e218283953",
+    "90e53333-8898-424a-b2c1-408b40901108",
+    "92bc4484-311a-4222-a2a8-82c7a6a46dd0",
+    "f1c4f076-7bb1-48db-890d-fb2771f239db",
+    "f426f059-f1a9-49c9-8f2d-5e15c6164eec",
+    "34459a0b-67f3-4007-adf3-38d26d1dbeaa",
+    "2fcc6989-c12c-4b4a-865f-395cdf77ebbe"
+  ],
+  "changed": true
+}
