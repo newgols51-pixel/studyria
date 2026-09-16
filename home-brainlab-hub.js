@@ -406,7 +406,7 @@
       var mk = items[i];
       setCard(el, mk.title, mk.icon,
         "HBH.mockCard('" + mk.exam + "', '" + String(mk.title).replace(/'/g, "\\'") + " Mock')",
-        n2(bl.filterQuestions({ exam: mk.exam }).length) + ' questions · timed exam simulation');
+        n2(bl.filterQuestions({ exam: mk.exam }).length) + '-question pool · timed exam simulation');
     }
 
     /* QUIZZES */
@@ -507,6 +507,12 @@
         } else {
           fill();
         }
+        /* pools (vfa-practice-pool b1–b5 etc.) apply AFTER brainlab-tests.js
+           boots — re-fill on a short schedule (idempotent) so test counts
+           settle at their real live values instead of the fail-closed
+           baseline of 2 */
+        setTimeout(function () { try { fill(); } catch (e) {} }, 3000);
+        setTimeout(function () { try { fill(); } catch (e) {} }, 8000);
         return;
       }
       if (++tries <= 100) setTimeout(t, 200); /* wait for sv2 injectSections */
