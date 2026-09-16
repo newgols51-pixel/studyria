@@ -164,8 +164,10 @@ check('daily status from real device activity only', hubjs.includes('getDailySta
 console.log('\n── 7. no skeletons, no infinite loading, fail-closed ──');
 check('no skeleton markup in hub', !/skeleton/i.test(hubCode));
 check('no "Loading…" copy in hub', !/Loading\.\.\./.test(hubCode));
-check('empty sections are HIDDEN (fail-closed)', hubjs.includes("sec.style.display = 'none'"));
-check('empty cards are REMOVED (fail-closed)', hubjs.includes('.remove()'));
+check('empty sections are HIDDEN (fail-closed)', hubjs.includes("sec.style.display = vis ? '' : 'none'"));
+check('empty cards are HIDDEN not removed (fail-closed, refillable)',
+  hubjs.includes("el.style.display = 'none'; continue;") &&
+  hubjs.includes("if (el.style.display === 'none') el.style.display = '';"));
 
 /* ═══════════ BEHAVIORAL: build() + _fill() with a fake DOM ═══════════ */
 console.log('\n── 8. behavioral: render + real-count fill (fake DOM) ──');
@@ -176,7 +178,7 @@ function makeDom() {
   const els = {};
   function mk(id) {
     return {
-      id: id, removed: false, attrs: {}, textContent: '',
+      id: id, removed: false, attrs: {}, textContent: '', style: {},
       titleEl: { textContent: 'preferred-title' + id },
       metaEl: { textContent: '' },
       icEl: { textContent: '🎴' },
@@ -310,6 +312,7 @@ g.STUDYRIA_QB = [
 try {
   vm.runInContext('HBH._fill()', ctx);
 } catch (e) {
+  console.log('   THROWN: ' + e + '\n' + (e && e.stack ? e.stack.split('\n').slice(0,3).join('\n') : ''));
   check('_fill() executes without throwing', false, String(e));
 }
 

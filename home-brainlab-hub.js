@@ -356,6 +356,7 @@
   }
 
   function setCard(el, title, icon, onclick, meta) {
+    if (el.style.display === 'none') el.style.display = '';
     if (title != null) { var t = el.querySelector('.hbh-card-title'); if (t && t.textContent !== title) t.textContent = title; }
     if (icon != null) { var ic = el.querySelector('.hbh-card-ic'); if (ic && ic.textContent !== icon) ic.textContent = icon; }
     if (onclick != null) el.setAttribute('onclick', onclick);
@@ -378,7 +379,7 @@
     for (i = 0; i < 4; i++) {
       el = document.getElementById('hbh-exams-' + i);
       if (!el) continue;
-      if (!items[i]) { el.remove(); continue; }
+      if (!items[i]) { el.style.display = 'none'; continue; }
       var o = items[i], st = window.BrainLabUniverse._orgStats(o);
       setCard(el, o.name, o.ic, "HBH.examCard('" + o.id + "')",
         n2(st.n) + ' questions · ' + st.exN + ' exam' + (st.exN === 1 ? '' : 's') +
@@ -390,7 +391,7 @@
     for (i = 0; i < 4; i++) {
       el = document.getElementById('hbh-tests-' + i);
       if (!el) continue;
-      if (!items[i]) { el.remove(); continue; }
+      if (!items[i]) { el.style.display = 'none'; continue; }
       var inf = items[i];
       setCard(el, inf.s.name, inf.s.icon, "HBH.testCard('" + inf.s.id + "')",
         inf.published + (inf.published === 1 ? ' Test' : ' Tests') + ' · ' + n2(inf.mcqs) +
@@ -402,7 +403,7 @@
     for (i = 0; i < 4; i++) {
       el = document.getElementById('hbh-mocks-' + i);
       if (!el) continue;
-      if (!items[i]) { el.remove(); continue; }
+      if (!items[i]) { el.style.display = 'none'; continue; }
       var mk = items[i];
       setCard(el, mk.title, mk.icon,
         "HBH.mockCard('" + mk.exam + "', '" + String(mk.title).replace(/'/g, "\\'") + " Mock')",
@@ -414,7 +415,7 @@
     for (i = 0; i < 4; i++) {
       el = document.getElementById('hbh-quizzes-' + i);
       if (!el) continue;
-      if (!items[i]) { el.remove(); continue; }
+      if (!items[i]) { el.style.display = 'none'; continue; }
       var qz = items[i];
       setCard(el, qz.title, qz.icon, "HBH.quizCard('" + qz.id + "')",
         n2(bl.countByCategory(qz.category)) + ' questions · ' + qz.category);
@@ -425,7 +426,7 @@
     for (i = 0; i < 4; i++) {
       el = document.getElementById('hbh-pyq-' + i);
       if (!el) continue;
-      if (!items[i]) { el.remove(); continue; }
+      if (!items[i]) { el.style.display = 'none'; continue; }
       setCard(el, items[i].ex + ' PYQs', null, "HBH.pyqCard('" + items[i].ex + "')",
         n2(items[i].cnt) + ' previous-year questions');
     }
@@ -435,7 +436,7 @@
     for (i = 0; i < 4; i++) {
       el = document.getElementById('hbh-mcq-' + i);
       if (!el) continue;
-      if (!items[i]) { el.remove(); continue; }
+      if (!items[i]) { el.style.display = 'none'; continue; }
       setCard(el, items[i], null, "HBH.mcqCard('" + items[i] + "')",
         n2(bl.countByCategory(items[i])) + ' MCQs available');
     }
@@ -445,7 +446,7 @@
     for (i = 0; i < 4; i++) {
       el = document.getElementById('hbh-subjects-' + i);
       if (!el) continue;
-      if (!items[i]) { el.remove(); continue; }
+      if (!items[i]) { el.style.display = 'none'; continue; }
       var sc = items[i];
       var topics = (bl.getTopics(sc) || []).length;
       setCard(el, sc, null,
@@ -469,7 +470,7 @@
     for (i = 0; i < 4; i++) {
       el = document.getElementById('hbh-flashcards-' + i);
       if (!el) continue;
-      if (!items[i]) { el.remove(); continue; }
+      if (!items[i]) { el.style.display = 'none'; continue; }
       setCard(el, items[i].t, null,
         "HBH.flashCard('" + String(items[i].t).replace(/'/g, "\\'") + "')",
         n2(items[i].cnt) + ' flashcards');
@@ -478,7 +479,10 @@
     /* hide any section whose cards were all removed (fail-closed) */
     ['exams', 'tests', 'mocks', 'quizzes', 'pyq', 'mcq', 'subjects', 'flashcards'].forEach(function (s) {
       var sec = document.getElementById('hbh-sec-' + s);
-      if (sec && !sec.querySelectorAll('.hbh-card').length) sec.style.display = 'none';
+      if (!sec) return;
+      var vis = 0, cards = sec.querySelectorAll('.hbh-card');
+      for (var c = 0; c < cards.length; c++) if (cards[c].style.display !== 'none') vis++;
+      sec.style.display = vis ? '' : 'none';
     });
   };
 
@@ -497,8 +501,12 @@
         /* preload the BrainLab bundle in the background (same lazy loader
            as the #brainlab route — nothing blocks the homepage render),
            then fill every card with REAL production counts */
+        var fillNow = function () { try { HBH._fill(); } catch (e) { console.warn('[hbh] fill failed', e); } };
         var fill = function () {
-          HBH._wait(['BrainLab', 'BrainLabPages'], function () { HBH._fill(); });
+          HBH._wait(['BrainLab', 'BrainLabPages'], fillNow);
+        };
+        var complete = function () {
+          HBH._wait(['BrainLabUniverse', 'BrainLabTests'], fillNow);
         };
         if (window.__routePreload) {
           window.__routePreload('brainlab').then(fill).catch(function (e) {
@@ -511,8 +519,9 @@
            boots — re-fill on a short schedule (idempotent) so test counts
            settle at their real live values instead of the fail-closed
            baseline of 2 */
-        setTimeout(function () { try { fill(); } catch (e) {} }, 3000);
-        setTimeout(function () { try { fill(); } catch (e) {} }, 8000);
+        complete();
+        setTimeout(fillNow, 3000);
+        setTimeout(fillNow, 8000);
         return;
       }
       if (++tries <= 100) setTimeout(t, 200); /* wait for sv2 injectSections */
