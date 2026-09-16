@@ -26,7 +26,9 @@
 // no duplicate notifications, no foreign SDK listeners.
 
 // ── VERSION ───────────────────────────────────────────────────────
-const CACHE_VERSION = 'v164'; // v164: Homepage job sections (Latest/Trending/Govt/Private/Admit Cards/Results) populated for real —
+const CACHE_VERSION = 'v165'; // v165: job card "posts" counts fixed (old parser concatenated every digit in vacancy article blobs →
+// "2026152026142026 posts"); _map now exposes lowercased jobType so homepage Govt/Private sections filter correctly.
+// v164: Homepage job sections (Latest/Trending/Govt/Private/Admit Cards/Results) populated for real —
 // chInit never ran on the homepage so _ch.jobs stayed empty (sections sat on skeletons forever).
 // career-hub-v2.js (the file index.html actually loads) now waits for the Supabase client instead of
 // erroring instantly, and dispatches studyria:jobs-ready; sv2 kicks a background load on homepage boot.

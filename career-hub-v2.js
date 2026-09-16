@@ -42,10 +42,18 @@ function _ss(s,m){return s&&s.length>m?s.slice(0,m-1)+'…':s||'';}
 function _map(r){
   const at=r.article_content||r.description||'';let ld=r.last_date||r.application_deadline||null;
   if(!_pd(ld)){const e=_eld(at);if(e)ld=e.toISOString();}
-  let p=parseInt(String(r.vacancies||r.total_posts||'').replace(/[^\d]/g,''))||null;
-  if(!p){const m=at.match(/(\d+)\s*posts/i);if(m)p=parseInt(m[1]);}
+  /* Fix (16 Sep 2026): the old strip-all-digits parse turned long vacancy
+     article blobs into garbage like "2026152026142026 posts". Now accept
+     only a clean number, an explicit "N posts"/"No of posts: N" pattern,
+     or the title's count — with a sanity cap. */
+  let p=null;const vs=String(r.vacancies||r.total_posts||'').trim();
+  if(/^[\d,]{1,7}$/.test(vs))p=parseInt(vs.replace(/,/g,''),10)||null;
+  if(!p){const m=vs.match(/no\.?\s*of\s*posts?[^0-9]{0,12}(\d[\d,]*)/i)||vs.match(/(\d[\d,]*)\s*posts?\b/i);if(m)p=parseInt(m[1].replace(/,/g,''),10)||null;}
+  if(!p){const m=String(r.title||'').match(/(\d[\d,]*)\s+posts?\b/i);if(m)p=parseInt(m[1].replace(/,/g,''),10)||null;}
+  if(!p){const m=at.match(/no\.?\s*of\s*posts?[^0-9]{0,12}(\d[\d,]*)/i)||at.match(/(\d+)\s+posts?\b/i);if(m)p=parseInt(m[1].replace(/,/g,''),10)||null;}
+  if(p&&(p<1||p>200000))p=null;
   const cats=Array.isArray(r.category)?r.category:(r.category?[r.category]:['job']);
-  return{id:r.id,title:(r.title||'Untitled').trim(),org:(r.org||r.organisation||r.organization||'').trim(),orgIcon:r.org_icon||'💼',location:(r.location||'Assam').trim(),qual:r.qualification||'',salary:r.salary||'',ageLimit:r.age_limit||'',lastDate:_fd(ld)||'See Notification',rawDate:ld,urgentDate:_iu(ld),daysLeft:_dl(ld),category:cats,featured:!!r.featured,isNew:r.is_new!=null?!!r.is_new:_rc(r.published_at||r.created_at),isTrending:!!r.is_trending,applyUrl:r.apply_url||r.link||'#',posts:p,desc:(r.description||'').trim().slice(0,200),source:r.source_name||r.source||'manual',pubAt:r.published_at||r.created_at||null,slug:r.slug||'',views:r.views_count||0,vacDetails:r.vacancy_details||'',eligibility:r.eligibility||'',qualDetails:r.qualification_details||'',selection:r.selection_process||'',salDetails:r.salary_details||'',fee:r.application_fee||'',impDates:r.important_dates||'',documents:r.required_documents||'',examPat:r.exam_pattern||'',syllabus:r.syllabus||'',howToApply:r.how_to_apply||'',faq:r.faq||'',applyLink:r.apply_url||r.link||'',notifLink:r.notification_link||'',official:r.official_website||'',regLink:r.registration_link||'',articleHTML:r.article_content||'',imgUrl:r.image_url||r.thumbnail_url||'',sourceUrl:r.source_url||r.apply_url||'',lastUpdated:r.updated_at||r.published_at||r.created_at||'',status:r.status||'active'};
+  return{id:r.id,title:(r.title||'Untitled').trim(),org:(r.org||r.organisation||r.organization||'').trim(),orgIcon:r.org_icon||'💼',location:(r.location||'Assam').trim(),qual:r.qualification||'',salary:r.salary||'',ageLimit:r.age_limit||'',lastDate:_fd(ld)||'See Notification',rawDate:ld,urgentDate:_iu(ld),daysLeft:_dl(ld),category:cats,jobType:(r.job_type||'').toLowerCase(),featured:!!r.featured,isNew:r.is_new!=null?!!r.is_new:_rc(r.published_at||r.created_at),isTrending:!!r.is_trending,applyUrl:r.apply_url||r.link||'#',posts:p,desc:(r.description||'').trim().slice(0,200),source:r.source_name||r.source||'manual',pubAt:r.published_at||r.created_at||null,slug:r.slug||'',views:r.views_count||0,vacDetails:r.vacancy_details||'',eligibility:r.eligibility||'',qualDetails:r.qualification_details||'',selection:r.selection_process||'',salDetails:r.salary_details||'',fee:r.application_fee||'',impDates:r.important_dates||'',documents:r.required_documents||'',examPat:r.exam_pattern||'',syllabus:r.syllabus||'',howToApply:r.how_to_apply||'',faq:r.faq||'',applyLink:r.apply_url||r.link||'',notifLink:r.notification_link||'',official:r.official_website||'',regLink:r.registration_link||'',articleHTML:r.article_content||'',imgUrl:r.image_url||r.thumbnail_url||'',sourceUrl:r.source_url||r.apply_url||'',lastUpdated:r.updated_at||r.published_at||r.created_at||'',status:r.status||'active'};
 }
 
 function _eld(t){if(!t)return null;const ps=[/last\s*date[:\s]*([^\n]+)/i,/closing\s*date[:\s]*([^\n]+)/i,/apply\s*(?:by|before)[:\s]*([^\n]+)/i];for(const p of ps){const m=t.match(p);if(m){const d=_pd(m[1]);if(d)return d;}}return null;}

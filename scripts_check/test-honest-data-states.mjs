@@ -200,6 +200,10 @@ ok(chj2.includes("CustomEvent('studyria:jobs-ready')"),
    'career-hub-v2 dispatches studyria:jobs-ready after jobs load');
 ok(sv2j.includes('typeof chLoadJobs === \'function\'') && sv2j.includes('if (!getJobs().length)'),
    'sv2 homepage kicks a background jobs load when _ch.jobs is empty');
+ok(chj2.includes("jobType:(r.job_type||'').toLowerCase()"),
+   'career-hub-v2 _map exposes lowercased jobType (Govt/Private homepage filters work)');
+ok(chj2.includes("p<1||p>200000"),
+   'career-hub-v2 posts parse has sanity cap (no date-concat garbage like 2026152026142026)');
 
 /* ══════════ RESULTS ════════════════ */
 console.log(`\n═══ RESULTS: ${pass} passed, ${fail} failed ═══`);
