@@ -26,10 +26,12 @@
 // no duplicate notifications, no foreign SDK listeners.
 
 // ── VERSION ───────────────────────────────────────────────────────
+// v168: DB-synced crawler snapshot (scripts_check/sync-static-catalogue.mjs): real 12 PDF titles + JSON-LD
+// ItemList + noscript catalogue in the initial HTML; stat placeholders re-synced from the anon Supabase query.
 // v167: static no-JS fallback values baked into HTML so AI chatbot crawlers (Gemini/Meta/Perplexity)
 // see honest numbers instead of "0 PDFs" / "—" dashes: libCount=12 PDFs, libStatTotal=12, libStatCategories=5,
 // libStatDownloads=560, aboutStatStudents=1,500+, aboutStatPdfs=12. JS animates exact live values for humans.
-const CACHE_VERSION = 'v167';
+const CACHE_VERSION = 'v168';
 // STUDENT_BASE/CANONICAL_SOCIAL_PROOF and every fallback, hero, About, community, stat band,
 // YouTube labels and the /homepage marketing page now show one number.
 // v165: job card "posts" counts fixed (old parser concatenated every digit in vacancy article blobs →

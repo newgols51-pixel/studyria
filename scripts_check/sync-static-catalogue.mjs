@@ -1,0 +1,152 @@
+// ═══════════════════════════════════════════════════════════════════
+// sync-static-catalogue.mjs — DB-truthful crawler snapshot generator
+// ═══════════════════════════════════════════════════════════════════
+// WHY: AI chatbots (Gemini/Meta AI/Perplexity) and search crawlers fetch
+// the raw HTML without executing the client-side Supabase query. The
+// SPA therefore must carry its PUBLIC catalogue truth in the initial
+// response. This script pulls the EXACT public dataset (anonymous
+// Supabase REST query, status=published — the same query pdf-list.js
+// runs) and bakes it into index.html:
+//
+//   1. The stat placeholders (libCount, libStatTotal, libStatCategories,
+//      libStatDownloads, aboutStatPdfs) get the real DB numbers.
+//   2. A JSON-LD ItemList (schema.org) exposes the real PDF titles,
+//      categories, authors and prices.
+//   3. A <noscript> catalogue block lists the real titles so non-JS
+//      readers see actual content, not an empty shell.
+//
+// RUN:  node scripts_check/sync-static-catalogue.mjs
+// RUN AGAIN after every catalogue change (new/removed PDFs) and before
+// every deploy. NEVER hand-edit the marked block.
+//
+// HONESTY GUARANTEE: the script refuses to write zero counts — if the
+// anonymous query returns 0 rows it aborts and leaves the file untouched
+// (a broken fetch must never regress the page to "0 PDFs").
+// aboutStatStudents is NOT touched — it is the owner's canonical
+// "1,500+" social proof, not a DB metric.
+
+import { readFileSync, writeFileSync } from 'node:fs';
+
+const SUPABASE_URL = 'https://qsdfmgcekdpjdcyqhuhi.supabase.co';
+// Anon key only — public read key already shipped in the client bundle.
+const SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzZGZtZ2Nla2RwamRjeXFodWhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTE2NDcsImV4cCI6MjA5NjIyNzY0N30.kDOEYxUQyLTp1blasuX2kVSIy2olGLhdqqtOMTlEX5g';
+
+const FILE = 'index.html';
+const BEGIN = '<!-- CATALOGUE-SNAPSHOT:BEGIN (auto-generated from the public Supabase query — run scripts_check/sync-static-catalogue.mjs after catalogue changes; do not hand-edit) -->';
+const END = '<!-- CATALOGUE-SNAPSHOT:END -->';
+
+// ── 1. Fetch the EXACT public dataset (anonymous view, published only) ──
+const url = `${SUPABASE_URL}/rest/v1/pdfs?select=id,title,category,author,price,free,download_count,status,slug,created_at`
+          + `&status=eq.published&order=created_at.desc`;
+
+const res = await fetch(url, {
+  headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+});
+if (!res.ok) {
+  console.error(`ABORT: Supabase returned HTTP ${res.status} — index.html left untouched.`);
+  process.exit(1);
+}
+const rows = await res.json();
+if (!Array.isArray(rows)) {
+  console.error('ABORT: unexpected Supabase payload — index.html left untouched.', rows);
+  process.exit(1);
+}
+
+// ── 2. HONESTY GUARD: never bake a zero catalogue ──
+if (rows.length === 0) {
+  console.error('ABORT: anonymous query returned 0 published PDFs — refusing to write a "0 PDFs" snapshot. Investigate RLS/status filters instead.');
+  process.exit(1);
+}
+
+const total = rows.length;
+const cats = [...new Set(rows.map(r => r.category).filter(Boolean))];
+const downloads = rows.reduce((s, r) => s + (Number(r.download_count) || 0), 0);
+const freeCount = rows.filter(r => r.free || Number(r.price) === 0).length;
+
+console.log(`DB truth (anonymous view): ${total} published PDFs, ${cats.length} categories, ${downloads} downloads, ${freeCount} free`);
+
+// ── 3. Build the crawler-readable snapshot block ──
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+const itemList = {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  '@id': 'https://studyria.qzz.io/#catalogue',
+  name: 'Studyria PDF Library — Published Catalogue',
+  description: `Live catalogue snapshot: ${total} published PDFs across ${cats.length} categories (${downloads} total downloads). Auto-synced from the Studyria database.`,
+  numberOfItems: total,
+  itemListElement: rows.map((r, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    item: {
+      '@type': 'Product',
+      name: r.title,
+      category: r.category || undefined,
+      author: r.author ? { '@type': 'Person', name: r.author } : undefined,
+      offers: {
+        '@type': 'Offer',
+        price: Number(r.price) || 0,
+        priceCurrency: 'INR',
+        availability: 'https://schema.org/InStock',
+      },
+      url: `https://studyria.qzz.io/#detail/${r.id}`,
+    },
+  })),
+};
+
+const catList = cats.map(c => {
+  const n = rows.filter(r => r.category === c).length;
+  return `<li><strong>${esc(c)}</strong> — ${n} PDF${n === 1 ? '' : 's'}</li>`;
+}).join('');
+
+const pdfList = rows.map((r, i) =>
+  `<li>${i + 1}. <strong>${esc(r.title)}</strong>${r.category ? ` — ${esc(r.category)}` : ''}${r.free || Number(r.price) === 0 ? ' (Free)' : ` (₹${Number(r.price)})`}</li>`
+).join('');
+
+const block = `${BEGIN}
+<script type="application/ld+json" id="catalogueSnapshotLd">
+${JSON.stringify(itemList, null, 2)}
+</script>
+<noscript id="catalogueSnapshot">
+  <section aria-label="Studyria PDF catalogue (text version for non-JavaScript readers and crawlers)" style="max-width:860px;margin:0 auto;padding:24px;font-family:system-ui,sans-serif;">
+    <h2>Studyria Library — ${total} PDFs</h2>
+    <p>Live catalogue snapshot (auto-synced from the Studyria database): <strong>${total} published PDFs</strong>, <strong>${cats.length} categories</strong>, <strong>${downloads} downloads</strong> so far. Enable JavaScript for the interactive library.</p>
+    <h3>Categories</h3>
+    <ul>${catList}</ul>
+    <h3>All PDFs (${total})</h3>
+    <ol>${pdfList}</ol>
+  </section>
+</noscript>
+${END}`;
+
+// ── 4. Rewrite index.html ──
+let html = readFileSync(FILE, 'utf8');
+
+// 4a. Insert or refresh the snapshot block (placed right after the body tag)
+const escRe = BEGIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const endRe = END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+if (html.includes(BEGIN)) {
+  html = html.replace(new RegExp(`${escRe}[\\s\\S]*?${endRe}`), block);
+} else {
+  const bodyRe = /(<body[^>]*>)/;
+  if (!bodyRe.test(html)) { console.error('ABORT: no <body> tag found.'); process.exit(1); }
+  html = html.replace(bodyRe, `$1\n\n${block}\n`);
+}
+
+// 4b. Sync the stat placeholders with DB truth (JS animates exact live
+//     values for humans; these are the no-JS/SEO fallbacks).
+const setStat = (id, val) => {
+  const re = new RegExp(`(id="${id}"[^>]*>)[^<]*(</div>|</span>)`);
+  if (!re.test(html)) { console.warn(`  WARN: #${id} not found`); return; }
+  html = html.replace(re, `$1${val}$2`);
+};
+setStat('libCount', `${total} PDFs`);
+setStat('libStatTotal', String(total));
+setStat('libStatCategories', String(cats.length));
+setStat('libStatDownloads', String(downloads));
+setStat('aboutStatPdfs', String(total));
+
+writeFileSync(FILE, html);
+console.log(`index.html updated: snapshot block (${total} titles, JSON-LD ItemList, noscript catalogue) + stat placeholders = DB truth.`);
+console.log('NOTE: bump sw.js CACHE_VERSION before deploying when index.html changed.');
