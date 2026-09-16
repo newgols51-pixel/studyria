@@ -27,6 +27,8 @@ const idx  = fs.readFileSync(path.join(ROOT, 'index.html'),   'utf8');
 const home = fs.readFileSync(path.join(ROOT, 'homepage.html'),'utf8');
 const plj  = fs.readFileSync(path.join(ROOT, 'pdf-list.js'), 'utf8');
 const chj  = fs.readFileSync(path.join(ROOT, 'career-hub.js'),'utf8');
+const chj2 = fs.readFileSync(path.join(ROOT, 'career-hub-v2.js'),'utf8'); // ← the one index.html actually loads
+const sv2j = fs.readFileSync(path.join(ROOT, 'studyria-home-v2.js'),'utf8');
 const blj  = fs.readFileSync(path.join(ROOT, 'brainlab.js'), 'utf8');
 const v7j  = fs.readFileSync(path.join(ROOT, 'brainlab-v7.js'),'utf8');
 
@@ -190,6 +192,14 @@ ok(sv2.includes("c.count > 0 ? c.count + ' PDFs' : 'Coming Soon'"),
    'zero-count categories show "Coming Soon" instead of "0 PDFs"');
 ok(fs.readFileSync(path.join(ROOT, 'studyria-home-v2.css'), 'utf8').includes('sv2-cat-count-soon'),
    'Coming Soon label styled (muted)');
+
+/* ── 9. Homepage job sections actually populate (16 Sep owner report) ── */
+ok(chj2.includes('_t0<8000'),
+   'career-hub-v2 chLoadJobs waits for the Supabase client (no instant error)');
+ok(chj2.includes("CustomEvent('studyria:jobs-ready')"),
+   'career-hub-v2 dispatches studyria:jobs-ready after jobs load');
+ok(sv2j.includes('typeof chLoadJobs === \'function\'') && sv2j.includes('if (!getJobs().length)'),
+   'sv2 homepage kicks a background jobs load when _ch.jobs is empty');
 
 /* ══════════ RESULTS ════════════════ */
 console.log(`\n═══ RESULTS: ${pass} passed, ${fail} failed ═══`);

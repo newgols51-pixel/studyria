@@ -739,6 +739,14 @@
     // Try rendering jobs — may need to wait for career-hub.js to load
     renderJobsSections();
 
+    /* P0 fix (16 Sep 2026): chInit() only auto-runs on the Career Hub page,
+       so on the homepage window._ch.jobs stayed empty forever and the job
+       sections below sat on skeletons. Kick a background load ourselves —
+       try/catch so an older/missing career-hub script can't break boot. */
+    if (!getJobs().length) {
+      try { if (typeof chLoadJobs === 'function') chLoadJobs(); } catch (e) {}
+    }
+
     // Try rendering PDFs — may need to wait for PDFS global
     renderPDFSections();
 

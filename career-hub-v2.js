@@ -56,13 +56,19 @@ async function chLoadJobs(notify){
   const s=window._ch;const lst=document.getElementById('chJobsList');const err=document.getElementById('chJobsError');
   if(err)err.style.display='none';
   if(lst&&!s.jobs.length){lst.innerHTML=_skh(5);lst.style.display='';}
-  const sb=window.supabaseClient;
-  if(!sb){_chErr('Database not available.');if(lst)lst.innerHTML='';return;}
+  /* P0 fix (16 Sep 2026): wait for the Supabase client instead of erroring
+     instantly on a cold cache — and dispatch studyria:jobs-ready so the
+     homepage sv2 job sections re-render the moment jobs arrive (nothing
+     dispatched this event before, so homepage sections sat on skeletons). */
+  let sb=window.supabaseClient;
+  if(!sb){const _t0=Date.now();while(!sb&&Date.now()-_t0<8000){await new Promise(r=>setTimeout(r,250));sb=window.supabaseClient;}
+  if(!sb){_chErr('Database not available.');if(lst)lst.innerHTML='';return;}}
   try{
     const{data,error}=await sb.from('jobs').select('*').eq('active',true).order('published_at',{ascending:false,nullsFirst:false}).order('created_at',{ascending:false}).limit(300);
     if(error)throw error;
     s.jobs=(data||[]).map(_map);
     localStorage.setItem('ch_last_updated',new Date().toISOString());
+    try{document.dispatchEvent(new CustomEvent('studyria:jobs-ready'));}catch(e){}
   }catch(e){console.error('[CH]',e);_chErr(e.message||'Failed to load.');if(lst)lst.innerHTML='';return;}
   _chStats();_chFB();_chDS();chFilterJobs();
   if(notify&&typeof showToast==='function')showToast('✓ Career Hub updated','success');
