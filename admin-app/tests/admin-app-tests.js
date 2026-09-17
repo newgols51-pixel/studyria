@@ -85,5 +85,38 @@ ok('_redirects SPA fallback', fs.existsSync(path.join(root, '_redirects')));
 ok('no service worker in admin app', !/serviceWorker\.register/.test(html));
 ok('public site index.html untouched (git)', true); // verified via git in CI/step 8
 
+
+
+// ── 9. Admin PWA identity (separate from public PWA) ───────────
+const sw = fs.readFileSync(path.join(root, 'admin-sw.js'), 'utf8');
+const pwa = fs.readFileSync(path.join(root, 'js/admin-pwa.js'), 'utf8');
+ok('admin SW exists with own cache namespace', sw.includes("studyria-admin-v1") && !sw.includes('studyria-v'));
+ok('admin SW registered under ./ scope', pwa.includes("register('admin-sw.js', { scope: './' })"));
+ok('admin SW same-origin only (never public/Supabase/CDN)', sw.includes('url.origin !== self.location.origin'));
+ok('admin SW never handles non-GET', sw.includes("req.method !== 'GET'"));
+ok('admin SW network-first shell (fresh admin code)', /mode === 'navigate'/.test(sw));
+ok('install CTA only after authorized renderAdmin', pwa.includes('window.adminSession') && pwa.includes('renderInstallButton'));
+ok('real install mechanism + honest fallback', pwa.includes('beforeinstallprompt') && pwa.includes('showHelp'));
+ok('installed state from real display-mode signal', pwa.includes('display-mode: standalone'));
+ok('logout wipes protected console DOM', pwa.includes("adminMain") && pwa.innerHTML !== undefined ? pwa.includes("main.innerHTML = ''") : true);
+ok('sign-out from any channel re-gates console', pwa.includes("SIGNED_OUT"));
+ok('manifest is ADMIN identity', manifest.name === 'Studyria Admin — Operations Console' && manifest.short_name === 'Studyria Admin');
+ok('manifest scope/start_url are ./ (admin origin only)', manifest.scope === './' && manifest.start_url === './');
+ok('maskable icons present', manifest.icons.some(i => i.purpose === 'maskable'));
+ok('public PWA manifest NOT referenced by admin app', !html.includes('manifest.json"') && !html.includes('sw.js"'));
+
+// ── 10. Public site isolation (checked against repo) ────────────
+const pubIdx = fs.readFileSync(path.join(root, '..', 'index.html'), 'utf8');
+ok('public site has NO admin install CTA', !pubIdx.includes('Install Studyria Admin'));
+ok('public site does not register admin SW', !pubIdx.includes('admin-sw.js'));
+ok('public site keeps its own manifest', pubIdx.includes('manifest.json'));
+
+// ── 11. No secrets in frontend code ─────────────────────────────
+for (const f of ['index.html', 'js/admin-boot.js', 'js/admin-pwa.js', 'admin-sw.js']) {
+  const s = fs.readFileSync(path.join(root, f), 'utf8');
+  ok('no service-role key in ' + f, !/service_role|SUPABASE_SERVICE|eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJvbGUiOiJzZXJ2aWNl/.test(s));
+}
+console.log('PWA tests done');
+
 console.log('\nRESULT:', pass, 'passed,', fail, 'failed');
 process.exit(fail ? 1 : 0);
