@@ -33,6 +33,16 @@ function _setAdminSession(val) {
   } catch(e) {}
 })();
 
+// P0 FIX (layer 2): the standalone admin app never loads the public
+// site's global PDFS array, but several console render functions
+// reference the bare global (e.g. renderAdminDashboard's `PDFS.length`).
+// In an async function that ReferenceError becomes a REJECTED PROMISE,
+// which the switchAdminTab try/catch can NOT catch — so main.innerHTML
+// was never set and the dashboard rendered as a blank page. Guard the
+// global once, here, so every bare PDFS reference is safe. Supabase
+// queries still provide the real numbers for authenticated admins.
+window.PDFS = window.PDFS || [];
+
 function logAdminActivity(msg, type = 'blue') {
   adminActivityLog.unshift({ msg, type, time: new Date() });
   if (adminActivityLog.length > 100) adminActivityLog.pop();
@@ -498,7 +508,7 @@ function switchAdminTab(tab) {
   function _safeRender(fn, label) {
     try {
       if (typeof fn === 'function') {
-        fn(main);
+        _asyncGuard(fn(main), label);   // async fns (library/career/community…) return promises
       } else {
         main.innerHTML = `<div style="padding:40px;text-align:center;opacity:.7">
           <p style="font-weight:600;margin:0 0 8px">${label} is loading…</p>
@@ -517,15 +527,33 @@ function switchAdminTab(tab) {
     }
   }
 
+  // P0 FIX (layer 2): several render functions are ASYNC. A rejection
+  // inside them escapes the try/catch below (which only catches sync
+  // throws) and left #adminMain permanently blank. _asyncGuard routes
+  // any async failure into the same visible error UI as sync errors.
+  function _asyncGuard(promise, label) {
+    if (promise && typeof promise.catch === 'function') {
+      promise.catch(err => {
+        console.error('[Admin] Async tab render error:', tab, err);
+        main.innerHTML = `<div style="padding:40px;text-align:center">
+          <p style="font-weight:700;color:var(--danger,#e55);margin:0 0 8px">Error loading ${label}</p>
+          <p style="font-size:.82rem;color:var(--text2,#888);margin:0 0 16px">${err.message || 'Unknown error'}</p>
+          <button onclick="switchAdminTab('${tab}')" style="padding:8px 20px;border-radius:8px;background:var(--primary,#930205);color:#fff;border:none;cursor:pointer">↺ Retry</button>
+        </div>`;
+      });
+    }
+    return promise;
+  }
+
   switch(tab) {
-    case 'dashboard':  renderAdminDashboard(main); break;
+    case 'dashboard':  _asyncGuard(renderAdminDashboard(main), 'Dashboard'); break;
     case 'analytics':  renderAdminAnalytics(main); break;
-    case 'pdfs':       renderAdminPDFs(main); break;
+    case 'pdfs':       _asyncGuard(renderAdminPDFs(main), 'PDF Management'); break;
     case 'add-pdf':    renderAdminAddPDF(main); break;
-    case 'categories': renderAdminCategories(main); break;
-    case 'orders':       renderAdminOrders(main); break;
+    case 'categories': _asyncGuard(renderAdminCategories(main), 'Hierarchy Manager'); break;
+    case 'orders':       _asyncGuard(renderAdminOrders(main), 'Orders'); break;
     case 'memberships':  _safeRender(window.renderAdminMemberships, 'Memberships'); break;
-    case 'users':      renderAdminUsers(main); break;
+    case 'users':      _asyncGuard(renderAdminUsers(main), 'Users'); break;
     case 'revenue':    renderAdminRevenue(main); break;
     case 'activity':   renderAdminActivity(main); break;
     case 'settings':   renderAdminSettings(main); break;
