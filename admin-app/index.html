@@ -10,9 +10,10 @@
   <link rel="icon" href="favicon.ico" sizes="32x32">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="manifest" href="manifest-admin.json">
-  <link rel="stylesheet" href="css/admin-base.css?v=4">
-  <link rel="stylesheet" href="css/cloud-manager.css?v=4">
-  <link rel="stylesheet" href="css/admin-shell.css?v=4">
+  <link rel="stylesheet" href="css/admin-base.css?v=5">
+  <link rel="stylesheet" href="css/cloud-manager.css?v=5">
+  <link rel="stylesheet" href="css/admin-shell.css?v=5">
+  <link rel="stylesheet" href="css/admin-theme.css?v=1">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://qsdfmgcekdpjdcyqhuhi.supabase.co" crossorigin>
 </head>
@@ -145,13 +146,13 @@
         <div class="admin-nav-section-label" style="margin-top:16px">CONTENT &amp; LIBRARY</div>
         <button class="admin-nav-item" data-atab="pdfs" onclick="switchAdminTab('pdfs')"><svg width="16" height="16"><use href="#ic-library"/></svg>PDF Management</button>
         <button class="admin-nav-item" data-atab="add-pdf" onclick="switchAdminTab('add-pdf')"><svg width="16" height="16"><use href="#ic-plus"/></svg>Add New PDF</button>
-        <button class="admin-nav-item" data-atab="smart-publish" onclick="switchAdminTab('add-pdf')" style="background:linear-gradient(90deg,rgba(147,2,5,.14),rgba(16,217,142,.07));border-left:2px solid #930205" title="Upload &rarr; Edit &rarr; Publish workflow (lives inside Add New PDF)"><span style="font-size:.85rem">&#9889;</span> Smart Publish</button>
+        <button class="admin-nav-item" data-atab="smart-publish" onclick="switchAdminTab('add-pdf')" style="border-left:2px solid #930205" title="Upload &rarr; Edit &rarr; Publish workflow (lives inside Add New PDF)"><span style="font-size:.85rem">&#9889;</span> Smart Publish</button>
         <button class="admin-nav-item" data-atab="categories" onclick="switchAdminTab('categories')"><svg width="16" height="16"><use href="#ic-tag"/></svg>Classification Manager<span class="admin-nav-badge" style="background:rgba(16,217,142,.1);color:var(--success);border-color:rgba(16,217,142,.2)">6 Levels</span></button>
         <button class="admin-nav-item" data-atab="pdf-manager-pro" onclick="switchAdminTab('pdf-manager-pro')"><svg width="16" height="16"><use href="#ic-library"/></svg>Advanced PDF Manager</button>
         <button class="admin-nav-item" data-atab="category-manager-pro" onclick="switchAdminTab('category-manager-pro')"><svg width="16" height="16"><use href="#ic-tag"/></svg>Advanced Category Mgr</button>
         <button class="admin-nav-item" data-atab="homepage-manager" onclick="switchAdminTab('homepage-manager')"><svg width="16" height="16"><use href="#ic-home"/></svg>Homepage Manager</button>
-        <button class="admin-nav-item" data-atab="hero-designer" onclick="switchAdminTab('hero-designer')" style="background:linear-gradient(90deg,rgba(139,92,246,0.12),rgba(147,2,5,0.08));border-left:2px solid #8b5cf6">&#127912; Hero Designer</button>
-        <button class="admin-nav-item" data-atab="library-manager" onclick="switchAdminTab('library-manager')" style="background:linear-gradient(90deg,rgba(147,2,5,.13),rgba(201,154,60,0.07));border-left:2px solid #930205"><svg width="16" height="16"><use href="#ic-library"/></svg>Library Manager</button>
+        <button class="admin-nav-item" data-atab="hero-designer" onclick="switchAdminTab('hero-designer')" style="border-left:2px solid #8b5cf6">&#127912; Hero Designer</button>
+        <button class="admin-nav-item" data-atab="library-manager" onclick="switchAdminTab('library-manager')" style="border-left:2px solid #930205"><svg width="16" height="16"><use href="#ic-library"/></svg>Library Manager</button>
         <button class="admin-nav-item" data-atab="blog" onclick="switchAdminTab('blog')"><svg width="16" height="16"><use href="#ic-library"/></svg>Blog Manager</button>
         <button class="admin-nav-item" data-atab="seo-manager" onclick="switchAdminTab('seo-manager')"><svg width="16" height="16"><use href="#ic-globe"/></svg>SEO Manager</button>
 
@@ -159,8 +160,8 @@
         <button class="admin-nav-item" data-atab="orders" onclick="switchAdminTab('orders')"><svg width="16" height="16"><use href="#ic-cart"/></svg>Orders<span class="admin-nav-badge admin-nav-badge-orange" id="adminOrdersBadge">0</span></button>
         <button class="admin-nav-item" data-atab="revenue" onclick="switchAdminTab('revenue')"><svg width="16" height="16"><use href="#ic-trending"/></svg>Revenue</button>
         <button class="admin-nav-item" data-atab="finance" onclick="switchAdminTab('finance')"><svg width="16" height="16"><use href="#ic-trending"/></svg>Sales &amp; Finance Center</button>
-        <button class="admin-nav-item" data-atab="memberships" onclick="switchAdminTab('memberships')" style="background:linear-gradient(90deg,rgba(245,158,11,0.12),rgba(251,191,36,0.07));border-left:2px solid #f59e0b">&#128081; Memberships<span class="admin-nav-badge" id="adminMemBadge" style="background:rgba(245,158,11,0.15);color:#fbbf24;border-color:rgba(245,158,11,0.35);display:none">0</span></button>
-        <button class="admin-nav-item" data-atab="pass-management" onclick="switchAdminTab('pass-management')" style="background:linear-gradient(90deg,rgba(251,191,36,0.15),rgba(245,158,11,0.08));border-left:2px solid #fbbf24">Pass Management</button>
+        <button class="admin-nav-item" data-atab="memberships" onclick="switchAdminTab('memberships')" style="border-left:2px solid #f59e0b">&#128081; Memberships<span class="admin-nav-badge" id="adminMemBadge" style="background:rgba(245,158,11,0.15);color:#fbbf24;border-color:rgba(245,158,11,0.35);display:none">0</span></button>
+        <button class="admin-nav-item" data-atab="pass-management" onclick="switchAdminTab('pass-management')" style="border-left:2px solid #fbbf24">Pass Management</button>
         <button class="admin-nav-item" data-atab="coupons" onclick="switchAdminTab('coupons')"><svg width="16" height="16"><use href="#ic-tag"/></svg>Coupons &amp; Offers</button>
 
         <div class="admin-nav-section-label" style="margin-top:16px">USERS &amp; ENGAGEMENT</div>
@@ -175,22 +176,22 @@
         <button class="admin-nav-item" data-atab="branding" onclick="switchAdminTab('branding')"><svg width="16" height="16"><use href="#ic-star"/></svg>Branding Manager</button>
 
         <div class="admin-nav-section-label" style="margin-top:16px">EXAM &amp; LEARNING</div>
-        <button class="admin-nav-item" data-atab="brainlab-manager" onclick="switchAdminTab('brainlab-manager')" style="background:linear-gradient(90deg,rgba(139,92,246,0.13),rgba(251,191,36,0.06));border-left:2px solid #8b5cf6">&#129504; BrainLab Manager</button>
-        <button class="admin-nav-item" data-atab="brainlab-test-engine" onclick="switchAdminTab('brainlab-test-engine')" style="background:linear-gradient(90deg,rgba(147,2,5,0.12),rgba(201,154,60,0.08));border-left:2px solid #c99a3c">&#129514; Test Engine<span class="admin-nav-badge" style="background:rgba(201,154,60,.12);color:#c99a3c;border-color:rgba(201,154,60,.3)">New</span></button>
-        <button class="admin-nav-item" data-atab="career-hub-manager" onclick="switchAdminTab('career-hub-manager')" style="background:linear-gradient(90deg,rgba(147,2,5,0.13),rgba(255,77,109,0.06));border-left:2px solid var(--accent)"><svg width="16" height="16"><use href="#ic-cart"/></svg>Career Hub Manager</button>
+        <button class="admin-nav-item" data-atab="brainlab-manager" onclick="switchAdminTab('brainlab-manager')" style="border-left:2px solid #8b5cf6">&#129504; BrainLab Manager</button>
+        <button class="admin-nav-item" data-atab="brainlab-test-engine" onclick="switchAdminTab('brainlab-test-engine')" style="border-left:2px solid #c99a3c">&#129514; Test Engine<span class="admin-nav-badge" style="background:rgba(201,154,60,.12);color:#c99a3c;border-color:rgba(201,154,60,.3)">New</span></button>
+        <button class="admin-nav-item" data-atab="career-hub-manager" onclick="switchAdminTab('career-hub-manager')" style="border-left:2px solid var(--accent)"><svg width="16" height="16"><use href="#ic-cart"/></svg>Career Hub Manager</button>
 
         <div class="admin-nav-section-label" style="margin-top:16px">COMMUNITY &amp; CREATORS</div>
-        <button class="admin-nav-item" data-atab="community-manager" onclick="switchAdminTab('community-manager')" style="background:linear-gradient(90deg,rgba(16,217,142,0.13),rgba(37,211,102,0.07));border-left:2px solid #10d98e">&#127760; Community Manager</button>
-        <button class="admin-nav-item" data-atab="whatsapp-community" onclick="switchAdminTab('whatsapp-community')" style="background:linear-gradient(90deg,rgba(37,211,102,0.13),rgba(16,217,142,0.07));border-left:2px solid #25d366"><span style="font-size:1rem">&#128241;</span>WhatsApp Community</button>
-        <button class="admin-nav-item" data-atab="campus-manager" onclick="switchAdminTab('campus-manager')" style="background:linear-gradient(90deg,rgba(147,2,5,0.13),rgba(99,102,241,0.06));border-left:2px solid #930205">&#127979; Campus Manager</button>
-        <button class="admin-nav-item" data-atab="creator-manager" onclick="switchAdminTab('creator-manager')" style="background:linear-gradient(90deg,rgba(16,217,142,0.13),rgba(6,182,212,0.07));border-left:2px solid #10d98e"><span style="font-size:1rem">&#127891;</span>Creator Manager</button>
+        <button class="admin-nav-item" data-atab="community-manager" onclick="switchAdminTab('community-manager')" style="border-left:2px solid #10d98e">&#127760; Community Manager</button>
+        <button class="admin-nav-item" data-atab="whatsapp-community" onclick="switchAdminTab('whatsapp-community')" style="border-left:2px solid #25d366"><span style="font-size:1rem">&#128241;</span>WhatsApp Community</button>
+        <button class="admin-nav-item" data-atab="campus-manager" onclick="switchAdminTab('campus-manager')" style="border-left:2px solid #930205">&#127979; Campus Manager</button>
+        <button class="admin-nav-item" data-atab="creator-manager" onclick="switchAdminTab('creator-manager')" style="border-left:2px solid #10d98e"><span style="font-size:1rem">&#127891;</span>Creator Manager</button>
 
         <div class="admin-nav-section-label" style="margin-top:16px">PLATFORM &amp; INFRA</div>
         <button class="admin-nav-item" data-atab="settings" onclick="switchAdminTab('settings')"><svg width="16" height="16"><use href="#ic-settings"/></svg>Settings</button>
         <button class="admin-nav-item" data-atab="customization" onclick="switchAdminTab('customization')"><svg width="16" height="16"><use href="#ic-settings"/></svg>Website Customization</button>
-        <button class="admin-nav-item" data-atab="pwa-control" onclick="switchAdminTab('pwa-control')" style="background:linear-gradient(90deg,rgba(147,2,5,0.12),rgba(16,217,142,0.07));border-left:2px solid #930205">&#128640; PWA Control Center</button>
-        <button class="admin-nav-item" data-atab="cloud-storage" onclick="switchAdminTab('cloud-storage')" style="background:linear-gradient(90deg,rgba(201,154,60,.14),rgba(147,2,5,.07));border-left:2px solid #c99a3c">&#9729;&#65039; Cloud Storage<span class="admin-nav-badge" style="background:rgba(201,154,60,.15);color:#946b1d;border-color:rgba(201,154,60,.35)">Cloud</span></button>
-        <button class="admin-nav-item" data-atab="zubeen-legacy" onclick="switchAdminTab('zubeen-legacy')" style="background:linear-gradient(90deg,rgba(147,2,5,0.12),rgba(201,154,60,0.08));border-left:2px solid #c99a3c">&#128366;&#65039; Zubeen Da Legacy</button>
+        <button class="admin-nav-item" data-atab="pwa-control" onclick="switchAdminTab('pwa-control')" style="border-left:2px solid #930205">&#128640; PWA Control Center</button>
+        <button class="admin-nav-item" data-atab="cloud-storage" onclick="switchAdminTab('cloud-storage')" style="border-left:2px solid #c99a3c">&#9729;&#65039; Cloud Storage<span class="admin-nav-badge" style="background:rgba(201,154,60,.15);color:#946b1d;border-color:rgba(201,154,60,.35)">Cloud</span></button>
+        <button class="admin-nav-item" data-atab="zubeen-legacy" onclick="switchAdminTab('zubeen-legacy')" style="border-left:2px solid #c99a3c">&#128366;&#65039; Zubeen Da Legacy</button>
         <button class="admin-nav-item" data-atab="ai-center" onclick="switchAdminTab('ai-center')"><svg width="16" height="16"><use href="#ic-shield"/></svg>AI Control Center</button>
         <button class="admin-nav-item" data-atab="security" onclick="switchAdminTab('security')"><svg width="16" height="16"><use href="#ic-shield"/></svg>Security Center</button>
         <button class="admin-nav-item" data-atab="system-advanced" onclick="switchAdminTab('system-advanced')"><svg width="16" height="16"><use href="#ic-settings"/></svg>Advanced System Settings</button>
@@ -263,33 +264,33 @@
   });
 </script>
 
-<script src="js/admin-boot.js?v=4"></script>
+<script src="js/admin-boot.js?v=5"></script>
 <script src="js/admin-console-inline.js?v=5"></script>
-<script src="js/modules/question-bank.js?v=4"></script>
-<script src="js/modules/vfa-practice-pool.js?v=4"></script>
-<script src="js/modules/vfa-practice-pool-b2.js?v=4"></script>
-<script src="js/modules/vfa-practice-pool-b3.js?v=4"></script>
-<script src="js/modules/vfa-practice-pool-b4.js?v=4"></script>
-<script src="js/modules/vfa-practice-pool-b5.js?v=4"></script>
-<script src="js/modules/adre-road-transport-pool.js?v=4"></script>
-<script src="js/modules/si-history-practice-pool-b1.js?v=4"></script>
-<script src="js/modules/tet-practice-pool-b1.js?v=4"></script>
-<script src="js/modules/studyria-notifications.js?v=4"></script>
-<script src="js/modules/cloud-manager.js?v=4"></script>
-<script src="js/modules/website-customization.js?v=4"></script>
-<script src="js/modules/smart-publish-manager.js?v=4"></script>
-<script src="js/modules/pdf-classification-refactor.js?v=4"></script>
-<script src="js/modules/premium-edit-pdf-ui.js?v=4"></script>
-<script src="js/modules/library-expansion-uploader.js?v=4"></script>
-<script src="js/modules/admin-membership-manager.js?v=4"></script>
-<script src="js/modules/pass-management.js?v=4"></script>
-<script src="js/modules/pwa-admin-v32.js?v=4"></script>
-<script src="js/modules/campus-admin.js?v=4"></script>
-<script src="js/modules/zubeen-legacy-admin.js?v=4"></script>
-<script src="js/modules/brainlab-exam-import.js?v=4"></script>
-<script src="js/modules/brainlab-admin-tests.js?v=4"></script>
-<script src="js/modules/career-hub-poster-engine.js?v=4"></script>
-<script src="js/modules/creator-program.js?v=4"></script>
-<script src="js/admin-pwa.js?v=4"></script>
+<script src="js/modules/question-bank.js?v=5"></script>
+<script src="js/modules/vfa-practice-pool.js?v=5"></script>
+<script src="js/modules/vfa-practice-pool-b2.js?v=5"></script>
+<script src="js/modules/vfa-practice-pool-b3.js?v=5"></script>
+<script src="js/modules/vfa-practice-pool-b4.js?v=5"></script>
+<script src="js/modules/vfa-practice-pool-b5.js?v=5"></script>
+<script src="js/modules/adre-road-transport-pool.js?v=5"></script>
+<script src="js/modules/si-history-practice-pool-b1.js?v=5"></script>
+<script src="js/modules/tet-practice-pool-b1.js?v=5"></script>
+<script src="js/modules/studyria-notifications.js?v=5"></script>
+<script src="js/modules/cloud-manager.js?v=5"></script>
+<script src="js/modules/website-customization.js?v=5"></script>
+<script src="js/modules/smart-publish-manager.js?v=5"></script>
+<script src="js/modules/pdf-classification-refactor.js?v=5"></script>
+<script src="js/modules/premium-edit-pdf-ui.js?v=5"></script>
+<script src="js/modules/library-expansion-uploader.js?v=5"></script>
+<script src="js/modules/admin-membership-manager.js?v=5"></script>
+<script src="js/modules/pass-management.js?v=5"></script>
+<script src="js/modules/pwa-admin-v32.js?v=5"></script>
+<script src="js/modules/campus-admin.js?v=5"></script>
+<script src="js/modules/zubeen-legacy-admin.js?v=5"></script>
+<script src="js/modules/brainlab-exam-import.js?v=5"></script>
+<script src="js/modules/brainlab-admin-tests.js?v=5"></script>
+<script src="js/modules/career-hub-poster-engine.js?v=5"></script>
+<script src="js/modules/creator-program.js?v=5"></script>
+<script src="js/admin-pwa.js?v=5"></script>
 </body>
 </html>
