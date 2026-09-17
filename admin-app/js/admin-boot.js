@@ -87,6 +87,21 @@ document.addEventListener('DOMContentLoaded', async function () {
   let stored = null;
   try { stored = JSON.parse(sessionStorage.getItem('studyria_admin_session') || 'null'); } catch (e) {}
 
+  // React to sign-outs that happen while the app is open.
+  // P0 FIX: register the listener BEFORE the restore branch — the early
+  // `return` on a successful session restore previously skipped this
+  // entirely, so after a refresh-restore the app never reacted to signOut.
+  if (window.supabaseClient) {
+    window.supabaseClient.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        clear();
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        if (loginPage) loginPage.classList.add('active');
+        if (typeof showToast === 'function') showToast('Signed out.', 'info');
+      }
+    });
+  }
+
   if (stored && stored.email) {
     try {
       const client = window.supabaseClient;
@@ -109,18 +124,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         showToast('Session expired — please sign in again.', 'info');
       }
     }
-  }
-
-  // React to sign-outs that happen while the app is open.
-  if (window.supabaseClient) {
-    window.supabaseClient.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
-        clear();
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        if (loginPage) loginPage.classList.add('active');
-        if (typeof showToast === 'function') showToast('Signed out.', 'info');
-      }
-    });
   }
 });
 

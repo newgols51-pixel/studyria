@@ -341,7 +341,18 @@ window.addEventListener('load', function () {
 });
 
 // ── Admin Login ──────────────────────────────────────────────────
+// P0 FIX: re-entrancy guard — adminDoLogin() is wired to THREE triggers
+// (button onclick + Enter keydown on email + Enter keydown on password).
+// A single interaction on Android can fire it twice (double keydown,
+// or keydown followed by click), which logged the user in twice and
+// produced the duplicate "Welcome to Admin Panel" toast. One attempt
+// at a time; the guard resets in the finally block below.
+let _adminLoginInFlight = false;
+
 async function adminDoLogin() {
+  if (_adminLoginInFlight) return;
+  _adminLoginInFlight = true;
+
   const email = document.getElementById('adminLoginEmail')?.value?.trim();
   const pass  = document.getElementById('adminLoginPass')?.value;
   const btn   = document.getElementById('adminLoginBtn');
@@ -349,6 +360,7 @@ async function adminDoLogin() {
 
   if (!email || !pass) {
     showAdminLoginError('Please enter email and password.');
+    _adminLoginInFlight = false;
     return;
   }
 
@@ -383,6 +395,7 @@ async function adminDoLogin() {
   } catch(err) {
     showAdminLoginError(err.message || 'Authentication failed.');
   } finally {
+    _adminLoginInFlight = false;
     btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Access Admin Panel';
     btn.disabled = false;
   }
@@ -399,8 +412,12 @@ function adminLogout() {
   logAdminActivity(`Admin logged out: ${window.adminSession?.email}`, 'red');
   _setAdminSession(null);  // clears local, window, sessionStorage, resets tab
   if (window.supabaseClient) window.supabaseClient.auth.signOut();
-  navigate('home');
-  showToast('Admin session ended.', 'info');
+  // P0 FIX: return to the ADMIN LOGIN screen (not the public site).
+  // navigate('home') redirected off the admin app entirely, breaking the
+  // expected logout flow. The SIGNED_OUT auth listener in admin-boot.js
+  // also fires and shows the login page + "Signed out." toast, so no
+  // second toast is emitted here (was duplicating the sign-out message).
+  navigate('admin-login');
 }
 
 function updateAdminTopbar() {
@@ -425,11 +442,21 @@ function renderAdmin() {
     if (loginPage) loginPage.classList.add('active');
     return;
   }
-  // FIX: Force #page-admin to paint before rendering content.
-  // content-visibility:auto on the page can cause Chrome/mobile to skip
-  // painting dynamically injected innerHTML, resulting in a blank screen.
+
+  // ── P0 FIX: THE ACTUAL PAGE TRANSITION ─────────────────────────
+  // The CSS page system shows ONLY .page.active (.page{display:none},
+  // #page-admin{display:none} / #page-admin.active{display:flex}).
+  // Previously this function never added .active to #page-admin and
+  // never removed it from #page-admin-login — so after a successful
+  // login the login card stayed visible and the console stayed hidden.
+  // Now: deactivate every page (incl. login), then activate #page-admin.
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const _adminPageEl = document.getElementById('page-admin');
   if (_adminPageEl) {
+    _adminPageEl.classList.add('active');
+    // FIX: Force #page-admin to paint before rendering content.
+    // content-visibility:auto on the page can cause Chrome/mobile to skip
+    // painting dynamically injected innerHTML, resulting in a blank screen.
     _adminPageEl.style.contentVisibility = 'visible';
     void _adminPageEl.offsetHeight; // force synchronous reflow → browser registers as in-viewport
   }
