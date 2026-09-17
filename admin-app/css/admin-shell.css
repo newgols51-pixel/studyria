@@ -57,16 +57,13 @@
   .admin-topbar-right .admin-realtime-badge { display: none; }
 }
 
-/* Toast container (safety if base css omits it) */
-.toast-container {
-  position: fixed;
-  top: 18px; right: 18px;
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-width: min(360px, calc(100vw - 36px));
-}
+/* toast-container: intentionally NOT overridden here — admin-base.css
+   already ships a complete, production-proven rule (used by the public
+   site) including its own mobile @media variant. A prior override here
+   set top+right without bottom, which merged with base's mobile
+   bottom-only rule and stretched the box to nearly the full screen at
+   z-index:9999, silently blocking every tap. Do not re-add top/bottom
+   here without also auditing base.css's rule for conflicts. */
 
 /* Short screens: the login card can exceed viewport height — allow scroll
    (base has overflow:hidden which clips and makes the card unscrollable). */

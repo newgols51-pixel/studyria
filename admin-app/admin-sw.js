@@ -13,15 +13,15 @@
    • Honest offline behavior: cached shell only; live data always comes
      from the network. Offline + not cached = normal browser error.
    ══════════════════════════════════════════════════════════════════ */
-const ADMIN_CACHE = 'studyria-admin-v2';
+const ADMIN_CACHE = 'studyria-admin-v3';
 const ADMIN_SHELL = [
   './',
   './index.html',
   './manifest-admin.json',
-  './css/admin-base.css?v=2',
-  './css/admin-shell.css?v=2',
-  './css/cloud-manager.css?v=2',
-  './js/admin-boot.js?v=2',
+  './css/admin-base.css?v=3',
+  './css/admin-shell.css?v=3',
+  './css/cloud-manager.css?v=3',
+  './js/admin-boot.js?v=3',
   './icons/admin-logo.png',
   './icons/icon-192.png',
   './icons/icon-512.png',

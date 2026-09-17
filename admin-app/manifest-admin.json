@@ -2,7 +2,7 @@
   "name": "Studyria Admin — Operations Console",
   "short_name": "Studyria Admin",
   "description": "Studyria administration console — content, commerce, exams and platform operations.",
-  "id": "/?v=2",
+  "id": "/?v=3",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

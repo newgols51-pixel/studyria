@@ -90,7 +90,7 @@ ok('public site index.html untouched (git)', true); // verified via git in CI/st
 // ── 9. Admin PWA identity (separate from public PWA) ───────────
 const sw = fs.readFileSync(path.join(root, 'admin-sw.js'), 'utf8');
 const pwa = fs.readFileSync(path.join(root, 'js/admin-pwa.js'), 'utf8');
-ok('admin SW exists with own cache namespace', sw.includes("studyria-admin-v2") && !sw.includes('studyria-v'));
+ok('admin SW exists with own cache namespace', sw.includes("studyria-admin-v3") && !sw.includes('studyria-v'));
 ok('admin SW registered under ./ scope', pwa.includes("register('admin-sw.js', { scope: './' })"));
 ok('admin SW same-origin only (never public/Supabase/CDN)', sw.includes('url.origin !== self.location.origin'));
 ok('admin SW never handles non-GET', sw.includes("req.method !== 'GET'"));
@@ -116,6 +116,19 @@ for (const f of ['index.html', 'js/admin-boot.js', 'js/admin-pwa.js', 'admin-sw.
   const s = fs.readFileSync(path.join(root, f), 'utf8');
   ok('no service-role key in ' + f, !/service_role|SUPABASE_SERVICE|eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJvbGUiOiJzZXJ2aWNl/.test(s));
 }
+// ── 12. Full-screen invisible click-blocker regression guard ────
+// A prior bug: admin-shell.css set .toast-container { top; right; z-index:9999 }
+// WITHOUT bottom, while admin-base.css's mobile @media set bottom (without
+// top). Both matched simultaneously -> a position:fixed box with both top
+// AND bottom set and no explicit height stretches to fill the space between
+// them: a nearly full-screen invisible tap-blocker at z-index:9999.
+// Guard: admin-shell.css must never redefine .toast-container's box-position
+// properties (top/bottom/left/right) — those live solely in admin-base.css.
+const shellCss = fs.readFileSync(path.join(root, 'css/admin-shell.css'), 'utf8');
+const shellToastRule = (shellCss.match(/\.toast-container\s*\{[^}]*\}/) || [''])[0];
+ok('admin-shell.css does not redefine toast-container position box', !/\b(top|bottom|left|right)\s*:/.test(shellToastRule));
+ok('admin-shell.css does not set toast-container z-index (base owns it)', !/z-index/.test(shellToastRule));
+
 console.log('PWA tests done');
 
 console.log('\nRESULT:', pass, 'passed,', fail, 'failed');
