@@ -356,10 +356,101 @@
   };
   var SN_KIND_BY_TYPE = { PDF:'pdf', JOB:'job', QUIZ:'quiz', MOCK_TEST:'mock', CURRENT_AFFAIRS:'affair' };
 
+  /* ═══ V4 BANNER LIBRARY — 9 Studyria-branded banner presets ═══════
+   * Additive: separate from the notification PRESETS above (those stay
+   * untouched). Each preset provides default banner content + a mapped
+   * snPoster style. Only icon/badge/headline/subtitle/CTA vary — the
+   * visual identity (paper cream, royal maroon, elegant gold, serif)
+   * stays the Studyria brand on every template. */
+  var BANNER_PRESETS = [
+    { id:'pdf',      icon:'📚', name:'New PDF',                sub:'Study Material Update',
+      type:'PDF',             style:'material', badge:'NEW PDF',
+      headline:'New Study Material Added',      subtitle:'Premium notes and study resources are now available.', cta:'Explore Now →' },
+    { id:'mock',     icon:'🎯', name:'Mock Test',              sub:'Practice & Prepare',
+      type:'MOCK_TEST',       style:'mock',     badge:'MOCK TEST',
+      headline:'Test Your Preparation',         subtitle:'Practice with the latest mock tests on Studyria.', cta:'Start Test →' },
+    { id:'job',      icon:'💼', name:'Job Alert',              sub:'Career Opportunity',
+      type:'JOB',             style:'job',      badge:'JOB ALERT',
+      headline:'New Career Opportunity',         subtitle:'Stay updated with the latest job and recruitment updates.', cta:'View Jobs →' },
+    { id:'affairs',  icon:'📰', name:'Current Affairs',        sub:'Assam & India',
+      type:'CURRENT_AFFAIRS', style:'affairs',  badge:'CURRENT AFFAIRS',
+      headline:"Today's Current Affairs",        subtitle:'Stay updated with important Assam & India current affairs.', cta:'Read Now →' },
+    { id:'trending', icon:'🔥', name:'Trending',               sub:'What students love today',
+      type:'CATEGORY',        style:'affairs',  badge:'TRENDING',
+      headline:'Trending on Studyria',          subtitle:'Explore what students are reading and practicing today.', cta:'Explore Now →' },
+    { id:'premium',  icon:'👑', name:'Premium Announcement',   sub:'Members-only update',
+      type:'GENERAL',         style:'premium',  badge:'PREMIUM',
+      headline:'Exclusive Studyria Premium Update', subtitle:'Discover new premium resources and member benefits.', cta:'View Update →' },
+    { id:'announce', icon:'📢', name:'Important Announcement', sub:'Official Studyria update',
+      type:'GENERAL',         style:'classic',  badge:'IMPORTANT',
+      headline:'Important Studyria Update',     subtitle:'Please check the latest announcement from Studyria.', cta:'Read Now →' },
+    { id:'feature',  icon:'✨', name:'New Feature',           sub:'Something new arrived',
+      type:'GENERAL',         style:'feature',  badge:'NEW FEATURE',
+      headline:'Something New Has Arrived',     subtitle:'Discover the latest feature added to Studyria.', cta:'Explore →' },
+    { id:'whatsapp', icon:'📱', name:'WhatsApp Update',        sub:'Join our channel',
+      type:'GENERAL',         style:'affairs',  badge:'WHATSAPP',
+      headline:'Join Studyria on WhatsApp',     subtitle:'Get updates, quizzes and important announcements directly on WhatsApp.', cta:'Join Now →' }
+  ];
+
+  function _bnPreset() {
+    var c = _composer();
+    return BANNER_PRESETS.filter(function (x) { return x.id === c.bannerPreset; })[0] || null;
+  }
+
+  /* Effective banner text = admin edit ▸ preset default ▸ fallback from
+     the notification title/message. Never concatenates field labels. */
+  function _bnVal(key, fallback) {
+    var c = _composer();
+    var v = (c.bn && c.bn[key]) || '';
+    if (v) return v;
+    var p = _bnPreset();
+    if (p && p[key]) return p[key];
+    return fallback || '';
+  }
+
+  function _bnEditor() {
+    var c = _composer();
+    return {
+      h: _field('snBnH') ? _fv('snBnH') : (c._bnH || ''),
+      s: _field('snBnS') ? _fv('snBnS') : (c._bnS || ''),
+      b: _field('snBnB') ? _fv('snBnB') : (c._bnB || ''),
+      c: _field('snBnC') ? _fv('snBnC') : (c._bnC || '')
+    };
+  }
+
+  /* Content sync guard: field labels must NEVER leak into the stored
+     title/message (V4 §7). Strips leading "TITLE:" / "MESSAGE:" /
+     "CONTENT:" / "BANNER:" prefixes and collapses repeated separators. */
+  function _cleanLabel(str) {
+    return String(str || '')
+      .replace(/^\s*(TITLE|MESSAGE|CONTENT|BANNER|HEADLINE|SUBTITLE|BADGE|CTA)\s*[:：-]\s*/i, '')
+      .replace(/\s*MESSAGE\s*[:：]\s*/gi, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+
+  /* Composed poster URL for preset mode — the SAME generator the feed
+     falls back to, so the banner preview = what users receive. */
+  function _bnPosterUrl(r, w) {
+    var p = _bnPreset();
+    var style = p ? p.style : (_presetStyle() || 'classic');
+    return 'https://superagent-f8acee03.base44.app/functions/snPoster?type='
+      + encodeURIComponent(p ? p.type : (_fv('snType') || 'GENERAL'))
+      + '&title=' + encodeURIComponent(_bnVal('headline', r ? r.title : 'Studyria'))
+      + '&sub=' + encodeURIComponent(_bnVal('subtitle', r ? (r.message || '') : ''))
+      + '&style=' + encodeURIComponent(style)
+      + (w ? '&w=' + w : '');
+  }
+
   function _composer() {
     window.__snComposer = window.__snComposer || {
       presetId: 'study',
-      banner: { staged: null, existing: null, fit: 'cover', busy: false },
+      banner: { staged: null, existing: null, fit: 'cover', busy: false, raw: null, name: '', kb: 0 },
+      bannerMode: 'preset',   /* V4 §1: 'preset' | 'custom' */
+      bannerPreset: null,     /* V4 §2: selected banner library preset */
+      bn: { h: '', s: '', b: '', c: '' },  /* V4 §4: customised banner text (empty = preset default) */
+      ov: { h: '', s: '', b: '', c: '' },  /* V4 §5: overlay text for custom banners */
+      overlay: false,         /* V4 §5: text overlay on custom banner */
       previewTab: 'android',
       pvTimer: null
     };
@@ -513,10 +604,13 @@
 
   function _renderPreviewNow() {
     var host = _field('snPreviewHost');
+    _renderBannerPreview();
     if (!host) return;
     var c = _composer();
     var r = _previewRecord();
-    var bannerSrc = r.banner || _posterUrl(r);
+    var bannerSrc = (c.bannerMode === 'custom')
+      ? (r.banner || _bnPosterUrl(r))
+      : (c.bannerPreset ? _bnPosterUrl(r) : (r.banner || _posterUrl(r)));
     var tabs = _field('snPvTabs');
     if (tabs) {
       tabs.innerHTML = ['android', 'desktop', 'feed'].map(function (t) {
@@ -546,9 +640,10 @@
             : 'This type has no branded push template — sw.js renders the plain title (existing fallback).') + '</div>';
     } else {
       /* EXACT production feed card markup (ln-card) with real snPoster URL */
+      var feedThumb = (c.bannerMode === 'preset' && !c.bannerPreset) ? (r.banner || _posterUrl(r)) : bannerSrc;
       html = '<div class="sn-pv-feedwrap">'
         + '<div class="ln-card" style="cursor:default">'
-          + '<img class="ln-card-thumb" src="' + _escHtml(bannerSrc) + '" alt="" loading="lazy" onerror="this.remove()">'
+          + '<img class="ln-card-thumb" src="' + _escHtml(feedThumb) + '" alt="" loading="lazy" onerror="this.remove()">'
           + '<div class="ln-card-icon">' + r.icon + '</div>'
           + '<div class="ln-card-body">'
             + '<div class="ln-card-title">' + _escHtml(r.title) + '</div>'
@@ -556,13 +651,27 @@
             + '<div class="ln-card-time">just now</div>'
           + '</div>'
           + '<span class="ln-card-cta">' + _escHtml(r.cta) + ' →</span>'
-          + '<span class="ln-card-type ln-type-' + (_fv('snType') || 'GENERAL').toLowerCase() + '">' + _escHtml(r.typeLabel) + '</span>'
+          + '<span class="ln-card-type ln-type-' + (_fv('snType') || 'GENERAL').toLowerCase() + '">' + _escHtml(_bnVal('badge', '') || r.typeLabel) + '</span>'
         + '</div>'
         + (r.banner ? '<div class="sn-pv-note">Custom banner — will show in the Live Feed.</div>'
                     : '<div class="sn-pv-note">Auto-generated Studyria poster (snPoster) — one unique poster per notification.</div>')
         + '</div>';
     }
     host.innerHTML = html;
+    /* V4 §11: explicit field separation — the mapping readout shows each
+       stored value with its LABEL OUTSIDE the content, so a label leak
+       ("MESSAGE:" inside the title) is visible immediately. */
+    var map = _field('snPvMap');
+    if (map) {
+      var bnName = c.bannerMode === 'custom'
+        ? 'Custom image' + (c.overlay ? ' + overlay' : '')
+        : (c.bannerPreset ? 'Preset — ' + (_bnPreset() ? _bnPreset().name : c.bannerPreset) : 'Auto poster (no preset)');
+      var ctaShown = _bnVal('cta', '') || r.cta || '—';
+      map.innerHTML = '<div class="sn-pv-map-row"><span class="sn-pv-map-k">Title</span><span class="sn-pv-map-v">' + _escHtml(r.title || '—') + '</span></div>'
+        + '<div class="sn-pv-map-row"><span class="sn-pv-map-k">Message</span><span class="sn-pv-map-v">' + _escHtml(r.message || '—') + '</span></div>'
+        + '<div class="sn-pv-map-row"><span class="sn-pv-map-k">Banner</span><span class="sn-pv-map-v">' + _escHtml(bnName) + '</span></div>'
+        + '<div class="sn-pv-map-row"><span class="sn-pv-map-k">CTA</span><span class="sn-pv-map-v">' + _escHtml(ctaShown) + '</span></div>';
+    }
     _renderValBox();
   }
 
@@ -595,8 +704,11 @@
           } else { /* cover: center-crop */
             ctx.drawImage(img, (SN_BANNER_W - dw) / 2, (SN_BANNER_H - dh) / 2, dw, dh);
           }
+          _drawOverlay(ctx);
           var dataUrl = canvas.toDataURL('image/jpeg', 0.82);
           c.banner.staged = { dataUrl: dataUrl, name: file.name };
+          c.banner.raw = reader.result;   /* V4: keep original for overlay re-bakes */
+          c.banner.kb = Math.round(file.size / 1024);
           c.banner.busy = false;
           if (err) { err.style.display = ''; err.style.color = '#10d98e'; err.textContent = '✓ Banner ready — ' + Math.round(dataUrl.length / 1365) + ' KB compressed (' + (fit === 'contain' ? 'fit' : 'crop') + ')'; }
           _renderBannerBox();
@@ -614,6 +726,216 @@
     if (wrap) wrap.innerHTML = '<div class="sn-banner-broken">\u26a0 image failed to load \u2014 will fall back to the Studyria poster</div>';
   }
 
+  /* ═══ V4: banner mode / library / editor / preview ═════════════ */
+
+  function bannerMode(mode) {
+    var c = _composer();
+    c.bannerMode = mode === 'custom' ? 'custom' : 'preset';
+    _renderBannerModeUI();
+    _renderBannerLib();
+    _renderBannerBox();
+    _renderBannerEditorSync();
+    _renderPreviewNow();
+  }
+
+  function _renderBannerModeUI() {
+    var c = _composer();
+    var bp = _field('snBmodePreset'), bc = _field('snBmodeCustom');
+    var lw = _field('snBnLibWrap'), cw = _field('snBannerCustomWrap');
+    var on = c.bannerMode !== 'custom';
+    if (bp) { bp.className = 'sn-bmode-card' + (on ? ' sn-bmode-on' : ''); bp.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+    if (bc) { bc.className = 'sn-bmode-card' + (!on ? ' sn-bmode-on' : ''); bc.setAttribute('aria-pressed', on ? 'false' : 'true'); }
+    if (lw) lw.style.display = on ? '' : 'none';
+    if (cw) cw.style.display = on ? 'none' : '';
+  }
+
+  function bannerPresetPick(id) {
+    var c = _composer();
+    var p = BANNER_PRESETS.filter(function (x) { return x.id === id; })[0];
+    if (!p) return;
+    /* selecting a new preset keeps admin customisations only if they
+       belong to the same preset — switching resets text to the new
+       preset's defaults (never mixes two templates' content) */
+    if (c.bannerPreset !== id) c.bn = { h: '', s: '', b: '', c: '' };
+    c.bannerPreset = id;
+    /* keep the notification type aligned with the banner template */
+    var t = _field('snType'); if (t && !st_editingId()) t.value = p.type;
+    _renderBannerLib();
+    _renderBannerEditorSync();
+    _renderPreviewNow();
+  }
+
+  function _renderBannerLib() {
+    var wrap = _field('snBnLib');
+    if (!wrap) return;
+    var c = _composer();
+    wrap.innerHTML = BANNER_PRESETS.map(function (p) {
+      var on = c.bannerPreset === p.id;
+      return '<button type="button" class="sn-bnlib-card' + (on ? ' sn-bnlib-on' : '') + '"'
+        + ' aria-pressed="' + on + '" title="' + _escHtml(p.name) + ' — ' + _escHtml(p.sub) + '"'
+        + ' onclick="SN.bannerPresetPick(\'' + p.id + '\')">'
+        + (on ? '<span class="sn-bnlib-check" aria-hidden="true">✓</span>' : '')
+        + '<span class="sn-bnlib-ico">' + p.icon + '</span>'
+        + '<span class="sn-bnlib-name">' + _escHtml(p.name) + '</span>'
+        + '<span class="sn-bnlib-sub">' + _escHtml(p.sub) + '</span>'
+        + '<span class="sn-bnlib-badge">' + _escHtml(p.badge) + '</span>'
+        + '</button>';
+    }).join('');
+  }
+
+  /* mirror composer state → editor inputs (never overwrites what the
+     admin is typing: only syncs on preset/mode change + record load) */
+  function _renderBannerEditorSync() {
+    var c = _composer();
+    var map = { snBnH: c.bn.h, snBnS: c.bn.s, snBnB: c.bn.b, snBnC: c.bn.c };
+    for (var id in map) { var el = _field(id); if (el && document.activeElement !== el) el.value = map[id]; }
+    var ov = _field('snOvToggle'); if (ov && document.activeElement !== ov) ov.checked = c.overlay;
+    var of = _field('snOvFields'); if (of) of.style.display = (c.overlay && c.bannerMode === 'custom') ? '' : 'none';
+    var om = c.ov ? { snOvH: c.ov.h, snOvS: c.ov.s, snOvB: c.ov.b, snOvC: c.ov.c } : {};
+    for (var id2 in om) { var el2 = _field(id2); if (el2 && document.activeElement !== el2) el2.value = om[id2]; }
+  }
+
+  function _bnInput(key, val) {
+    var c = _composer();
+    if (!c.bn) c.bn = { h: '', s: '', b: '', c: '' };
+    c.bn[key] = String(val || '');
+    _renderPreviewNow();
+  }
+  function bnClear(key) { _bnInput(key, ''); var el = _field({ h: 'snBnH', s: 'snBnS', b: 'snBnB', c: 'snBnC' }[key]); if (el) el.value = ''; }
+  function bnReset() {
+    _composer().bn = { h: '', s: '', b: '', c: '' };
+    _renderBannerEditorSync();
+    _renderPreviewNow();
+  }
+  function _ovInput(key, val) {
+    var c = _composer();
+    if (!c.ov) c.ov = { h: '', s: '', b: '', c: '' };
+    c.ov[key] = String(val || '');
+    _rebakeStaged();
+    _renderPreviewNow();
+  }
+  function overlayToggle(on) {
+    var c = _composer();
+    c.overlay = !!on;
+    var of = _field('snOvFields'); if (of) of.style.display = c.overlay ? '' : 'none';
+    _rebakeStaged();
+    _renderPreviewNow();
+  }
+
+  /* Live Banner Preview — HTML mock of the Studyria poster identity:
+     paper cream, royal maroon band, gold divider, serif headline. In
+     custom mode it shows the real staged/existing image + overlay. */
+  function _renderBannerPreview() {
+    var host = _field('snBnPreviewHost');
+    if (!host) return;
+    var c = _composer();
+    if (c.bannerMode === 'custom') {
+      var src = _stagedBannerUrl() || c.banner.existing;
+      if (src) {
+        var ov = c.overlay ? c.ov : null;
+        host.innerHTML = '<div class="sn-bnpv">'
+          + '<img src="' + _escHtml(src) + '" alt="Custom banner preview"/>'
+          + (ov ? '<div class="sn-bnpv-ov">'
+              + (ov.b ? '<span class="sn-bnpv-badge">' + _escHtml(ov.b) + '</span>' : '')
+              + '<span class="sn-bnpv-ovwrap">'
+              + (ov.h ? '<span class="sn-bnpv-h">' + _escHtml(ov.h) + '</span>' : '')
+              + (ov.s ? '<span class="sn-bnpv-s">' + _escHtml(ov.s) + '</span>' : '')
+              + '</span>'
+              + (ov.c ? '<span class="sn-bnpv-cta">' + _escHtml(ov.c) + '</span>' : '')
+              + '</div>' : '')
+          + '</div>'
+          + '<div class="sn-bnpv-note">' + (ov ? 'Text overlay ON — drawn onto the banner when it is uploaded/replaced.'
+              : 'Your image exactly as it will appear — no text is injected.') + '</div>';
+        return;
+      }
+      host.innerHTML = '<div class="sn-bnpv sn-bnpv-empty"><span>No custom banner yet</span><em>Upload a banner on the left — until then each notification automatically gets its own Studyria poster.</em></div>';
+      return;
+    }
+    var p = _bnPreset();
+    if (!p) {
+      host.innerHTML = '<div class="sn-bnpv sn-bnpv-empty"><span>No banner preset selected</span><em>Pick a template from the library — or switch to Custom Banner.</em></div>';
+      return;
+    }
+    var h = _bnVal('headline', ''), sv = _bnVal('subtitle', ''), b = _bnVal('badge', ''), cta = _bnVal('cta', '');
+    host.innerHTML = '<div class="sn-bnpv sn-bnpv-preset" role="img" aria-label="Studyria banner: ' + _escHtml(h) + '">'
+      + '<div class="sn-bnpv-band">'
+        + '<span class="sn-bnpv-ico">' + p.icon + '</span>'
+        + '<span class="sn-bnpv-wordmark">STUDYRIA</span>'
+        + (b ? '<span class="sn-bnpv-badge">' + _escHtml(b) + '</span>' : '')
+      + '</div>'
+      + '<div class="sn-bnpv-body">'
+        + '<div class="sn-bnpv-h">' + _escHtml(h || p.headline) + '</div>'
+        + (sv ? '<div class="sn-bnpv-s">' + _escHtml(sv) + '</div>' : '')
+        + '<div class="sn-bnpv-rule"></div>'
+        + (cta ? '<div class="sn-bnpv-cta">' + _escHtml(cta) + '</div>' : '')
+      + '</div>'
+      + '<span class="sn-bnpv-edge" aria-hidden="true"></span>'
+      + '</div>'
+      + '<div class="sn-bnpv-note">Preset banner — ' + _escHtml(p.name) + '. Auto-generated Studyria poster with your text.</div>';
+  }
+
+  /* Bake overlay text onto a staged banner (client-side, same canvas
+     pipeline the upload already uses). The RAW image is kept so overlay
+     edits re-bake from the original — never from an already-baked copy. */
+  function _drawOverlay(ctx) {
+    var c = _composer();
+    if (!c.overlay) return;
+    var ov = c.ov || {};
+    var W = SN_BANNER_W, H = SN_BANNER_H;
+    ctx.save();
+    if (ov.h || ov.s) {
+      var grad = ctx.createLinearGradient(0, H * 0.55, 0, H);
+      grad.addColorStop(0, 'rgba(38,14,20,0)');
+      grad.addColorStop(1, 'rgba(38,14,20,0.88)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, H * 0.55, W, H * 0.45);
+    }
+    if (ov.b) {
+      ctx.fillStyle = '#C9A227';
+      var bw = ctx.measureText(ov.b).width;
+      ctx.font = '700 34px "Georgia", serif';
+      bw = Math.max(48, ctx.measureText(ov.b.toUpperCase()).width + 44);
+      ctx.fillRect(52, 52, bw, 60);
+      ctx.fillStyle = '#48121E';
+      ctx.fillText(ov.b.toUpperCase(), 74, 94);
+    }
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#F7F1E2';
+    if (ov.h) { ctx.font = '700 64px "Georgia", serif'; ctx.fillText(ov.h, 52, H - 150); }
+    if (ov.s) { ctx.font = '400 34px "Georgia", serif'; ctx.fillText(ov.s, 52, H - 92); }
+    if (ov.c) {
+      ctx.font = '700 30px "Georgia", serif';
+      var cw = ctx.measureText(ov.c).width + 56;
+      ctx.fillStyle = '#C9A227';
+      ctx.fillRect(W - cw - 52, H - 118, cw, 54);
+      ctx.fillStyle = '#48121E';
+      ctx.fillText(ov.c, W - cw - 24, H - 80);
+    }
+    ctx.restore();
+  }
+
+  function _rebakeStaged() {
+    var c = _composer();
+    if (!c.overlay || !c.banner || !c.banner.raw) return;
+    var img = new Image();
+    img.onload = function () {
+      try {
+        var canvas = document.createElement('canvas');
+        canvas.width = SN_BANNER_W; canvas.height = SN_BANNER_H;
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#F7F1E2'; ctx.fillRect(0, 0, SN_BANNER_W, SN_BANNER_H);
+        var fit = c.banner.fit, sc = Math.min(img.width / SN_BANNER_W, img.height / SN_BANNER_H);
+        var dw = img.width / sc, dh = img.height / sc;
+        ctx.drawImage(img, (SN_BANNER_W - dw) / 2, (SN_BANNER_H - dh) / 2, dw, dh);
+        _drawOverlay(ctx);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        c.banner.staged = { dataUrl: dataUrl, name: c.banner.name || 'banner.jpg' };
+        _renderBannerBox();
+      } catch (e) { /* keep last good staged banner */ }
+    };
+    img.src = c.banner.raw;
+  }
+
   function _renderBannerBox() {
     var host = _field('snBannerBox');
     if (!host) return;
@@ -623,7 +945,8 @@
     var isNewNote = !st_editingId() ? '<div class="sn-banner-note">Uploaded automatically after you publish.</div>' : '';
     host.innerHTML = showing
       ? '<div class="sn-banner-prev"><img src="' + _escHtml(showing) + '" alt="Banner preview" onerror="SN._bannerImgError(this)"/></div>'
-        + '<div class="sn-banner-meta">' + (staged ? 'New banner staged' : 'Current custom banner') + '</div>'
+        + '<div class="sn-banner-meta">' + (staged ? 'New banner staged' : 'Current custom banner')
+          + (c.banner.name ? ' — ' + _escHtml(c.banner.name) + (c.banner.kb ? ' · ' + c.banner.kb + ' KB' : '') : '') + '</div>'
         + '<div class="sn-banner-btns">'
           + '<label class="btn btn-ghost btn-sm" for="snBannerFile2">↻ Replace</label>'
           + '<button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="SN.bannerRemove()">🗑 Remove</button>'
@@ -819,7 +1142,24 @@
     var presetType = n.notification_type || 'GENERAL';
     var p = PRESETS.filter(function (x) { return x.type === presetType; })[0] || PRESETS[0];
     _composer().presetId = p.id;
+
+    /* ── V4: restore banner state from record metadata (merge-safe:
+       records without banner fields → default preset mode, no template
+       selected — identical to pre-V4 behavior) ── */
+    var c4 = _composer();
+    var md = (n.metadata && typeof n.metadata === 'object') ? n.metadata : {};
+    c4.bannerMode = (md.banner_mode === 'custom' || (!md.banner_preset && (md.poster_url || c4.banner.existing))) ? 'custom' : 'preset';
+    c4.bannerPreset = BANNER_PRESETS.some(function (b) { return b.id === md.banner_preset; }) ? md.banner_preset : null;
+    c4.bn = { h: md.banner_headline || '', s: md.banner_subtitle || '', b: md.banner_badge || '', c: md.banner_cta || '' };
+    c4.overlay = !!md.banner_overlay_enabled;
+    c4.ov = { h: md.banner_headline || '', s: md.banner_subtitle || '', b: md.banner_badge || '', c: md.banner_cta || '' };
+    if (mode === 'reuse') { c4.bn = { h: '', s: '', b: '', c: '' }; c4.ov = { h: '', s: '', b: '', c: '' }; }
+    if (mode !== 'edit') c4.banner.raw = null;
+
     _renderPresetCards();
+    _renderBannerModeUI();
+    _renderBannerLib();
+    _renderBannerEditorSync();
     if (mode === 'edit' && n.id) {
       probeBanner(n.id).then(function (url) {
         if (url) { _composer().banner.existing = url; _renderBannerBox(); _renderPreviewNow(); }
@@ -902,15 +1242,62 @@
                 <input class="form-input" id="snExpires" type="datetime-local"/></div>
             </div>
 
-            <div class="sn-sec-label">🖼️ VISUAL — CUSTOM BANNER</div>
+            <div class="sn-sec-label">🖼️ VISUAL — BANNER</div>
             <div class="sn-banner-block">
-              <div id="snBannerBox"></div>
-              <div class="sn-banner-tips">
-                <div class="sn-tip-row"><span class="sn-tip-k">Recommended</span> 1200 × 630 px (1.9:1 poster)</div>
-                <div class="sn-tip-row"><span class="sn-tip-k">Formats</span> JPG · PNG · WebP — max 5 MB (auto-compressed)</div>
-                <div class="sn-tip-row"><span class="sn-tip-k">Fit</span>
-                  <label><input type="radio" name="snBannerFit" value="cover" checked onchange="SN.bannerFit('cover')"/> Center-crop to poster</label>
-                  <label><input type="radio" name="snBannerFit" value="contain" onchange="SN.bannerFit('contain')"/> Fit whole image</label>
+              <div class="sn-bmode-row" role="radiogroup" aria-label="Banner mode">
+                <button type="button" id="snBmodePreset" class="sn-bmode-card" aria-pressed="true" onclick="SN.bannerMode('preset')">
+                  <span class="sn-bmode-ico">◈</span>
+                  <span class="sn-bmode-txt"><strong>Preset Banner</strong><em>Studyria-branded template library</em></span>
+                </button>
+                <button type="button" id="snBmodeCustom" class="sn-bmode-card" aria-pressed="false" onclick="SN.bannerMode('custom')">
+                  <span class="sn-bmode-ico">🖼️</span>
+                  <span class="sn-bmode-txt"><strong>Custom Banner</strong><em>Upload your own image</em></span>
+                </button>
+              </div>
+
+              <div id="snBnLibWrap">
+                <div class="sn-bnlib" id="snBnLib" role="group" aria-label="Preset banner library"></div>
+                <div class="sn-bnedit">
+                  <div class="sn-bnedit-head">
+                    <span class="sn-bnedit-title">✏️ Banner Text / Content <em>(optional — overrides the preset)</em></span>
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="SN.bnReset()">↺ Reset to preset</button>
+                  </div>
+                  <div class="sn-grid">
+                    <div class="form-group"><label class="form-label" for="snBnH">Banner Headline</label>
+                      <div class="sn-bninput"><input class="form-input" id="snBnH" maxlength="90" placeholder="Preset default" oninput="SN._bnInput('h',this.value)"/><button type="button" class="sn-bnclear" title="Clear headline" aria-label="Clear headline" onclick="SN.bnClear('h')">×</button></div></div>
+                    <div class="form-group"><label class="form-label" for="snBnS">Banner Subtitle</label>
+                      <div class="sn-bninput"><input class="form-input" id="snBnS" maxlength="140" placeholder="Preset default" oninput="SN._bnInput('s',this.value)"/><button type="button" class="sn-bnclear" title="Clear subtitle" aria-label="Clear subtitle" onclick="SN.bnClear('s')">×</button></div></div>
+                    <div class="form-group"><label class="form-label" for="snBnB">Badge / Label</label>
+                      <div class="sn-bninput"><input class="form-input" id="snBnB" maxlength="24" placeholder="Preset default" oninput="SN._bnInput('b',this.value)"/><button type="button" class="sn-bnclear" title="Clear badge" aria-label="Clear badge" onclick="SN.bnClear('b')">×</button></div></div>
+                    <div class="form-group"><label class="form-label" for="snBnC">CTA Text</label>
+                      <div class="sn-bninput"><input class="form-input" id="snBnC" maxlength="40" placeholder="Preset default" oninput="SN._bnInput('c',this.value)"/><button type="button" class="sn-bnclear" title="Clear CTA" aria-label="Clear CTA" onclick="SN.bnClear('c')">×</button></div></div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="snBannerCustomWrap" style="display:none">
+                <div id="snBannerBox"></div>
+                <div class="sn-banner-tips">
+                  <div class="sn-tip-row"><span class="sn-tip-k">Recommended</span> 1200 × 630 px (1.9:1 poster)</div>
+                  <div class="sn-tip-row"><span class="sn-tip-k">Formats</span> JPG · PNG · WebP — max 5 MB (auto-compressed)</div>
+                  <div class="sn-tip-row"><span class="sn-tip-k">Fit</span>
+                    <label><input type="radio" name="snBannerFit" value="cover" checked onchange="SN.bannerFit('cover')"/> Center Crop</label>
+                    <label><input type="radio" name="snBannerFit" value="contain" onchange="SN.bannerFit('contain')"/> Fit Whole Image</label>
+                  </div>
+                </div>
+                <label class="sn-ov-toggle"><input type="checkbox" id="snOvToggle" onchange="SN.overlayToggle(this.checked)"/> <span>Add text overlay on this image</span></label>
+                <div id="snOvFields" style="display:none">
+                  <div class="sn-ov-hint">Overlay text is drawn onto the banner when you upload it (or Replace it). The uploaded image stays untouched while this is off.</div>
+                  <div class="sn-grid">
+                    <div class="form-group"><label class="form-label" for="snOvH">Overlay Headline</label>
+                      <input class="form-input" id="snOvH" maxlength="90" placeholder="e.g. New Study Material Added" oninput="SN._ovInput('h',this.value)"/></div>
+                    <div class="form-group"><label class="form-label" for="snOvS">Overlay Subtitle</label>
+                      <input class="form-input" id="snOvS" maxlength="140" placeholder="" oninput="SN._ovInput('s',this.value)"/></div>
+                    <div class="form-group"><label class="form-label" for="snOvB">Overlay Badge</label>
+                      <input class="form-input" id="snOvB" maxlength="24" placeholder="" oninput="SN._ovInput('b',this.value)"/></div>
+                    <div class="form-group"><label class="form-label" for="snOvC">Overlay CTA</label>
+                      <input class="form-input" id="snOvC" maxlength="40" placeholder="" oninput="SN._ovInput('c',this.value)"/></div>
+                  </div>
                 </div>
               </div>
               <div id="snBannerMsg" style="font-size:.78rem;display:none;margin-top:8px"></div>
@@ -937,6 +1324,7 @@
             <div class="sn-actions" id="snActions">
               <div class="sn-actions-inner">
                 <button class="btn btn-primary" id="snSaveBtn" onclick="SN.adminSave(this)">${e ? '💾 Save Changes' : '🚀 Publish Notification'}</button>
+                <button class="btn btn-test" id="snTestBtn" onclick="SN.adminTestSend(this)" title="Send a test push to subscribed devices — nothing is published">🧪 Send Test Notification</button>
                 <button class="btn btn-ghost" onclick="SN.draftSave()">📥 Save Draft</button>
                 <button class="btn btn-ghost" id="snSchedBtn" onclick="SN.adminSchedule(this)">🕐 Schedule</button>
                 ${e ? '<button class="btn btn-ghost" onclick="SN.adminCancelEdit()">✕ Cancel</button>' : ''}
@@ -997,12 +1385,22 @@
           <div class="sn-card sn-preview-card">
             <div class="sn-card-head">
               <div>
+                <div class="sn-card-title">🖼️ Live Banner Preview</div>
+                <div class="sn-card-sub">The banner users will see — updates as you type.</div>
+              </div>
+            </div>
+            <div id="snBnPreviewHost" aria-live="polite"></div>
+          </div>
+          <div class="sn-card sn-preview-card">
+            <div class="sn-card-head">
+              <div>
                 <div class="sn-card-title">👁️ Live Preview</div>
                 <div class="sn-card-sub">Exactly what users receive — updates as you type.</div>
               </div>
             </div>
             <div class="sn-pv-tabs" id="snPvTabs"></div>
             <div id="snPreviewHost" aria-live="polite"></div>
+            <div class="sn-pv-map" id="snPvMap"></div>
           </div>
         </div>
       </div>
@@ -1032,7 +1430,10 @@
     if (ft) { ft.innerHTML = '<option value="">All types</option>' + Object.keys(TYPE_META).map(function (t) { return '<option value="' + t + '">' + t + '</option>'; }).join(''); }
 
     _renderPresetCards();
+    _renderBannerModeUI();
+    _renderBannerLib();
     _renderBannerBox();
+    _renderBannerEditorSync();
     _renderPreviewNow();
     _renderDrafts();
     SN.adminRefresh();
@@ -1122,7 +1523,11 @@
 
   function adminSave(btn, mode) {
     mode = mode || 'now';
-    var title = (document.getElementById('snTitle').value || '').trim();
+    /* V4 §7 content sync guard — field labels must NEVER leak into the
+       stored values ("TITLE:", "MESSAGE:", "CONTENT:" …). */
+    var title = _cleanLabel(document.getElementById('snTitle').value || '');
+    var messageEl = document.getElementById('snMessage');
+    if (messageEl) messageEl.value = _cleanLabel(messageEl.value || '');
     if (!title) { alert('Title is required'); return; }
     var kind = (document.getElementById('snDestKind').value) || '';
     var val = (document.getElementById('snDestVal').value || '').trim();
@@ -1177,6 +1582,45 @@
        template auto-CTA). 'Join Now' etc. come from the admin input. */
     if (!meta.cta && kind === 'url' && dest.indexOf('url:https://') === 0 &&
         dest.indexOf('url:https://studyria.qzz.io') !== 0) meta.cta = 'Open';
+
+    /* ── V4: banner library metadata (additive, merge-safe) ──
+     * banner_mode/banner_preset/banner_headline/banner_subtitle/
+     * banner_badge/banner_cta/banner_overlay_enabled. Old records
+     * without these fields keep rendering exactly as before. */
+    var cV4 = _composer();
+    var mdRec = (rec && rec.metadata && typeof rec.metadata === 'object') ? rec.metadata : {};
+    var recPosterWasPreset = !!mdRec.banner_preset;
+    meta.banner_mode = cV4.bannerMode === 'custom' ? 'custom' : 'preset';
+    if (cV4.bannerMode === 'custom') {
+      meta.banner_overlay_enabled = !!cV4.overlay;
+      var ovs = cV4.ov || {};
+      meta.banner_headline = ovs.h || ''; meta.banner_subtitle = ovs.s || '';
+      meta.banner_badge = ovs.b || ''; meta.banner_cta = ovs.c || '';
+      delete meta.banner_preset;
+      /* Stale PRESET-generated poster_url must never leak into custom
+         mode — but an existing CUSTOM banner (uploaded image) is kept:
+         the record's merged poster_url survives an edit that doesn't
+         re-upload, and the staged-upload flow refreshes it on change. */
+      if (recPosterWasPreset || (!cV4.banner.staged && !cV4.banner.existing)) delete meta.poster_url;
+    } else if (cV4.bannerPreset) {
+      meta.banner_preset = cV4.bannerPreset;
+      meta.banner_headline = _bnVal('headline', '');
+      meta.banner_subtitle = _bnVal('subtitle', '');
+      meta.banner_badge = _bnVal('badge', '');
+      meta.banner_cta = _bnVal('cta', '');
+      meta.banner_overlay_enabled = false;
+      /* The banner = auto Studyria poster built from the banner text —
+         the SAME snPoster generator the feed falls back to, so users
+         receive exactly the previewed headline/subtitle. */
+      meta.poster_url = _bnPosterUrl({ title: title, message: (document.getElementById('snMessage').value || '') });
+      if (!ctaVal && meta.banner_cta) meta.cta = meta.banner_cta;
+    } else {
+      /* preset mode, no banner template picked → old auto-poster
+         behavior, nothing extra stored */
+      delete meta.banner_preset; delete meta.banner_overlay_enabled;
+      delete meta.banner_headline; delete meta.banner_subtitle;
+      delete meta.banner_badge; delete meta.banner_cta; delete meta.poster_url;
+    }
 
     var payload = {
       op: st.editingId ? 'update' : 'create',
@@ -1255,6 +1699,43 @@
     });
   }
 
+  /* ── V4 §9: Send Test Notification ──────────────────────────────
+   * Uses the backend's existing push-test channel: a real push to
+   * subscribed devices, NEVER inserted into the production Live Feed.
+   * The composed title/body ride along for backends that support them;
+   * the standard Studyria test push arrives otherwise. Button is
+   * disabled while in flight → no duplicate sends. */
+  function adminTestSend(btn) {
+    if (btn.disabled) return;
+    var msg = document.getElementById('snSaveMsg');
+    var setMsg = function (t, color) { if (msg) { msg.style.display = ''; msg.style.color = color || 'var(--text2)'; msg.textContent = t; } };
+    var title = _cleanLabel(_fv('snTitle') || 'Studyria Test');
+    if (!title) { setMsg('✗ Add a title first — the test mirrors your composed notification.', '#ff6b85'); return; }
+    btn.disabled = true; btn.classList.add('sn-test-busy'); btn.textContent = '⏳ Sending Test…';
+    setMsg('Sending a test push to subscribed devices… (nothing is published to the Live Feed)');
+    adminCall({ op: 'push-test', title: title, body: _cleanLabel(_fv('snMessage') || '') })
+      .then(function (res) {
+        if (res && res.ok) {
+          btn.textContent = '✓ Test Notification Sent';
+          var n = (res.pushed || 0);
+          setMsg(n > 0
+            ? '✓ Test sent to ' + n + ' device' + (n === 1 ? '' : 's') + ' — check your phone, then publish when satisfied.'
+            : '✓ Test channel OK — but 0 devices are subscribed. Subscribe a device first (hamburger menu → Notifications).', '#10d98e');
+        } else {
+          btn.textContent = '⚠ Test Failed — Try Again';
+          setMsg('⚠ ' + ((res && res.error) || 'Test failed — check your admin session and try again.'), '#f59e0b');
+        }
+      })
+      .catch(function (e) {
+        btn.textContent = '⚠ Test Failed — Try Again';
+        setMsg('⚠ ' + ((e && e.message) || 'Test failed — please try again.'), '#f59e0b');
+      })
+      .finally(function () {
+        btn.disabled = false; btn.classList.remove('sn-test-busy');
+        setTimeout(function () { if (btn.textContent.indexOf('Test Notification') === -1) btn.textContent = '🧪 Send Test Notification'; }, 4000);
+      });
+  }
+
   function adminSchedule(btn) {
     return adminSave(btn, 'schedule');
   }
@@ -1327,7 +1808,10 @@
         : state === 'expired' ? '<span class="sn-state sn-state-expired">Expired</span>'
         : '<span class="sn-state sn-state-inactive">Inactive</span>';
       var srcBadge = n.source === 'auto' ? '<span class="sn-src sn-src-auto">auto</span>' : '<span class="sn-src sn-src-manual">manual</span>';
-      var thumb = 'https://superagent-f8acee03.base44.app/functions/snPoster?type=' + encodeURIComponent(n.notification_type || 'GENERAL') + '&title=' + encodeURIComponent(n.title || 'Studyria') + '&sub=' + encodeURIComponent(n.message || '');
+      var nMeta = (n.metadata && typeof n.metadata === 'object') ? n.metadata : {};
+      var thumb = (nMeta.poster_url && /^https:\/\//.test(String(nMeta.poster_url)))
+        ? nMeta.poster_url
+        : 'https://superagent-f8acee03.base44.app/functions/snPoster?type=' + encodeURIComponent(n.notification_type || 'GENERAL') + '&title=' + encodeURIComponent(n.title || 'Studyria') + '&sub=' + encodeURIComponent(n.message || '');
       var exp = n.expires_at ? new Date(n.expires_at).toLocaleDateString() : '—';
       var meta = TYPE_META[n.notification_type] || TYPE_META.GENERAL;
       return '<div class="sn-row" data-nid="' + _escHtml(n.id) + '">'
@@ -1372,7 +1856,10 @@
       pushTitle = tmpl.title;
       pushBody = n.title + (n.message ? ' — ' + n.message : '');
     }
-    var poster = 'https://superagent-f8acee03.base44.app/functions/snPoster?type=' + encodeURIComponent(n.notification_type || 'GENERAL') + '&title=' + encodeURIComponent(n.title || '') + '&sub=' + encodeURIComponent(n.message || '');
+    var vMeta = (n.metadata && typeof n.metadata === 'object') ? n.metadata : {};
+    var poster = (vMeta.poster_url && /^https:\/\//.test(String(vMeta.poster_url)))
+      ? vMeta.poster_url
+      : 'https://superagent-f8acee03.base44.app/functions/snPoster?type=' + encodeURIComponent(n.notification_type || 'GENERAL') + '&title=' + encodeURIComponent(n.title || '') + '&sub=' + encodeURIComponent(n.message || '');
     var overlay = document.getElementById('snViewOverlay');
     var body = document.getElementById('snViewBody');
     if (!overlay || !body) return;
@@ -1696,6 +2183,14 @@
     adminCancelEdit: adminCancelEdit,
     adminDestKindChange: adminDestKindChange,
     adminEdit: adminEdit,
+    bannerMode: bannerMode,
+    bannerPresetPick: bannerPresetPick,
+    bnReset: bnReset,
+    bnClear: bnClear,
+    _bnInput: _bnInput,
+    _ovInput: _ovInput,
+    overlayToggle: overlayToggle,
+    adminTestSend: adminTestSend,
     adminToggle: adminToggle,
     adminDelete: adminDelete,
     adminView: adminView,

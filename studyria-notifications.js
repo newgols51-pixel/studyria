@@ -161,6 +161,10 @@
       return res.notifications.map(function (n) {
         var rawType = String(n.type || 'GENERAL');
         var meta = TYPE_META[rawType] || TYPE_META.GENERAL;
+        /* V4 additive: banner library metadata (badge/CTA overrides) —
+           guarded so old records and older backends render exactly as
+           before when metadata is absent. */
+        var md = (n.metadata && typeof n.metadata === 'object') ? n.metadata : null;
         var dest = destinationAction(n.destination);
         var track = "SN._trackOpen('notification_card_open','" + escAttr(rawType) + "');";
         var action = dest
@@ -169,13 +173,13 @@
         return {
           id: n.id,
           type: rawType.toLowerCase(),
-          typeLabel: meta.label,
           title: n.title || 'Update',
           message: n.message || '',
           time: n.published_at || null,
           icon: n.icon || meta.icon,
           poster_url: n.poster_url || '',
-          ctaLabel: meta.cta,
+          ctaLabel: (md && md.cta) ? String(md.cta) : meta.cta,
+          typeLabel: (md && md.banner_badge) ? String(md.banner_badge) : meta.label,
           action: action
         };
       });

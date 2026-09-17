@@ -760,3 +760,125 @@ select.form-input {
   .sn-pv-tabs { gap: 4px; }
   .sn-pv-tab { font-size: .68rem; padding: 8px 2px; }
 }
+
+/* ═══ §12c V4 BANNER LIBRARY + NOTIFICATION CMS (v3) ═════════════════
+   Studyria brand only — paper cream, royal maroon, elegant gold.
+   Every component ships hover/selected/focus/disabled/loading/error
+   states and full responsive behavior (390/412/768/1280). */
+
+/* — banner mode radios (Preset ◈ / Custom 🖼️) — */
+.sn-bmode-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px }
+.sn-bmode-card { display:flex; align-items:center; gap:10px; padding:11px 14px; border:1.5px solid var(--border);
+  border-radius:12px; background:var(--card); cursor:pointer; text-align:left; min-height:44px;
+  transition:border-color .15s, box-shadow .15s, background .15s }
+.sn-bmode-card:hover { border-color:var(--maroon); background:var(--paper) }
+.sn-bmode-card:focus-visible { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(201,162,39,.35) }
+.sn-bmode-card.sn-bmode-on { border-color:var(--maroon); background:var(--ivory);
+  box-shadow:inset 0 0 0 1px var(--maroon), 0 1px 6px rgba(74,18,30,.08) }
+.sn-bmode-ico { font-size:1.25rem; line-height:1 }
+.sn-bmode-txt { display:flex; flex-direction:column; min-width:0 }
+.sn-bmode-txt strong { font-size:.86rem; color:var(--text) }
+.sn-bmode-txt em { font-size:.72rem; font-style:normal; color:var(--text2); white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis }
+
+/* — preset banner library grid (2–4 columns desktop, 2 on mobile) — */
+.sn-bnlib { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:6px }
+.sn-bnlib-card { position:relative; display:flex; flex-direction:column; align-items:flex-start;
+  gap:4px; padding:12px; border:1.5px solid var(--border); border-radius:12px; background:var(--card);
+  cursor:pointer; text-align:left; min-height:104px; transition:border-color .15s, box-shadow .15s, transform .12s }
+.sn-bnlib-card:hover { border-color:var(--maroon); transform:translateY(-1px);
+  box-shadow:0 3px 10px rgba(74,18,30,.10) }
+.sn-bnlib-card:focus-visible { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(201,162,39,.35) }
+.sn-bnlib-card.sn-bnlib-on { border-color:var(--maroon);
+  background:linear-gradient(180deg, rgba(201,162,39,.10), var(--ivory) 55%);
+  box-shadow:inset 0 0 0 1px var(--maroon), 0 2px 8px rgba(74,18,30,.12) }
+.sn-bnlib-check { position:absolute; top:7px; right:7px; width:20px; height:20px; border-radius:50%;
+  background:var(--maroon); color:#fff; font-size:.72rem; display:flex; align-items:center; justify-content:center }
+.sn-bnlib-ico { font-size:1.35rem; line-height:1 }
+.sn-bnlib-name { font-weight:700; font-size:.82rem; color:var(--text); max-width:100%;
+  overflow-wrap:break-word }
+.sn-bnlib-sub { font-size:.68rem; color:var(--text2); max-width:100%; overflow-wrap:break-word }
+.sn-bnlib-badge { margin-top:auto; font-size:.62rem; font-weight:700; letter-spacing:.06em;
+  color:var(--maroon); background:rgba(201,162,39,.18); border:1px solid rgba(201,162,39,.4);
+  padding:2px 7px; border-radius:99px }
+
+/* — banner text editor — */
+.sn-bnedit { border:1px solid var(--border); border-radius:12px; padding:12px; margin-top:12px; background:var(--paper) }
+.sn-bnedit-head { display:flex; align-items:center; justify-content:space-between; gap:10px;
+  flex-wrap:wrap; margin-bottom:10px }
+.sn-bnedit-title { font-size:.8rem; font-weight:700; color:var(--text) }
+.sn-bnedit-title em { font-weight:400; font-style:normal; color:var(--text2); font-size:.72rem }
+.sn-bninput { position:relative }
+.sn-bninput .form-input { padding-right:34px }
+.sn-bnclear { position:absolute; right:4px; top:50%; transform:translateY(-50%); width:26px; height:26px;
+  border:none; border-radius:50%; background:transparent; color:var(--text2); font-size:1rem; cursor:pointer;
+  display:flex; align-items:center; justify-content:center }
+.sn-bnclear:hover { background:rgba(0,0,0,.06); color:var(--danger) }
+.sn-bnclear:focus-visible { outline:none; box-shadow:0 0 0 3px rgba(201,162,39,.35) }
+
+/* — overlay toggle (custom mode) — */
+.sn-ov-toggle { display:flex; align-items:center; gap:8px; padding:10px 2px; cursor:pointer;
+  font-size:.82rem; color:var(--text); min-height:44px }
+.sn-ov-toggle input { width:18px; height:18px; accent-color:var(--maroon) }
+.sn-ov-hint { font-size:.72rem; color:var(--text2); margin:2px 0 10px; line-height:1.45 }
+
+/* — live banner preview card (mirrors the Studyria poster identity) — */
+.sn-bnpv { position:relative; width:100%; aspect-ratio:1200/630; border-radius:12px; overflow:hidden;
+  border:1px solid var(--gold); background:#F7F1E2; box-shadow:0 2px 10px rgba(74,18,30,.08) }
+.sn-bnpv img { width:100%; height:100%; object-fit:cover; display:block }
+.sn-bnpv-band { position:absolute; inset:0 0 auto 0; height:36%; display:flex; align-items:center;
+  gap:10px; padding:0 5%; background:linear-gradient(90deg,#48121E,#6B1D2B); color:#F7F1E2 }
+.sn-bnpv-ico { font-size:clamp(1rem,3vw,1.8rem) }
+.sn-bnpv-wordmark { font-family:Georgia,'Times New Roman',serif; font-weight:700;
+  font-size:clamp(.7rem,1.8vw,1.25rem); letter-spacing:.14em }
+.sn-bnpv-badge { margin-left:auto; font-size:clamp(.5rem,1.1vw,.7rem); font-weight:700;
+  letter-spacing:.08em; background:#C9A227; color:#48121E; padding:.35em .8em; border-radius:99px;
+  white-space:nowrap; max-width:55%; overflow:hidden; text-overflow:ellipsis }
+.sn-bnpv-body { position:absolute; inset:36% 5% 8% 5%; display:flex; flex-direction:column; gap:.5em }
+.sn-bnpv-h { font-family:Georgia,'Times New Roman',serif; font-weight:700; color:#48121E;
+  font-size:clamp(.95rem,2.8vw,2rem); line-height:1.15; overflow-wrap:break-word;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }
+.sn-bnpv-s { font-family:Georgia,'Times New Roman',serif; color:#4d4034;
+  font-size:clamp(.7rem,1.7vw,1.1rem); line-height:1.35; overflow-wrap:break-word;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }
+.sn-bnpv-rule { width:52px; height:4px; background:#C9A227; border-radius:2px; margin-top:auto }
+.sn-bnpv-cta { align-self:flex-start; font-weight:700; color:#48121E; background:#C9A227;
+  padding:.45em 1.1em; border-radius:99px; font-size:clamp(.6rem,1.4vw,.85rem) }
+.sn-bnpv-edge { position:absolute; inset:6px; border:2px solid rgba(201,162,39,.55); border-radius:8px; pointer-events:none }
+.sn-bnpv-note { margin-top:8px; font-size:.72rem; color:var(--text2); line-height:1.45 }
+.sn-bnpv-empty { display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:6px; text-align:center; padding:18px; color:var(--text2); border-style:dashed }
+.sn-bnpv-empty span { font-weight:700; color:var(--text); font-size:.85rem }
+.sn-bnpv-empty em { font-style:normal; font-size:.75rem; max-width:320px; line-height:1.5 }
+.sn-bnpv-ov { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:flex-end;
+  padding:4.5% 5%; gap:4px; background:linear-gradient(180deg, transparent 55%, rgba(38,14,20,.82)) }
+.sn-bnpv-ovwrap { display:flex; flex-direction:column; gap:2px }
+.sn-bnpv-ov .sn-bnpv-h, .sn-bnpv-ov .sn-bnpv-s { color:#F7F1E2 }
+.sn-bnpv-ov .sn-bnpv-badge { position:absolute; top:4.5%; right:5%; margin:0 }
+.sn-bnpv-ov .sn-bnpv-cta { align-self:flex-start; margin-top:4px }
+
+/* — preview field-mapping strip (V4 §11) — */
+.sn-pv-map { margin-top:12px; border-top:1px dashed var(--border); padding-top:10px;
+  display:flex; flex-direction:column; gap:6px }
+.sn-pv-map-row { display:flex; gap:8px; font-size:.72rem; align-items:baseline }
+.sn-pv-map-k { flex:0 0 64px; font-weight:700; color:var(--maroon); text-transform:uppercase;
+  letter-spacing:.05em; font-size:.62rem; text-align:right }
+.sn-pv-map-v { color:var(--text); overflow-wrap:break-word; min-width:0 }
+
+/* — send test notification button + states — */
+.btn.btn-test { background:var(--ivory); color:var(--maroon); border:1.5px solid var(--maroon) }
+.btn.btn-test:hover:not(:disabled) { background:rgba(201,162,39,.14) }
+.btn.btn-test:focus-visible { outline:none; box-shadow:0 0 0 3px rgba(201,162,39,.35) }
+.btn.btn-test:disabled { opacity:.68; cursor:progress }
+.btn.btn-test.sn-test-busy { border-color:var(--gold); color:var(--text2) }
+
+/* ── §12c responsive ── */
+@media (max-width: 900px) {
+  .sn-bnlib { grid-template-columns:repeat(3,1fr) }
+}
+@media (max-width: 480px) {
+  .sn-bmode-row { grid-template-columns:1fr }
+  .sn-bnlib { grid-template-columns:repeat(2,1fr) }
+  .sn-bnlib-card { min-height:96px; padding:10px }
+  .sn-bnedit-head { flex-direction:column; align-items:stretch }
+}
