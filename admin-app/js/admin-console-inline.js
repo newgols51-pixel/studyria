@@ -42,6 +42,25 @@ function _setAdminSession(val) {
 // global once, here, so every bare PDFS reference is safe. Supabase
 // queries still provide the real numbers for authenticated admins.
 window.PDFS = window.PDFS || [];
+// P0 FIX (layer 3): RECENT_SALES was demo fallback data defined in the
+// production storefront's index.html but lost when admin-app was
+// split out — every fallback path crashed with ReferenceError.
+window.RECENT_SALES = window.RECENT_SALES || [];
+
+// P0 FIX (layer 3): a Supabase query that never settles (slow network /
+// stalled fetch) left the dashboard awaiting forever with a blank body —
+// no error, no render. _withTimeout resolves with null after `ms` and
+// swallows late rejections, so every await below always settles.
+function _withTimeout(promise, ms) {
+  return new Promise(resolve => {
+    let done = false;
+    const t = setTimeout(() => { if (!done) { done = true; resolve(null); } }, ms || 8000);
+    Promise.resolve(promise).then(
+      v => { if (!done) { done = true; clearTimeout(t); resolve(v); } },
+      () => { if (!done) { done = true; clearTimeout(t); resolve(null); } }
+    );
+  });
+}
 
 function logAdminActivity(msg, type = 'blue') {
   adminActivityLog.unshift({ msg, type, time: new Date() });
@@ -2394,20 +2413,20 @@ async function renderAdminDashboard(main) {
 
   if (window.supabaseClient) {
     try {
-      const [pdfRes, orderRes, userRes] = await Promise.all([
+      const [pdfRes, orderRes, userRes] = await _withTimeout(Promise.all([
         window.supabaseClient.from('pdfs').select('id', {count:'exact', head:true}),
         window.supabaseClient.from('purchased_pdfs').select('amount', {count:'exact'}),
         window.supabaseClient.from('admin_users').select('id', {count:'exact', head:true}),
-      ]);
-      pdfCount = pdfRes.count || pdfCount;
-      orderCount = orderRes.count || 0;
-      revenue = (orderRes.data || []).reduce((s,r) => s + (r.amount||0), 0);
-      userCount = userRes.count || 0;
+      ]), 8000) || [];
+      pdfCount = (pdfRes?.count) || pdfCount;
+      orderCount = (orderRes?.count) || 0;
+      revenue = ((orderRes?.data) || []).reduce((s,r) => s + (r.amount||0), 0);
+      userCount = (userRes?.count) || 0;
     } catch(e) { console.warn('Admin DB fetch:', e); }
   }
 
-  const recentOrders = await getRecentOrders(5);
-  const trendingPDFs = await getTrendingPDFs(5);
+  const recentOrders = (await _withTimeout(getRecentOrders(5), 8000)) || [];
+  const trendingPDFs = (await _withTimeout(getTrendingPDFs(5), 8000)) || [];
 
   main.innerHTML = `
     <div class="admin-section-title">
@@ -2495,8 +2514,8 @@ async function renderAdminDashboard(main) {
 async function getRecentOrders(limit=10) {
   if (window.supabaseClient) {
     try {
-      const { data } = await window.supabaseClient
-        .from('purchased_pdfs').select('*').order('created_at', {ascending:false}).limit(limit);
+      const { data } = await _withTimeout(window.supabaseClient
+        .from('purchased_pdfs').select('*').order('created_at', {ascending:false}).limit(limit), 6000);
       if (data?.length) return data;
     } catch(e) {}
   }
@@ -2506,12 +2525,12 @@ async function getRecentOrders(limit=10) {
 async function getTrendingPDFs(limit=5) {
   if (window.supabaseClient) {
     try {
-      const { data } = await window.supabaseClient
-        .from('pdfs').select('*').order('download_count', {ascending:false}).limit(limit);
+      const { data } = await _withTimeout(window.supabaseClient
+        .from('pdfs').select('*').order('download_count', {ascending:false}).limit(limit), 6000);
       if (data?.length) return data;
     } catch(e) {}
   }
-  return [...PDFS].sort((a,b) => b.sales - a.sales).slice(0, limit);
+  return [...(window.PDFS||[])].sort((a,b) => (b.sales||0) - (a.sales||0)).slice(0, limit);
 }
 
 // ── ANALYTICS ─────────────────────────────────────────────────────
@@ -6810,7 +6829,7 @@ async function hmLoadAll() {
 async function renderAdminOrders(main) {
   main.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text2)">Loading orders…</div>`;
 
-  let orders = RECENT_SALES.map((o,i) => ({
+  let orders = (window.RECENT_SALES||[]).map((o,i) => ({
     id: 'ORD'+(1000+i), user_email: o.user, pdf_title: o.pdf,
     amount: o.amount, payment_id: 'No data available',
     status: 'paid', created_at: o.time
@@ -6818,7 +6837,7 @@ async function renderAdminOrders(main) {
 
   if (window.supabaseClient) {
     try {
-      const { data } = await window.supabaseClient.from('purchased_pdfs').select('*').order('created_at', {ascending:false}).limit(50);
+      const { data } = await _withTimeout(window.supabaseClient.from('purchased_pdfs').select('*').order('created_at', {ascending:false}).limit(50), 8000);
       if (data?.length) orders = data;
     } catch(e) {}
   }
