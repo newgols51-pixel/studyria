@@ -67,3 +67,7 @@
   gap: 8px;
   max-width: min(360px, calc(100vw - 36px));
 }
+
+/* Short screens: the login card can exceed viewport height — allow scroll
+   (base has overflow:hidden which clips and makes the card unscrollable). */
+.admin-login-wrap { overflow-y: auto; }
