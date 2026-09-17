@@ -90,7 +90,7 @@ ok('public site index.html untouched (git)', true); // verified via git in CI/st
 // ── 9. Admin PWA identity (separate from public PWA) ───────────
 const sw = fs.readFileSync(path.join(root, 'admin-sw.js'), 'utf8');
 const pwa = fs.readFileSync(path.join(root, 'js/admin-pwa.js'), 'utf8');
-ok('admin SW exists with own cache namespace', sw.includes("studyria-admin-v1") && !sw.includes('studyria-v'));
+ok('admin SW exists with own cache namespace', sw.includes("studyria-admin-v2") && !sw.includes('studyria-v'));
 ok('admin SW registered under ./ scope', pwa.includes("register('admin-sw.js', { scope: './' })"));
 ok('admin SW same-origin only (never public/Supabase/CDN)', sw.includes('url.origin !== self.location.origin'));
 ok('admin SW never handles non-GET', sw.includes("req.method !== 'GET'"));
