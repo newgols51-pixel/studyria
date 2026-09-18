@@ -448,7 +448,11 @@ async function main() {
   check('V7 unsupported state: honest manual guide is primary, no fake install UI',
     /Genuinely unsupported browser[\s\S]{0,400}_installHelp\(\)">📖 How to Install/.test(pwa32v7));
   check('V7 chromium-waiting keeps the honest waiting hint (no fake availability)',
-    pwa32v7.includes('Waiting for browser install capability') && pwa32v7.includes('chromiumWaiting'));
+    pwa32v7.includes('Chrome is not offering the install prompt right now') && pwa32v7.includes('chromiumWaiting'));
+  check('V7 waiting note states the truthful menu fallback and auto-activation',
+    pwa32v7.includes('⋮ → Install app') && pwa32v7.includes('activates automatically when Chrome offers the prompt'));
+  check('V7 status note also points to the browser menu while waiting',
+    pwa32v7.includes("has not offered installation yet — the browser menu"));
   const pwa32Code = pwa32v7.split('\n').filter(l => !/^\s*(\/\/|═)/.test(l)).join('\n'); // comment/divider lines excluded
   check('V7 ABSOLUTE: no fabricated statistics anywhere in the App page source',
     !/\b\d[\d,.]*\s*[kKmMbB]?\s*\+?\s*(users|downloads|students|readers|installs|happy)\b/i.test(pwa32Code) && !pwa32v7.includes('10 GB'));
@@ -616,11 +620,14 @@ async function main() {
   console.log('\n── 23. V7 protected surfaces + changed-file set ──');
   // Change-set guard: diffs the last known-good main commit BEFORE the
   // current fix stream against the WORKING TREE, so it catches protected-
-  // system drift from the CURRENT work. (The original pre-V7 baseline
-  // e462817 served the V7 stream; since then owner-approved work landed
-  // on other streams — BrainLab content — which this guard must not
-  // false-flag. Strength is unchanged: exact file set + protected systems.)
-  const PWA_FIX_BASE = 'de2477d'; // homepage-hub baseline (post Trending Now + SW v170 bump)
+  // system drift from the CURRENT work. Baseline history:
+  //   e462817 → de2477d (homepage-hub stream) → 40595a3 (PWA V4 splash
+  //   stream: a95a257 splash + a8efcc6 P0 head-parse fix + 40595a3 SW
+  //   v172 splashVideoStrategy — all production-verified).
+  // The current stream is the #pwa install-flow honesty wording
+  // (pwa-v32.js hero/status notes) + its cache-bump + this test file.
+  // Strength is unchanged: exact file set + protected systems.
+  const PWA_FIX_BASE = '40595a3'; // splash V4 stream baseline (production verified)
   /* union of working-tree status (covers untracked NEW files pre-commit) and
      the diff vs baseline (covers the committed state) — holds both pre- and
      post-commit */
@@ -631,37 +638,39 @@ async function main() {
     const df = execSync('git diff ' + PWA_FIX_BASE + ' --name-only', { cwd: ROOT }).toString().trim().split('\n').filter(Boolean);
     v7changed = Array.from(new Set(st.concat(df)));
   } catch (e) { v7changed = ['(git unavailable)']; }
-  const v7expected = ['index.html', 'studyria-home-v2.js', 'brainlab-pages.js',
-    'home-brainlab-hub.js', 'home-brainlab-hub.css',
-    'home-brainlab-hub-tests.js', 'pwa-install-v4-tests.js'];
-  check('V7 changed file set is exactly the expected homepage-hub stream files',
+  const v7expected = ['index.html', 'pwa-v32.js', 'pwa-install-v4-tests.js'];
+  check('V7 changed file set is exactly the expected install-flow wording stream files',
     v7changed.sort().join(',') === v7expected.slice().sort().join(','),
     'got: ' + v7changed.join(','));
-  check('V7: service worker (sw.js) untouched', !v7changed.includes('sw.js'));
-  check('V7: connectivity fix (pwa-v32.js) untouched by the homepage stream',
-    !v7changed.includes('pwa-v32.js'));
+  check('V7: service worker (sw.js) untouched by the install-flow wording stream',
+    !v7changed.includes('sw.js'));
+  check('V7: splash files untouched by this stream (studyria-user-splash.mp4, pwa-v3.js/css)',
+    !v7changed.some(f => /splash|pwa-v3\.js|pwa-v3\.css/.test(f)));
+  check('V7: app.js install manager untouched', !v7changed.includes('app.js'));
   let pwaDiff = '(git unavailable)';
   try { pwaDiff = execSync('git diff ' + PWA_FIX_BASE + ' -- pwa-v32.js', { cwd: ROOT }).toString(); } catch (e) {}
-  check('V7: pwa-v32.js byte-identical to the baseline (no drift)',
-    pwaDiff.trim() === '');
+  const pwaPlus = pwaDiff.split('\n').filter(l => /^\+[^+]/.test(l));
+  const pwaMinus = pwaDiff.split('\n').filter(l => /^-[^-]/.test(l));
+  check('V7: pwa-v32.js diff vs baseline is ONLY the two honest-wording notes',
+    pwaMinus.length === 2 && pwaPlus.length === 6 &&
+    pwaMinus.some(l => l.includes('Waiting for browser install capability — tap Install App')) &&
+    pwaMinus.some(l => l.includes("'The browser has not offered installation yet.'")) &&
+    pwaPlus.some(l => l.includes('Chrome is not offering the install prompt right now')) &&
+    pwaPlus.some(l => l.includes('activates automatically when Chrome offers the prompt')) &&
+    pwaPlus.some(l => l.includes('⋮ → Install app')) &&
+    pwaPlus.some(l => l.includes('has not offered installation yet — the browser menu')));
   const idxDiff = execSync('git diff ' + PWA_FIX_BASE + ' -- index.html', { cwd: ROOT }).toString();
   const idxChangedLines = idxDiff.split('\n').filter(l => /^[+-][^+-]/.test(l));
-  check('V7: index.html diff vs baseline is ONLY hub wiring + param bump + navigate() sub-hash fix',
-    idxChangedLines.length === 17 &&
-    idxChangedLines.some(l => /-.*brainlab-pages\.js\?v=20260911a/.test(l)) &&
-    idxChangedLines.some(l => /\+.*brainlab-pages\.js\?v=20260916b/.test(l)) &&
-    idxChangedLines.some(l => /\+.*home-brainlab-hub\.css\?v=/.test(l)) &&
-    idxChangedLines.some(l => /\+.*home-brainlab-hub\.js\?v=\d+" defer/.test(l)) &&
-    idxChangedLines.some(l => /-.*studyria-home-v2\.js\?v=20260916a/.test(l)) &&
-    idxChangedLines.some(l => /\+.*studyria-home-v2\.js\?v=20260916b/.test(l)) &&
-    idxChangedLines.some(l => /\+.*blSubRoute = null/.test(l)) &&
-    idxChangedLines.some(l => /\+.*'#brainlab\/' \+ blSubRoute/.test(l)));
-  check('V7: service worker stays at v170 (no SW logic touched by the hub stream)',
-    /v170/.test(fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8')));
-  check('V7: app.js install manager untouched', !v7changed.includes('app.js'));
+  check('V7: index.html diff vs baseline is ONLY the pwa-v32.js cache-bump',
+    idxChangedLines.length === 2 &&
+    idxChangedLines.some(l => /-.*pwa-v32\.js\?v=10/.test(l)) &&
+    idxChangedLines.some(l => /\+.*pwa-v32\.js\?v=11/.test(l)));
+  const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+  check('V7: service worker stays at v172 with the splashVideoStrategy intact (owned by the splash stream)',
+    /v172/.test(swSrc) && /splashVideoStrategy/.test(swSrc));
   check('V7: protected systems untouched (notifications/razorpay/checkout/supabase/brainlab/auth)',
     !v7changed.some(f => /notification|razorpay|checkout|supabase|auth|payment/i.test(f)) &&
-    !v7changed.some(f => /^brainlab/.test(f) && f !== 'brainlab-pages.js'));
+    !v7changed.some(f => /^brainlab/.test(f)));
 
   console.log('\n── 24. V7 manifest: shortcuts additive only, real routes ──');
   const mf7 = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.json'), 'utf8'));

@@ -1279,7 +1279,11 @@
     }
     html += '</div>';
     if (installState === 'no-prompt' && chromiumWaiting) {
-      html += '<div class="pwa7-hero-sub" style="margin-top:12px;font-size:.72rem">Waiting for browser install capability — tap Install App and the real browser install dialog opens from your tap.</div>';
+      // Truthful browser-suppression wording (spec): never a fake prompt,
+      // never a dead-end — the real CTA stays primary, the menu path is
+      // stated, and the listener below flips this note to the ready state
+      // automatically the moment Chrome provides the real event.
+      html += '<div class="pwa7-hero-sub" style="margin-top:12px;font-size:.72rem">Chrome is not offering the install prompt right now. Tap Install App to try the real browser dialog from your tap — or install anytime from your browser menu (⋮ → Install app). The button activates automatically when Chrome offers the prompt.</div>';
     }
     html += '</div>';
     // Hero visual — CSS phone frame + CURRENT approved logo asset only.
@@ -1303,7 +1307,7 @@
     var instNote = installState === 'installed' ? 'Studyria is on this device.'
       : installState === 'ready' ? 'Native browser install available.'
       : installState === 'unsupported' ? 'This browser has no install flow — see the guide.'
-      : 'The browser has not offered installation yet.';
+      : 'The browser has not offered installation yet — the browser menu (⋮ → Install app) works meanwhile.';
     var instCls = installState === 'installed' ? 'ok' : installState === 'ready' ? 'ok' : installState === 'unsupported' ? 'off' : 'warn';
     html += '<div class="pwa7-stat"><div class="pwa7-stat-label"><span class="pwa7-dot pwa7-dot-' + instCls + '"></span>Installation</div><div class="pwa7-stat-value">' + instLabel + '</div><div class="pwa7-stat-note">' + instNote + '</div></div>';
     // Notifications
