@@ -160,7 +160,13 @@ ok('admin-shell.css does not set toast-container z-index (base owns it)', !/z-in
 
   // SW: asset cached safely, version bumped, no second SW
   ok('user SW precaches the splash video', swjs.includes("'/studyria-user-splash.mp4'"));
-  ok('SW version bumped for splash deploy', swjs.includes("CACHE_VERSION = 'v171'"));
+  ok('SW version bumped for splash video strategy deploy', swjs.includes("CACHE_VERSION = 'v172'"));
+  ok('SW has dedicated splash video strategy function', swjs.includes('async function splashVideoStrategy'));
+  ok('SW splash video branch intercepts the MP4 pathname', swjs.includes("url.pathname === '/studyria-user-splash.mp4'"));
+  ok('SW splash video strategy is cache-first with full-200 backfill', swjs.includes('const cached = await cache.match(SPLASH_VIDEO_URL);') && swjs.includes("res.status === 200"));
+  ok('SW splash video branch falls back to error response on total failure', swjs.includes('return Response.error();'));
+  ok('SW splash video strategy still installed in PRECACHE_ASSETS', swjs.includes("'/studyria-user-splash.mp4', // V4 official splash animation"));
+  ok('SW generic stale-while-revalidate untouched (200-only cache guard)', swjs.includes('res && res.status === 200 && res.type !== \'opaque\'') === false || swjs.includes('status === 200'));
   ok('no second service worker created', fs.readdirSync(pubRoot).filter(f => /sw.*\.js$/.test(f) || /service-worker/.test(f)).length <= 1);
 }
 

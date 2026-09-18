@@ -31,12 +31,15 @@
 // v167: static no-JS fallback values baked into HTML so AI chatbot crawlers (Gemini/Meta/Perplexity)
 // see honest numbers instead of "0 PDFs" / "—" dashes: libCount=12 PDFs, libStatTotal=12, libStatCategories=5,
 // libStatDownloads=560, aboutStatStudents=1,500+, aboutStatPdfs=12. JS animates exact live values for humans.
-const CACHE_VERSION = 'v171';
+const CACHE_VERSION = 'v172';
 // v171: USER PWA V4 startup splash — official 4s Studyria animation (/studyria-user-splash.mp4)
 // added to PRECACHE_ASSETS (individual cache.add with per-asset catch, so a failed asset can never
 // break SW install); splash video markup/CSS/JS live in index.html / pwa-v3.css / pwa-v3.js.
-// Splash video requests (same-origin, destination 'video') use the existing stale-while-revalidate
-// strategy. All PWA install/push/notification handlers untouched.
+// v172: dedicated splashVideoStrategy branch — Chrome's media pipeline sends Range requests
+// (206 partials) that stale-while-revalidate cannot cache (it stores only full 200s), so the
+// 1MB video re-downloaded on every fresh session and offline splash was not guaranteed. Now
+// cache-first with a Range-free full-200 backfill: instant splash, offline playback, video
+// updates still land via background revalidation. All PWA install/push/notification handlers untouched.
 // STUDENT_BASE/CANONICAL_SOCIAL_PROOF and every fallback, hero, About, community, stat band,
 // YouTube labels and the /homepage marketing page now show one number.
 // v165: job card "posts" counts fixed (old parser concatenated every digit in vacancy article blobs →
@@ -163,6 +166,18 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // Splash animation video — Cache-first with full-200 backfill (v172).
+  // Chrome's media pipeline issues Range requests (206 partials) that the
+  // generic stale-while-revalidate strategy cannot cache (it only stores
+  // full 200 responses). This dedicated branch guarantees the 1MB splash
+  // video is cached after its first network load, so the splash starts
+  // instantly and also plays offline, and a cached 200 full-body response
+  // is safely returned for any Range request.
+  if (url.pathname === '/studyria-user-splash.mp4') {
+    event.respondWith(splashVideoStrategy(request));
+    return;
+  }
+
   // Images — Cache-first with background revalidate
   if (request.destination === 'image') {
     event.respondWith(imageCacheFirst(request));
@@ -226,6 +241,33 @@ async function navigationStrategy(event) {
 }
 
 // ── STRATEGY: Stale-while-revalidate ─────────────────────────────
+// ── STRATEGY: Splash video (cache-first, full-200 backfill) ─────────
+const SPLASH_VIDEO_URL = '/studyria-user-splash.mp4';
+
+async function splashVideoStrategy(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(SPLASH_VIDEO_URL);
+  if (cached) {
+    // Background revalidate with a Range-free fetch so a full 200 is stored
+    fetch(SPLASH_VIDEO_URL, { cache: 'no-store' })
+      .then(res => { if (res && res.status === 200 && res.type !== 'opaque') cache.put(SPLASH_VIDEO_URL, res); })
+      .catch(() => {});
+    return cached;
+  }
+  try {
+    const res = await fetch(SPLASH_VIDEO_URL, { cache: 'no-store' });
+    if (res && res.status === 200 && res.type !== 'opaque') {
+      cache.put(SPLASH_VIDEO_URL, res.clone());
+      return res;
+    }
+    return res;
+  } catch (e) {
+    // No cache + network failure → hand back an error response so the
+    // pwa-v3.js video path fails fast and the static splash fallback runs.
+    return Response.error();
+  }
+}
+
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
