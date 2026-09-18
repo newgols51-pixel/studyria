@@ -31,6 +31,8 @@
   function initSplash() {
     // Only show splash on standalone (installed) launch or first visit
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                      || window.matchMedia('(display-mode: fullscreen)').matches
+                      || window.matchMedia('(display-mode: minimal-ui)').matches
                       || window.navigator.standalone === true;
     const splashKey = 'studyria_splash_shown_v3';
     const lastShown = parseInt(sessionStorage.getItem(splashKey) || '0', 10);
@@ -43,13 +45,29 @@
     const splash = document.getElementById('pwaV3Splash');
     if (!splash) return;
 
-    // Mount & animate
-    splash.style.display = 'flex';
-    splash.style.opacity = '0';
-    requestAnimationFrame(() => {
-      splash.style.transition = 'opacity 0.3s ease';
+    // V5 boot-order fix: tell the early inline failsafe (index.html,
+    // right after the splash markup) that this real script IS running —
+    // its own redundant hard-cap timer becomes a no-op from here on.
+    window.__pwaSplashJsActive = true;
+
+    if (isStandalone) {
+      // pwa-v3.css already painted the splash at display:flex /
+      // opacity:1 via the display-mode media query BEFORE this
+      // (deferred) script ever ran — that IS the boot-order fix.
+      // Re-doing the opacity 0→1 fade-in here would dip an already-
+      // visible splash back to invisible for a frame, undoing it.
+      // Just make sure inline styles agree with the stylesheet.
+      splash.style.display = 'flex';
       splash.style.opacity = '1';
-    });
+    } else {
+      // Browser-tab / session-gated first-visit path — unchanged (V4).
+      splash.style.display = 'flex';
+      splash.style.opacity = '0';
+      requestAnimationFrame(() => {
+        splash.style.transition = 'opacity 0.3s ease';
+        splash.style.opacity = '1';
+      });
+    }
 
     // ── V4 (2026-09-18): official 4s Studyria animation video ──
     // Video mode when the official splash video can play here and the

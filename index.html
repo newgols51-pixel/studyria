@@ -868,6 +868,34 @@ body.light .ott-row-track .pdf-cover-scrim {
     </div>
   </div>
 </div>
+<!-- V5 (2026-09-18) BOOT-ORDER FAILSAFE — runs immediately (no defer),
+     right after the splash markup, long before pwa-v3.js executes at
+     the bottom of this document. pwa-v3.css already makes #pwaV3Splash
+     visible by itself in standalone mode (no JS needed for the SHOW) —
+     but a CSS-only show has no CSS-only hide, so if pwa-v3.js ever fails
+     to load/run at all (network blip, blocked script, CDN failure) the
+     splash would stay up forever with nothing to hide it. This is ONLY
+     that redundant safety net: if the real script hasn't taken over by
+     ~4.7s (its own hard cap is 4.5s), forcibly hide the splash so the
+     user is never stranded. When pwa-v3.js runs normally it flags
+     window.__pwaSplashJsActive and this timer becomes a harmless no-op. -->
+<script>
+(function () {
+  var standalone = false;
+  try {
+    standalone = window.matchMedia('(display-mode: standalone)').matches
+              || window.matchMedia('(display-mode: fullscreen)').matches
+              || window.matchMedia('(display-mode: minimal-ui)').matches
+              || window.navigator.standalone === true;
+  } catch (_) {}
+  if (!standalone) return;
+  setTimeout(function () {
+    if (window.__pwaSplashJsActive) return; // real splash script took over
+    var el = document.getElementById('pwaV3Splash');
+    if (el) { el.style.display = 'none'; el.setAttribute('aria-hidden', 'true'); }
+  }, 4700);
+})();
+</script>
 <!-- ═══════════════════════════════════════════════ -->
 
 <!-- Google Tag Manager (noscript) -->

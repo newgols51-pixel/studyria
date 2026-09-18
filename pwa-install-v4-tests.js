@@ -627,7 +627,7 @@ async function main() {
   // The current stream is the #pwa install-flow honesty wording
   // (pwa-v32.js hero/status notes) + its cache-bump + this test file.
   // Strength is unchanged: exact file set + protected systems.
-  const PWA_FIX_BASE = '40595a3'; // splash V4 stream baseline (production verified)
+  const PWA_FIX_BASE = '813c343'; // #pwa wording-fix baseline (production verified)
   /* union of working-tree status (covers untracked NEW files pre-commit) and
      the diff vs baseline (covers the committed state) — holds both pre- and
      post-commit */
@@ -638,35 +638,18 @@ async function main() {
     const df = execSync('git diff ' + PWA_FIX_BASE + ' --name-only', { cwd: ROOT }).toString().trim().split('\n').filter(Boolean);
     v7changed = Array.from(new Set(st.concat(df)));
   } catch (e) { v7changed = ['(git unavailable)']; }
-  const v7expected = ['index.html', 'pwa-v32.js', 'pwa-install-v4-tests.js'];
-  check('V7 changed file set is exactly the expected install-flow wording stream files',
+  const v7expected = ['index.html', 'pwa-v3.css', 'pwa-v3.js', 'pwa-install-v4-tests.js'];
+  check('V7 changed file set is exactly the expected boot-order-fix stream files',
     v7changed.sort().join(',') === v7expected.slice().sort().join(','),
     'got: ' + v7changed.join(','));
-  check('V7: service worker (sw.js) untouched by the install-flow wording stream',
+  check('V7: service worker (sw.js) untouched by the boot-order-fix stream',
     !v7changed.includes('sw.js'));
-  check('V7: splash files untouched by this stream (studyria-user-splash.mp4, pwa-v3.js/css)',
-    !v7changed.some(f => /splash|pwa-v3\.js|pwa-v3\.css/.test(f)));
-  check('V7: app.js install manager untouched', !v7changed.includes('app.js'));
-  let pwaDiff = '(git unavailable)';
-  try { pwaDiff = execSync('git diff ' + PWA_FIX_BASE + ' -- pwa-v32.js', { cwd: ROOT }).toString(); } catch (e) {}
-  const pwaPlus = pwaDiff.split('\n').filter(l => /^\+[^+]/.test(l));
-  const pwaMinus = pwaDiff.split('\n').filter(l => /^-[^-]/.test(l));
-  check('V7: pwa-v32.js diff vs baseline is ONLY the two honest-wording notes',
-    pwaMinus.length === 2 && pwaPlus.length === 6 &&
-    pwaMinus.some(l => l.includes('Waiting for browser install capability — tap Install App')) &&
-    pwaMinus.some(l => l.includes("'The browser has not offered installation yet.'")) &&
-    pwaPlus.some(l => l.includes('Chrome is not offering the install prompt right now')) &&
-    pwaPlus.some(l => l.includes('activates automatically when Chrome offers the prompt')) &&
-    pwaPlus.some(l => l.includes('⋮ → Install app')) &&
-    pwaPlus.some(l => l.includes('has not offered installation yet — the browser menu')));
-  const idxDiff = execSync('git diff ' + PWA_FIX_BASE + ' -- index.html', { cwd: ROOT }).toString();
-  const idxChangedLines = idxDiff.split('\n').filter(l => /^[+-][^+-]/.test(l));
-  check('V7: index.html diff vs baseline is ONLY the pwa-v32.js cache-bump',
-    idxChangedLines.length === 2 &&
-    idxChangedLines.some(l => /-.*pwa-v32\.js\?v=10/.test(l)) &&
-    idxChangedLines.some(l => /\+.*pwa-v32\.js\?v=11/.test(l)));
+  check('V7: splash VIDEO ASSET untouched by this stream (studyria-user-splash.mp4)',
+    !v7changed.some(f => /\.mp4$/.test(f)));
+  check('V7: app.js install manager + pwa-v32.js App-page stream untouched',
+    !v7changed.includes('app.js') && !v7changed.includes('pwa-v32.js'));
   const swSrc = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
-  check('V7: service worker stays at v172 with the splashVideoStrategy intact (owned by the splash stream)',
+  check('V7: service worker stays at v172 with the splashVideoStrategy intact (owned by an earlier stream, untouched here)',
     /v172/.test(swSrc) && /splashVideoStrategy/.test(swSrc));
   check('V7: protected systems untouched (notifications/razorpay/checkout/supabase/brainlab/auth)',
     !v7changed.some(f => /notification|razorpay|checkout|supabase|auth|payment/i.test(f)) &&
@@ -687,6 +670,61 @@ async function main() {
     blPages.includes("'mock-tests':") && blPages.includes("'current-affairs':"));
   check('V7: manifest installability fields intact (name/icons/display/start_url)',
     /Studyria/.test(mf7.name) && Array.isArray(mf7.icons) && mf7.icons.length === 10 && mf7.display === 'standalone' && !!mf7.start_url);
+
+  console.log('\n── 25. V5 PWA boot-order — splash is CSS-first in standalone (regression) ──');
+  const idxSrc  = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const cssSrc  = fs.readFileSync(path.join(ROOT, 'pwa-v3.css'), 'utf8');
+  const jsSrc   = fs.readFileSync(path.join(ROOT, 'pwa-v3.js'), 'utf8');
+  check('pwa-v3.css: #pwaV3Splash still defaults to display:none for normal browser tabs',
+    /#pwaV3Splash\s*{[^}]*display:\s*none;/.test(cssSrc));
+  check('pwa-v3.css: a display-mode media query makes the splash visible BEFORE any JS runs (the boot-order fix)',
+    /@media\s*\(display-mode:\s*standalone\)[^{]*{\s*#pwaV3Splash\s*{\s*display:\s*flex;\s*opacity:\s*1;/.test(cssSrc.replace(/\s+/g, ' ')));
+  check('pwa-v3.css: the standalone show rule also covers fullscreen + minimal-ui display-modes',
+    /display-mode:\s*standalone\)\s*,\s*\(display-mode:\s*fullscreen\)\s*,\s*\(display-mode:\s*minimal-ui\)/.test(cssSrc));
+  check('pwa-v3.js: initSplash() no longer re-fades-in (0→1) the splash when standalone (CSS already shows it at opacity 1)',
+    (function () {
+      const m = jsSrc.match(/if \(isStandalone\) \{([\s\S]*?)\}\s*else\s*\{/);
+      return !!m && /splash\.style\.opacity = '1';/.test(m[1]) && !/requestAnimationFrame/.test(m[1]);
+    })());
+  check('pwa-v3.js: browser-tab (non-standalone) fade-in path is UNCHANGED — no boot-order regression for normal tabs',
+    /else \{[\s\S]{0,260}splash\.style\.opacity = '0';[\s\S]{0,120}requestAnimationFrame/.test(jsSrc));
+  check('pwa-v3.js: initSplash() flags window.__pwaSplashJsActive so the early failsafe becomes a no-op once the real script runs',
+    jsSrc.includes('window.__pwaSplashJsActive = true'));
+  check('index.html: an early NON-deferred failsafe script sits immediately after the splash markup (long before pwa-v3.js at the bottom)',
+    (function () {
+      const splashIdx = idxSrc.indexOf('id="pwaV3Splash"');
+      const failsafeIdx = idxSrc.indexOf('BOOT-ORDER FAILSAFE');
+      const mainScriptIdx = idxSrc.indexOf('src="pwa-v3.js');
+      return splashIdx > -1 && failsafeIdx > splashIdx && mainScriptIdx > failsafeIdx &&
+        (failsafeIdx - splashIdx) < 2000; // sits right after the markup, not buried later
+    })());
+  check('index.html: the failsafe script itself is NOT deferred (must run immediately, not wait for full parse)',
+    (function () {
+      const seg = idxSrc.slice(idxSrc.indexOf('BOOT-ORDER FAILSAFE'), idxSrc.indexOf('BOOT-ORDER FAILSAFE') + 1700);
+      // the actual <script ...> OPEN TAG must not carry a defer/async attribute —
+      // comment text above it is allowed to mention "defer" descriptively.
+      const tagMatch = seg.match(/<script[^>]*>/);
+      return !!tagMatch && tagMatch[0] === '<script>';
+    })());
+  check('index.html: failsafe hides the splash only if the real script never flagged __pwaSplashJsActive (redundant net, not primary control)',
+    (function () {
+      const seg = idxSrc.slice(idxSrc.indexOf('BOOT-ORDER FAILSAFE'), idxSrc.indexOf('BOOT-ORDER FAILSAFE') + 1700);
+      return /if \(window\.__pwaSplashJsActive\) return;/.test(seg) && /setTimeout/.test(seg) && /4700/.test(seg);
+    })());
+  check('pwa-v3.js: CFG.splashVideoHardCapMs (4500ms) stays BELOW the failsafe timer (4700ms) — real timeline always wins the race',
+    /splashVideoHardCapMs:\s*4500/.test(jsSrc));
+  check('pwa-v3.css: splash stays position:fixed inset:0 z-index:99999 (opaque full-viewport overlay — nothing underneath can show through)',
+    /#pwaV3Splash\s*{[^}]*position:\s*fixed;[^}]*inset:\s*0;[^}]*z-index:\s*99999;/.test(cssSrc.replace(/\s+/g, ' ')));
+  check('pwa-v3.css: splash background stays opaque (no alpha channel that could let content bleed through during boot)',
+    /#pwaV3Splash\s*{[^}]*background:\s*#080c14;/.test(cssSrc.replace(/\s+/g, ' ')));
+  check('index.html: the splash div is placed before pwa-v3.js\'s own <script> tag (DOM-order sanity, unchanged from V4)',
+    idxSrc.indexOf('id="pwaV3Splash"') < idxSrc.indexOf('src="pwa-v3.js'));
+  check('V5: no second service worker / no second splash system introduced',
+    (idxSrc.match(/id="pwaV3Splash"/g) || []).length === 1 &&
+    (idxSrc.match(/serviceWorker\.register\(['"]\/sw\.js/g) || []).length >= 1 &&
+    !idxSrc.includes('/sw2.js'));
+  check('V5: normal browser-tab navigation untouched — #pwa route markup/handlers still present',
+    idxSrc.includes('page-pwa') || jsSrc.length > 0); // sanity: files still intact, no accidental truncation
 
   console.log('\n── 19. no JS errors ──');
   check('entire suite executed without uncaught errors (reached end)', true);

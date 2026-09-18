@@ -21,6 +21,33 @@
   user-select: none;
 }
 
+/* ── V5 (2026-09-18) BOOT-ORDER FIX ───────────────────────────────
+   Root cause: pwa-v3.js is loaded `defer` at the very bottom of a
+   45,000+ line index.html. Deferred scripts only run once parsing
+   finishes, but browsers paint the body PROGRESSIVELY as they parse —
+   on a document this large the current app screen (home / whatever
+   hash is active) can and does paint before pwa-v3.js ever executes,
+   so installed-PWA launches showed that screen first and the splash
+   popped in late/second instead of being the first visual state.
+   Fix: make the splash visible BY CSS ALONE the instant the browser
+   is in standalone/fullscreen/minimal-ui display-mode — no JS
+   dependency for the *initial* show. Head stylesheets are render-
+   blocking and are resolved before the body's first paint, so this
+   guarantees the full-viewport, opaque, z-index:99999 splash is what
+   the user sees at first paint, regardless of parse time. pwa-v3.js
+   still owns all HIDE/timing/video logic exactly as before (V4) — it
+   only skips its own show/fade-in step in standalone mode now, since
+   the stylesheet already put the splash on screen. Normal browser-tab
+   visits are completely unaffected: display-mode stays 'browser' there,
+   so this rule never applies and the existing JS-only, session-gated
+   show behavior is unchanged. */
+@media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
+  #pwaV3Splash {
+    display: flex;
+    opacity: 1;
+  }
+}
+
 /* Logo container */
 .pwa-splash-logo-wrap {
   position: relative;
