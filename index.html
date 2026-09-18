@@ -11117,6 +11117,222 @@ body.light .sc-tag-new { background: rgba(147,2,5,0.12); }
 </section>
 
 
+<!-- ── ZUBEEN DA FEATURED TRIBUTE ─────────────────────────────
+     Editorial gateway to the existing /zubeen-da memorial page.
+     Reuses the official tribute artwork (zubeen-hero-poster.*) —
+     do not replace or modify the artwork. Palette mirrors the
+     zubeen-da.css design tokens (black · maroon · gold · cream). -->
+<style>
+/* ══ Zubeen Da Featured Tribute Banner ══════════════════════════ */
+.zb-tribute { padding: 26px 0 30px; }
+
+.zb-card {
+  position: relative;
+  background:
+    radial-gradient(1100px 500px at 88% -10%, rgba(107, 21, 18, 0.55) 0%, transparent 62%),
+    radial-gradient(700px 420px at -8% 108%, rgba(74, 14, 12, 0.5) 0%, transparent 58%),
+    #0C0908;
+  border: 1px solid rgba(201, 164, 92, 0.22);
+  border-radius: var(--radius-radius-lg, 22px);
+  overflow: hidden;
+  isolation: isolate;
+  display: grid;
+  gap: 0 44px;
+  grid-template-columns: 1.12fr 0.88fr;
+  grid-template-areas:
+    "lead art"
+    "close art";
+  padding: clamp(26px, 4.5vw, 52px) clamp(22px, 4.5vw, 54px);
+}
+/* thin inner gold keyline, museum-frame feel */
+.zb-card::before {
+  content: '';
+  position: absolute; inset: 10px;
+  border: 1px solid rgba(201, 164, 92, 0.14);
+  border-radius: calc(var(--radius-radius-lg, 22px) - 8px);
+  pointer-events: none; z-index: 1;
+}
+
+.zb-lead { grid-area: lead; }
+.zb-close { grid-area: close; padding-top: 22px; }
+.zb-art  { grid-area: art; margin: 0; position: relative; min-width: 0; }
+
+/* ── Type ── */
+.zb-eyebrow {
+  display: flex; align-items: center; gap: 12px;
+  margin: 0 0 14px;
+  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.28em;
+  text-transform: uppercase; color: #C9A45C;
+}
+.zb-eyebrow::after { content: ''; flex: 0 1 90px; height: 1px; background: rgba(201, 164, 92, 0.35); }
+
+.zb-title {
+  margin: 0 0 10px;
+  font-family: var(--font-editorial, 'Playfair Display', Georgia, serif);
+  font-size: clamp(2.35rem, 5.2vw, 3.9rem);
+  font-weight: 800; letter-spacing: 0.045em;
+  line-height: 1.04; color: #F5EFE4;
+}
+.zb-headline-as {
+  margin: 0 0 8px;
+  font-family: var(--font-editorial, 'Playfair Display', Georgia, serif);
+  font-size: clamp(1.05rem, 2.2vw, 1.3rem);
+  font-weight: 700; line-height: 1.55;
+  color: rgba(245, 239, 228, 0.86);
+}
+.zb-epithet {
+  margin: 0 0 4px;
+  font-family: var(--font-editorial, 'Playfair Display', Georgia, serif);
+  font-style: italic;
+  font-size: clamp(0.98rem, 1.9vw, 1.12rem);
+  color: #E2C98F;
+}
+
+.zb-quote {
+  margin: 0 0 22px; padding: 2px 0 2px 16px;
+  border-left: 2px solid rgba(201, 164, 92, 0.45);
+}
+.zb-quote p {
+  margin: 0;
+  font-family: var(--font-editorial, 'Playfair Display', Georgia, serif);
+  font-style: italic;
+  font-size: clamp(0.95rem, 1.8vw, 1.08rem);
+  line-height: 1.75;
+  color: rgba(245, 239, 228, 0.72);
+}
+
+/* ── CTAs ── */
+.zb-cta-row { display: flex; flex-wrap: wrap; gap: 12px; }
+.zb-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 48px; padding: 12px 24px;
+  border-radius: var(--radius-radius, 14px);
+  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+  font-size: 0.92rem; font-weight: 600; letter-spacing: 0.02em;
+  text-decoration: none; cursor: pointer;
+  max-width: 100%; box-sizing: border-box;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+.zb-btn:active { transform: translateY(1px); }
+.zb-btn-primary { background: #C9A45C; color: #0C0908; border: 1px solid #C9A45C; }
+.zb-btn-primary:hover { background: #E2C98F; border-color: #E2C98F; }
+.zb-btn-ghost {
+  background: transparent; color: #F5EFE4;
+  border: 1px solid rgba(201, 164, 92, 0.45);
+}
+.zb-btn-ghost:hover { border-color: rgba(201, 164, 92, 0.85); background: rgba(201, 164, 92, 0.08); }
+.zb-tribute :is(.zb-btn):focus-visible {
+  outline: 2px solid #C9A45C; outline-offset: 3px;
+}
+
+.zb-meta {
+  margin: 18px 0 0;
+  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+  font-size: 0.72rem; font-weight: 500; letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(245, 239, 228, 0.45);
+}
+
+/* ── Artwork ── */
+.zb-art .zb-art-frame {
+  position: relative;
+  border-radius: var(--radius-radius, 14px);
+  overflow: hidden;
+  border: 1px solid rgba(201, 164, 92, 0.18);
+  background: #141010;
+}
+/* controlled dark gradient toward the text column for readability */
+.zb-art .zb-art-frame::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(12, 9, 8, 0.38) 0%, transparent 26%);
+  pointer-events: none;
+}
+.zb-art img {
+  display: block; width: 100%; height: auto;
+  aspect-ratio: 918 / 1300;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+@media (hover: hover) {
+  .zb-card:hover .zb-art img { transform: scale(1.012); }
+}
+.zb-art-credit {
+  margin: 10px 2px 0;
+  font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+  font-size: 0.68rem; letter-spacing: 0.06em;
+  color: rgba(245, 239, 228, 0.4);
+}
+
+/* ── Subtle entrance — only when motion is allowed ── */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes zbFadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes zbFadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .zb-lead  { animation: zbFadeUp 0.7s ease-out 0.05s both; }
+  .zb-close { animation: zbFadeUp 0.7s ease-out 0.18s both; }
+  .zb-art   { animation: zbFadeIn 0.9s ease-out 0.1s both; }
+}
+
+/* ── Mobile: deliberate stack — lead → artwork → quote/CTAs ── */
+@media (max-width: 899px) {
+  .zb-tribute { padding: 18px 0 22px; }
+  .zb-card {
+    grid-template-columns: 1fr;
+    grid-template-areas: "lead" "art" "close";
+    gap: 20px 0;
+    padding: 26px 20px 24px;
+  }
+  .zb-card::before { display: none; }
+  .zb-eyebrow::after { flex: 0 1 56px; }
+  .zb-art .zb-art-frame::after { display: none; }
+  .zb-close { padding-top: 0; }
+  .zb-quote { margin-bottom: 20px; }
+  .zb-cta-row { flex-direction: column; align-items: stretch; }
+  .zb-btn { width: 100%; }
+  .zb-meta { margin-top: 16px; letter-spacing: 0.2em; }
+}
+@media (max-width: 359px) {
+  .zb-card { padding: 22px 14px 20px; }
+  .zb-title { letter-spacing: 0.02em; }
+  .zb-meta { letter-spacing: 0.14em; }
+}
+</style>
+<section class="zb-tribute" aria-labelledby="zb-title">
+  <div class="container">
+    <div class="zb-card">
+      <div class="zb-lead">
+        <p class="zb-eyebrow">A Studyria Tribute</p>
+        <h2 class="zb-title" id="zb-title">Zubeen Da</h2>
+        <p class="zb-headline-as">অসমৰ হৃদয়ৰ এক চিৰন্তন সুৰ</p>
+        <p class="zb-epithet">ঈশ্বৰ পুত্ৰ</p>
+      </div>
+      <figure class="zb-art">
+        <div class="zb-art-frame">
+          <picture>
+            <source srcset="zubeen-hero-poster.webp" type="image/webp" />
+            <img src="zubeen-hero-poster.jpg"
+                 alt="জুবিন দালৈ শ্ৰদ্ধাঞ্জলি চিত্ৰ — গামোচা, মাইক্ৰ'ফোন আৰু অসমৰ প্ৰতীক একশৃঙ্গ গঁড় সহ। শিল্পী: Prasanta Kr Das"
+                 width="918" height="1300" loading="lazy" decoding="async" />
+          </picture>
+        </div>
+        <figcaption class="zb-art-credit">শিল্পী: Prasanta Kr Das · Studyria Tribute Artwork</figcaption>
+      </figure>
+      <div class="zb-close">
+        <blockquote class="zb-quote">
+          <p>“এয়া কেৱল সুৰ নহয় — এয়া অসমৰ হৃদয়ৰ এক অংশ।”</p>
+        </blockquote>
+        <div class="zb-cta-row">
+          <a class="zb-btn zb-btn-primary" href="/zubeen-da">Explore Zubeen Da</a>
+          <a class="zb-btn zb-btn-ghost" href="/zubeen-da">View Tribute Archive</a>
+        </div>
+        <p class="zb-meta">Music • Cinema • Journey • Legacy</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
 <!-- ── DISCOVER (Search + Filter) ───────────────────────────── -->
 <section class="sh-discover-section" id="discover-section">
   <div class="container">
