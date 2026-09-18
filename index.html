@@ -577,6 +577,9 @@ body.light .ott-row-track .pdf-cover-scrim {
    @theme — so the JS theme toggle (adds/removes `.light` on
    <body x-data="studyriaApp()" :class="{ 'light': !isDarkMode }">
 
+   ─────────────────────────────────────────────────────────────── */
+</style>
+
 <!-- CATALOGUE-SNAPSHOT:BEGIN (auto-generated from the public Supabase query — run scripts_check/sync-static-catalogue.mjs after catalogue changes; do not hand-edit) -->
 <script type="application/ld+json" id="catalogueSnapshotLd">
 {
@@ -871,7 +874,10 @@ body.light .ott-row-track .pdf-cover-scrim {
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PH9XCFFG"
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
- instantly re-resolves every var(--bg), var(--text),
+
+<style>
+/* ── RUNTIME THEME VARIABLES (continued) ─────────────────────────
+   instantly re-resolves every var(--bg), var(--text),
    var(--glass), etc. used across @layer components. @theme
    tokens are emitted once at the top and aren't intended to be
    re-overridden per-selector at runtime, which is why dark/light

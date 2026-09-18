@@ -164,6 +164,32 @@ ok('admin-shell.css does not set toast-container z-index (base owns it)', !/z-in
   ok('no second service worker created', fs.readdirSync(pubRoot).filter(f => /sw.*\.js$/.test(f) || /service-worker/.test(f)).length <= 1);
 }
 
+
+// ── 14. HEAD PARSE GUARD: splash must be LIVE DOM, not swallowed CSS text ──
+// Pre-existing P0 bug found during V4 splash QA: the design-tokens <style> was
+// unclosed and swallowed ~206KB of head+body content (catalogue JSON-LD,
+// noscript snapshot, #pwaV3Splash, GTM noscript) as inert CSS text — the
+// browser never created these elements, so no splash could EVER render.
+// Guard: at the splash div, all <style>/<script>/<noscript> before it must
+// be closed (comments stripped).
+{
+  const pubRoot = path.join(root, '..');
+  const pubIdx  = fs.readFileSync(path.join(pubRoot, 'index.html'), 'utf8');
+  const splashAt = pubIdx.indexOf('<div id="pwaV3Splash"');
+  ok('splash div present in user index.html', splashAt > 0);
+  const head = pubIdx.slice(pubIdx.indexOf('<head'), splashAt)
+                 .replace(/<!--[\s\S]*?-->/g, '');
+  for (const tag of ['style', 'script', 'noscript']) {
+    const open  = (head.match(new RegExp('<' + tag + '\\b', 'g')) || []).length;
+    const close = (head.match(new RegExp('</' + tag + '>', 'g')) || []).length;
+    ok('all <' + tag + '> before splash are closed (head parse)', open === close);
+  }
+  ok('design-tokens style closed before catalogue injection',
+     /isDarkMode\s*!\s*}\s*'\)?/.test(head) || head.includes('\u2500\u2500 */\n</style>') || head.indexOf('</style>', head.indexOf('RUNTIME THEME VARIABLES')) < head.indexOf('CATALOGUE-SNAPSHOT:BEGIN'));
+  ok('runtime theme CSS reopened after GTM noscript',
+     /End Google Tag Manager \(noscript\) -->[\s\S]*?<style>/.test(pubIdx.slice(splashAt - 4000, splashAt + 5000)));
+}
+
 console.log('PWA tests done');
 
 console.log('\nRESULT:', pass, 'passed,', fail, 'failed');
