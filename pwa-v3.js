@@ -77,12 +77,20 @@
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const video   = document.getElementById('pwaSplashVideo');
 
-    if (!reduced && video) {
-      tryVideoSplash(splash, video);
+    if (reduced || !video) {
+      // V6 (2026-09-18): in standalone, pwa-v3.css now defaults to the
+      // VIDEO look (not the dark static one) — see the boot-order note
+      // above the media query in pwa-v3.css. When we're skipping video
+      // on purpose (reduced-motion) we must explicitly opt BACK INTO the
+      // dark static fallback look via .pwa-splash--fallback, otherwise
+      // the user would sit on a plain cream box with a paused/hidden
+      // video and no logo at all.
+      if (isStandalone) splash.classList.add('pwa-splash--fallback');
+      runStaticSplash(splash);
       return;
     }
 
-    runStaticSplash(splash);
+    tryVideoSplash(splash, video, isStandalone);
   }
 
   // ── Shared fade-out (used by both splash modes) ─────────────────
@@ -114,7 +122,7 @@
   //   2. hard cap timer → fade out (4.5s, never traps the user)
   //   3. video error / autoplay refused / not ready in 1.2s
   //      → seamless switch to the existing static splash (2.2s)
-  function tryVideoSplash(splash, video) {
+  function tryVideoSplash(splash, video, isStandalone) {
     let done = false;               // one-shot guard for every exit path
 
     const finish = () => {          // exit: fade out, site becomes interactive
@@ -135,7 +143,15 @@
       video.removeEventListener('ended', finish);
       video.removeEventListener('error', onVideoFailed);
       try { video.pause(); } catch (_) {}
-      splash.classList.remove('pwa-splash--video'); // static logo markup shows
+      if (isStandalone) {
+        // V6: standalone defaults to the VIDEO look via CSS — swap
+        // INTO the dark static fallback look (opposite direction of
+        // the browser-tab path below, which defaults to static and
+        // swaps INTO video).
+        splash.classList.add('pwa-splash--fallback');
+      } else {
+        splash.classList.remove('pwa-splash--video'); // static logo markup shows
+      }
       runStaticSplash(splash);
       // hardTimer stays armed: static path must also never trap anyone
     };
@@ -149,7 +165,14 @@
     video.addEventListener('error', onVideoFailed, { once: true });
     video.addEventListener('ended', finish, { once: true });
 
-    splash.classList.add('pwa-splash--video');
+    // V6: only the browser-tab path needs the .pwa-splash--video class —
+    // its default look there is still the dark static one, so this class
+    // is what switches it INTO video mode. Standalone already defaults to
+    // the video look via pwa-v3.css (no class needed) — adding it there
+    // too would create an equal-specificity tie against .pwa-splash--
+    // fallback (defined later in the file, so it would win the tie and
+    // silently undo the fallback if the video ever failed AFTER this).
+    if (!isStandalone) splash.classList.add('pwa-splash--video');
     const p = video.play();
     if (p && p.catch) p.catch(onVideoFailed);
   }

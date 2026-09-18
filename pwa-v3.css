@@ -45,6 +45,35 @@
   #pwaV3Splash {
     display: flex;
     opacity: 1;
+    /* V6 (2026-09-18): default to the VIDEO's own look, not the dark
+       static fallback. #pwaSplashVideo has native autoplay/muted/
+       playsinline attributes — once this stylesheet stops hiding it,
+       the browser plays it with ZERO JS dependency, so the video is
+       the actual first-paint content, not just the (invisible) box
+       that wraps it. JS only re-enables the dark static fallback
+       (.pwa-splash--fallback below) if the video genuinely fails. */
+    background: #eae1d2;
+  }
+  #pwaV3Splash .pwa-splash-logo-wrap {
+    display: none; /* static fallback hidden by default in standalone */
+  }
+  /* Ancestor-ID selector (not the bare #pwaSplashVideo ID) is deliberate:
+     it must OUTRANK the later `#pwaSplashVideo { display:none }` base rule
+     (same specificity family) regardless of source order in this file. */
+  #pwaV3Splash #pwaSplashVideo {
+    display: block; /* visible immediately — plays via its own autoplay attribute */
+  }
+  /* JS adds this ONLY when the video errors, never becomes ready, or
+     prefers-reduced-motion is on — reverts to the pre-existing dark
+     static fallback look (icon + brand + tagline + spinner). */
+  #pwaV3Splash.pwa-splash--fallback {
+    background: #080c14;
+  }
+  #pwaV3Splash.pwa-splash--fallback .pwa-splash-logo-wrap {
+    display: flex;
+  }
+  #pwaV3Splash.pwa-splash--fallback #pwaSplashVideo {
+    display: none;
   }
 }
 

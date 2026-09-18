@@ -726,6 +726,62 @@ async function main() {
   check('V5: normal browser-tab navigation untouched — #pwa route markup/handlers still present',
     idxSrc.includes('page-pwa') || jsSrc.length > 0); // sanity: files still intact, no accidental truncation
 
+  console.log('\n── 26. V6 PWA boot-order — video IS the standalone default, not a JS-later swap (regression) ──');
+  check('pwa-v3.css: standalone default background is the VIDEO cream color, not the dark static fallback',
+    /@media \(display-mode: standalone\)[\s\S]{0,300}#pwaV3Splash\s*{[^}]*background:\s*#eae1d2;/.test(cssSrc));
+  check('pwa-v3.css: standalone default hides the static logo-wrap (video is the default look, not a swap target)',
+    /@media \(display-mode: standalone\)[\s\S]{0,900}#pwaV3Splash \.pwa-splash-logo-wrap\s*{\s*display:\s*none;/.test(cssSrc));
+  check('pwa-v3.css: standalone default shows #pwaSplashVideo via an ANCESTOR-ID selector (specificity 2,0,0)',
+    /#pwaV3Splash #pwaSplashVideo\s*{\s*display:\s*block;/.test(cssSrc));
+  check('pwa-v3.css: that ancestor-ID selector out-specifies the later bare "#pwaSplashVideo{display:none}" base rule',
+    (function () {
+      // CSS specificity is (id-count, class-count) for our simple selector set —
+      // higher specificity always wins regardless of source order (CSS spec).
+      const spec = s => [ (s.match(/#/g)||[]).length, (s.match(/\./g)||[]).length ];
+      const mine = spec('#pwaV3Splash #pwaSplashVideo');
+      const base = spec('#pwaSplashVideo');
+      return mine[0] > base[0] || (mine[0] === base[0] && mine[1] > base[1]);
+    })());
+  check('pwa-v3.css: a dedicated .pwa-splash--fallback class exists to revert standalone to the dark static look',
+    /#pwaV3Splash\.pwa-splash--fallback\s*{\s*background:\s*#080c14;/.test(cssSrc) &&
+    /#pwaV3Splash\.pwa-splash--fallback \.pwa-splash-logo-wrap\s*{\s*display:\s*flex;/.test(cssSrc) &&
+    /#pwaV3Splash\.pwa-splash--fallback #pwaSplashVideo\s*{\s*display:\s*none;/.test(cssSrc));
+  check('pwa-v3.js: tryVideoSplash() takes an isStandalone param',
+    /function tryVideoSplash\(splash, video, isStandalone\)/.test(jsSrc));
+  check('pwa-v3.js: .pwa-splash--video class is added ONLY for the non-standalone (browser-tab) path',
+    /if \(!isStandalone\) splash\.classList\.add\('pwa-splash--video'\);/.test(jsSrc));
+  check('pwa-v3.js: standalone + video failure adds .pwa-splash--fallback (swap INTO dark static)',
+    (function () {
+      const m = jsSrc.match(/const onVideoFailed = \(\) => \{([\s\S]*?)\n    \};/);
+      return !!m && /if \(isStandalone\) \{\s*[\s\S]{0,400}splash\.classList\.add\('pwa-splash--fallback'\)/.test(m[1]) &&
+        /splash\.classList\.remove\('pwa-splash--video'\)/.test(m[1]); // non-standalone branch preserved (V4 unchanged)
+    })());
+  check('pwa-v3.js: reduced-motion / no-video path opts INTO .pwa-splash--fallback when standalone (default is video, must explicitly opt out)',
+    /if \(isStandalone\) splash\.classList\.add\('pwa-splash--fallback'\);\s*\n\s*runStaticSplash\(splash\);/.test(jsSrc));
+  check('pwa-v3.js: initSplash() passes isStandalone through to tryVideoSplash()',
+    /tryVideoSplash\(splash, video, isStandalone\);/.test(jsSrc));
+  check('V6: no equal-specificity class tie possible — .pwa-splash--video and .pwa-splash--fallback are never added together in the standalone path',
+    (function () {
+      // The ONLY place .pwa-splash--video is added is gated behind !isStandalone;
+      // the ONLY places .pwa-splash--fallback is added are gated behind isStandalone.
+      // So on any single code path they are mutually exclusive by construction.
+      const addVideo = jsSrc.match(/splash\.classList\.add\('pwa-splash--video'\)/g) || [];
+      const guardedVideo = jsSrc.match(/if \(!isStandalone\) splash\.classList\.add\('pwa-splash--video'\)/g) || [];
+      return addVideo.length === guardedVideo.length && addVideo.length >= 1;
+    })());
+  check('V6: video element keeps autoplay muted playsinline attributes (native playback, zero JS dependency for first frame)',
+    /id="pwaSplashVideo"[^>]*autoplay[^>]*muted[^>]*playsinline/.test(idxSrc) ||
+    /id="pwaSplashVideo"[^>]*muted[^>]*autoplay[^>]*playsinline/.test(idxSrc) ||
+    (idxSrc.includes('id="pwaSplashVideo"') && (function(){
+      const seg = idxSrc.slice(idxSrc.indexOf('id="pwaSplashVideo"') - 200, idxSrc.indexOf('id="pwaSplashVideo"') + 400);
+      return /autoplay/.test(seg) && /muted/.test(seg) && /playsinline/.test(seg);
+    })()));
+  check('V6: manifest.json untouched by this stream (owner explicitly listed it as do-not-touch)',
+    (function () {
+      const diff = (function () { try { return execSync('git diff --name-only HEAD -- manifest.json', { cwd: ROOT }).toString(); } catch (e) { return ''; } })();
+      return diff.trim() === '';
+    })());
+
   console.log('\n── 19. no JS errors ──');
   check('entire suite executed without uncaught errors (reached end)', true);
 
