@@ -48,6 +48,14 @@
     return 'Student';
   }
 
+  function getLang() {
+    try { return localStorage.getItem('adre_lang') || 'en'; } catch(e) { return 'en'; }
+  }
+  function setLang(lang) {
+    try { localStorage.setItem('adre_lang', lang); } catch(e) {}
+    if (_state.paper && !_state.submitted) renderExam();
+  }
+
   function getHistory() {
     try { return JSON.parse(localStorage.getItem('adre_history')||'[]'); } catch(e) { return []; }
   }
