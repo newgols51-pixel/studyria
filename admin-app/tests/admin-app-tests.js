@@ -129,6 +129,41 @@ const shellToastRule = (shellCss.match(/\.toast-container\s*\{[^}]*\}/) || [''])
 ok('admin-shell.css does not redefine toast-container position box', !/\b(top|bottom|left|right)\s*:/.test(shellToastRule));
 ok('admin-shell.css does not set toast-container z-index (base owns it)', !/z-index/.test(shellToastRule));
 
+
+// ── 13. USER PWA V4 official splash video (2026-09-18) ─────────
+// The official 4s animation (/studyria-user-splash.mp4, committed at repo
+// root) must play inside the EXISTING #pwaV3Splash layer with a guaranteed
+// exit path. Guards below pin the safety architecture, not just presence.
+{
+  const pubRoot = path.join(root, '..');
+  const pubIdx  = fs.readFileSync(path.join(pubRoot, 'index.html'), 'utf8');
+  const pwaV3js = fs.readFileSync(path.join(pubRoot, 'pwa-v3.js'), 'utf8');
+  const pwaV3css = fs.readFileSync(path.join(pubRoot, 'pwa-v3.css'), 'utf8');
+  const swjs = fs.readFileSync(path.join(pubRoot, 'sw.js'), 'utf8');
+
+  // video markup: inside the existing splash, with the mandated attributes
+  const vmatch = pubIdx.match(/<video id="pwaSplashVideo"[^>]*>/);
+  ok('splash video element exists in index.html', !!vmatch);
+  ok('splash video src is the committed root file', !!vmatch && vmatch[0].includes('/studyria-user-splash.mp4'));
+  ok('splash video autoplay+muted+playsinline+preload=auto', !!vmatch && /autoplay/.test(vmatch[0]) && /muted/.test(vmatch[0]) && /playsinline/.test(vmatch[0]) && /preload="auto"/.test(vmatch[0]));
+  ok('video sits INSIDE the existing #pwaV3Splash layer (no duplicate splash system)', !!vmatch && pubIdx.indexOf('id="pwaV3Splash"') < pubIdx.indexOf('<video id="pwaSplashVideo"'));
+
+  // JS safety nets: every exit path must exist
+  ok('video splash has hard-cap fallback timer (never traps user)', pwaV3js.includes('splashVideoHardCapMs') && pwaV3js.includes('4500'));
+  ok('video splash has ready-check fallback to static splash', pwaV3js.includes('splashVideoReadyMs'));
+  ok('exit is one-shot guarded', /let done = false/.test(pwaV3js) && /if \(done\) return/.test(pwaV3js));
+  ok('reduced-motion skips the video (static splash)', /prefers-reduced-motion/.test(pwaV3js) && /prefers-reduced-motion: reduce/.test(pwaV3css));
+  ok('video failure falls back to existing static splash', pwaV3js.includes('runStaticSplash(splash)'));
+  ok('video mode hides the static logo (no duplicate logo)', pwaV3css.includes('.pwa-splash--video .pwa-splash-logo-wrap') && pwaV3css.includes('display: none'));
+  ok('video preserves aspect ratio (object-fit: contain)', pwaV3css.includes('object-fit: contain'));
+  ok('video never blocks touch (pointer-events: none)', /#pwaSplashVideo \{[^}]*pointer-events: none/.test(pwaV3css));
+
+  // SW: asset cached safely, version bumped, no second SW
+  ok('user SW precaches the splash video', swjs.includes("'/studyria-user-splash.mp4'"));
+  ok('SW version bumped for splash deploy', swjs.includes("CACHE_VERSION = 'v171'"));
+  ok('no second service worker created', fs.readdirSync(pubRoot).filter(f => /sw.*\.js$/.test(f) || /service-worker/.test(f)).length <= 1);
+}
+
 console.log('PWA tests done');
 
 console.log('\nRESULT:', pass, 'passed,', fail, 'failed');

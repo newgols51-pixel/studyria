@@ -31,7 +31,12 @@
 // v167: static no-JS fallback values baked into HTML so AI chatbot crawlers (Gemini/Meta/Perplexity)
 // see honest numbers instead of "0 PDFs" / "—" dashes: libCount=12 PDFs, libStatTotal=12, libStatCategories=5,
 // libStatDownloads=560, aboutStatStudents=1,500+, aboutStatPdfs=12. JS animates exact live values for humans.
-const CACHE_VERSION = 'v170';
+const CACHE_VERSION = 'v171';
+// v171: USER PWA V4 startup splash — official 4s Studyria animation (/studyria-user-splash.mp4)
+// added to PRECACHE_ASSETS (individual cache.add with per-asset catch, so a failed asset can never
+// break SW install); splash video markup/CSS/JS live in index.html / pwa-v3.css / pwa-v3.js.
+// Splash video requests (same-origin, destination 'video') use the existing stale-while-revalidate
+// strategy. All PWA install/push/notification handlers untouched.
 // STUDENT_BASE/CANONICAL_SOCIAL_PROOF and every fallback, hero, About, community, stat band,
 // YouTube labels and the /homepage marketing page now show one number.
 // v165: job card "posts" counts fixed (old parser concatenated every digit in vacancy article blobs →
@@ -49,7 +54,7 @@ const FONT_CACHE    = 'studyria-font-' + CACHE_VERSION;
 const SW_BUILD      = '2026.09.07-one-checkout';
 const OFFLINE_PAGE  = '/offline.html';
 
-const WHATS_NEW = '🖼️ Custom banners: each notification\'s own banner/poster now appears on push notifications — auto-generated Studyria poster stays as fallback.';
+const WHATS_NEW = '🎬 New official Studyria startup animation — the app now opens with the official 4-second Studyria logo splash on launch.';
 
 // ── PRECACHE ──────────────────────────────────────────────────────
 const PRECACHE_ASSETS = [
@@ -68,6 +73,7 @@ const PRECACHE_ASSETS = [
   '/screenshot-premium.png',
   '/screenshot-career.png',
   '/screenshot-desktop.png',
+  '/studyria-user-splash.mp4', // V4 official splash animation (1.05MB, per-asset catch above)
 ];
 
 // ── BYPASS HOSTS (always network) ─────────────────────────────────

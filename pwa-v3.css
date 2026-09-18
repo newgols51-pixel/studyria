@@ -688,3 +688,42 @@
   .pwa-ub, .pwa-upd, .pwa-wn-card, .pwa-upd-card,
   .pwa-ub-dot, .pwa-upd-bar { animation: none !important; transition-duration: 0.01ms !important; }
 }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   V4 OFFICIAL SPLASH VIDEO (2026-09-18)
+   The official 1080x1920 / 4s Studyria animation plays full-viewport
+   inside the existing #pwaV3Splash layer. object-fit:contain preserves
+   the video's aspect ratio at every screen size (320px→1440px) — the
+   video's own paper-cream background (#eae1d2) fills the letterbox
+   areas, so there is no visible bar or flash in any mode.
+   JS (pwa-v3.js) toggles .pwa-splash--video when the video can play;
+   reduced-motion users and video failures keep the static splash.
+   ══════════════════════════════════════════════════════════════════ */
+#pwaV3Splash.pwa-splash--video {
+  background: #eae1d2; /* matches the video's own background exactly */
+}
+
+#pwaV3Splash.pwa-splash--video .pwa-splash-logo-wrap {
+  display: none; /* the video IS the splash — no duplicate logo */
+}
+
+#pwaSplashVideo {
+  display: none; /* enabled only by JS in video mode */
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none; /* never block touch while splash is visible */
+  background: transparent;
+}
+
+#pwaV3Splash.pwa-splash--video #pwaSplashVideo {
+  display: block;
+}
+
+/* Reduced motion: never play the video; static (V3) splash is shown. */
+@media (prefers-reduced-motion: reduce) {
+  #pwaSplashVideo { display: none !important; }
+}

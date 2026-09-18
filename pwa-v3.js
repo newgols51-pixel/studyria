@@ -18,8 +18,10 @@
 
   // ── CONFIG ────────────────────────────────────────────────────
   const CFG = {
-    splashDuration:    2200,   // ms total splash display
-    splashFadeOut:     400,    // ms fade-out
+    splashDuration:    2200,   // ms total splash display (static fallback splash)
+    splashFadeOut:     400,   // ms fade-out
+    splashVideoHardCapMs: 4500, // V4: absolute max time the video splash may stay up
+    splashVideoReadyMs:  1200, // V4: video must reach readyState>=2 by now, else static fallback
     updateCheckDelay:  30000,  // ms after load before first update check
     prefetchDelay:     5000,   // ms after load before prefetch runs
     networkBarDuration:3000,   // ms to show "Back online" bar
@@ -49,20 +51,89 @@
       splash.style.opacity = '1';
     });
 
+    // ── V4 (2026-09-18): official 4s Studyria animation video ──
+    // Video mode when the official splash video can play here and the
+    // user hasn't asked for reduced motion. Every path ends at the
+    // existing static splash or a direct fade-out — the user can never
+    // be trapped. The website keeps initializing behind the overlay.
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const video   = document.getElementById('pwaSplashVideo');
+
+    if (!reduced && video) {
+      tryVideoSplash(splash, video);
+      return;
+    }
+
+    runStaticSplash(splash);
+  }
+
+  // ── Shared fade-out (used by both splash modes) ─────────────────
+  function fadeOutSplash(splash) {
+    splash.style.transition = 'opacity ' + (CFG.splashFadeOut / 1000) + 's ease';
+    splash.style.opacity    = '0';
+    setTimeout(() => {
+      splash.style.display = 'none';
+      splash.setAttribute('aria-hidden', 'true');
+    }, CFG.splashFadeOut);
+  }
+
+  // ── Static (pre-V4) splash timeline ─────────────────────────────
+  function runStaticSplash(splash) {
     setTimeout(() => {
       // Trigger loading animation complete
       const ring = splash.querySelector('.pwa-splash-ring');
       if (ring) ring.classList.add('pwa-splash-ring--done');
     }, CFG.splashDuration - 600);
 
-    setTimeout(() => {
-      splash.style.transition = 'opacity ' + (CFG.splashFadeOut / 1000) + 's ease';
-      splash.style.opacity    = '0';
-      setTimeout(() => {
-        splash.style.display = 'none';
-        splash.setAttribute('aria-hidden', 'true');
-      }, CFG.splashFadeOut);
-    }, CFG.splashDuration);
+    setTimeout(() => fadeOutSplash(splash), CFG.splashDuration);
+  }
+
+  // ── V4 official video splash ────────────────────────────────────
+  // The video (autoplay muted playsinline, 1080x1920, ~4.0s) plays
+  // full-viewport with object-fit:contain over the existing splash
+  // layer. Exit paths, whichever fires FIRST:
+  //   1. video 'ended'  → fade out (~4.0s)
+  //   2. hard cap timer → fade out (4.5s, never traps the user)
+  //   3. video error / autoplay refused / not ready in 1.2s
+  //      → seamless switch to the existing static splash (2.2s)
+  function tryVideoSplash(splash, video) {
+    let done = false;               // one-shot guard for every exit path
+
+    const finish = () => {          // exit: fade out, site becomes interactive
+      if (done) return;
+      done = true;
+      clearTimeout(hardTimer);
+      clearTimeout(readyTimer);
+      video.removeEventListener('error', onVideoFailed);
+      video.removeEventListener('ended', finish);
+      try { video.pause(); } catch (_) {}
+      splash.classList.remove('pwa-splash--video');
+      fadeOutSplash(splash);
+    };
+
+    const onVideoFailed = () => {   // fallback: existing static splash
+      if (done) return;
+      clearTimeout(readyTimer);
+      video.removeEventListener('ended', finish);
+      video.removeEventListener('error', onVideoFailed);
+      try { video.pause(); } catch (_) {}
+      splash.classList.remove('pwa-splash--video'); // static logo markup shows
+      runStaticSplash(splash);
+      // hardTimer stays armed: static path must also never trap anyone
+    };
+
+    // Safety nets — armed BEFORE play() so no race can leave them off
+    const hardTimer  = setTimeout(finish, CFG.splashVideoHardCapMs);
+    const readyTimer = setTimeout(() => {
+      if (!done && (video.readyState < 2 || video.paused)) onVideoFailed();
+    }, CFG.splashVideoReadyMs);
+
+    video.addEventListener('error', onVideoFailed, { once: true });
+    video.addEventListener('ended', finish, { once: true });
+
+    splash.classList.add('pwa-splash--video');
+    const p = video.play();
+    if (p && p.catch) p.catch(onVideoFailed);
   }
 
   // ── UPDATE BANNER ─────────────────────────────────────────────
