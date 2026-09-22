@@ -19307,445 +19307,189 @@ body[data-page="admin"] .studyria-footer { display: none; }
 .studyria-footer.sf-hidden { display: none !important; }
 
 /* ═══════════════════════════════════════════════════════════════
-   STUDYRIA FOOTER — Warm Cream + Maroon + Gold Editorial Design
-   Visual reference: homepage.html
-   All existing IDs, classes, and JS hooks remain unchanged.
+   STUDYRIA FOOTER V2 — premium, compact, route-safe
+   Warm Paper Cream · Royal Maroon · Elegant Gold
    ═══════════════════════════════════════════════════════════════ */
-
-/* ── Footer Container ── */
 .studyria-footer {
   position: relative;
-  background: var(--hp-paper, #faf7f2);
-  border-top: 1px solid var(--hp-line, rgba(28,27,26,0.12));
   overflow: hidden;
-  font-family: var(--hp-font-body, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
-  color: var(--hp-ink, #1c1b1a);
   padding: 0;
+  color: var(--hp-ink, #1c1b1a);
+  background: var(--hp-paper, #faf7f2);
+  border-top: 1px solid var(--hp-line, rgba(28,27,26,.12));
+  font-family: var(--hp-font-body, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
 }
 body:not(.light) .studyria-footer {
-  background: #1a0f0e;
-  border-top-color: rgba(212,180,140,0.12);
   color: #f0e4d0;
+  background: #170e0d;
+  border-top-color: rgba(212,180,140,.14);
 }
-
-/* ── Hide ambient orbs — not part of editorial design ── */
-.sf-orb { display: none !important; }
-
-/* ── Gamosa Stripe — signature decorative element ──
-   BUG FIX: now wrapped in .container (see HTML below) so it renders as a
-   narrower, centered bar with natural side margins on all breakpoints
-   instead of a full-bleed edge-to-edge stripe. margin-top adds the small
-   clean gap below the Pass CTA section (matches homepage.html reference,
-   which nests the same .stripe element inside its .wrap container). ── */
 .sf-top-bar {
-  height: 8px;
-  width: 100%;
-  margin-top: 32px;
-  background: repeating-linear-gradient(
-    90deg,
-    var(--hp-red, #930205) 0px, var(--hp-red, #930205) 22px,
-    var(--hp-paper, #faf7f2) 22px, var(--hp-paper, #faf7f2) 28px,
-    var(--hp-gold, #c99a3c) 28px, var(--hp-gold, #c99a3c) 32px,
-    var(--hp-paper, #faf7f2) 32px, var(--hp-paper, #faf7f2) 38px
-  );
-  border: none;
+  width: 100%; height: 5px; margin-top: 28px;
+  background: linear-gradient(90deg, var(--hp-red,#930205) 0 72%, var(--hp-gold,#c99a3c) 72% 100%);
 }
-body:not(.light) .sf-top-bar {
-  background: repeating-linear-gradient(
-    90deg,
-    #b83348 0px, #b83348 22px,
-    #1a0f0e 22px, #1a0f0e 28px,
-    #c99a3c 28px, #c99a3c 32px,
-    #1a0f0e 32px, #1a0f0e 38px
-  );
+.sf-main { padding: 38px 0 24px; }
+.sf-brand-block {
+  display: grid; grid-template-columns: minmax(240px,1.2fr) minmax(0,2.8fr);
+  gap: clamp(32px,5vw,70px); align-items: start;
 }
-
-/* ── Newsletter Section ── */
-.sf-newsletter {
-  position: relative;
-  padding: 24px 0;
-  border-top: 1px solid var(--hp-line, rgba(28,27,26,0.12));
-  border-bottom: 1px solid var(--hp-line, rgba(28,27,26,0.12));
+.sf-brand { min-width: 0; }
+.sf-brand-home {
+  display: inline-flex; align-items: center; gap: 13px; padding: 0;
+  border: 0; background: transparent; color: inherit; cursor: pointer; text-align: left;
 }
-body:not(.light) .sf-newsletter {
-  border-top-color: rgba(212,180,140,0.10);
-  border-bottom-color: rgba(212,180,140,0.10);
+.sf-brand-home:focus-visible, .sf-link:focus-visible, .sf-social-link:focus-visible,
+.sf-legal a:focus-visible, .sf-legal button:focus-visible, .sf-newsletter-btn:focus-visible,
+.sf-nav-group summary:focus-visible {
+  outline: 3px solid rgba(201,154,60,.55); outline-offset: 4px; border-radius: 5px;
 }
-.sf-newsletter-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  flex-wrap: wrap;
+.sf-brand-logo-img { width: 58px; height: 58px; object-fit: contain; flex: none; }
+.sf-brand-name {
+  display: block; font-family: var(--hp-font-display,Georgia,serif);
+  font-size: 1.65rem; line-height: 1; font-weight: 800; color: var(--hp-red,#930205);
 }
-.sf-newsletter-text h3 {
-  font-family: var(--hp-font-display, Georgia, serif);
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--hp-ink, #1c1b1a);
-  margin-bottom: 4px;
+body:not(.light) .sf-brand-name { color: #e3c06c; }
+.sf-brand-motto {
+  display: block; margin-top: 7px; color: var(--hp-gold,#a87a1e);
+  font-size: .68rem; font-weight: 800; letter-spacing: .16em;
 }
-body:not(.light) .sf-newsletter-text h3 { color: #f0e4d0; }
-.sf-newsletter-text p {
-  font-size: .82rem;
-  color: rgba(28,27,26,0.55);
-  line-height: 1.6;
+.sf-brand-support {
+  max-width: 330px; margin: 16px 0 0; color: rgba(28,27,26,.66);
+  font-size: .88rem; line-height: 1.65;
 }
-body:not(.light) .sf-newsletter-text p { color: rgba(240,228,208,0.55); }
-.sf-newsletter-form {
-  display: flex;
-  gap: 10px;
-  flex: 1;
-  max-width: 420px;
-  min-width: 240px;
+body:not(.light) .sf-brand-support { color: rgba(240,228,208,.64); }
+.sf-socials { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 18px; }
+.sf-social-link {
+  display: inline-flex; align-items: center; min-height: 40px; padding: 8px 11px;
+  color: var(--hp-ink,#1c1b1a); background: transparent; text-decoration: none;
+  border: 1px solid var(--hp-line,rgba(28,27,26,.14)); border-radius: 6px;
+  font-size: .76rem; font-weight: 650; transition: color .18s,border-color .18s,background .18s;
 }
+.sf-social-link:hover { color: var(--hp-red,#930205); border-color: rgba(147,2,5,.38); background: rgba(147,2,5,.035); }
+body:not(.light) .sf-social-link { color:#f0e4d0; border-color:rgba(212,180,140,.18); }
+body:not(.light) .sf-social-link:hover { color:#e3c06c; border-color:rgba(201,154,60,.45); background:rgba(201,154,60,.06); }
+.sf-nav-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 24px; }
+.sf-nav-group { min-width: 0; }
+.sf-nav-group summary {
+  list-style: none; cursor: default; color: var(--hp-red,#930205);
+  font-size: .72rem; font-weight: 850; letter-spacing: .12em; text-transform: uppercase;
+  padding: 2px 0 12px; border-bottom: 1px solid rgba(201,154,60,.36);
+}
+.sf-nav-group summary::-webkit-details-marker { display:none; }
+.sf-nav-chevron { display:none; }
+body:not(.light) .sf-nav-group summary { color:#e3c06c; border-bottom-color:rgba(201,154,60,.28); }
+.sf-nav-list { display:grid; gap: 3px; padding-top: 10px; }
+.sf-link {
+  display:flex; align-items:center; width:100%; min-height:38px; padding:7px 0;
+  border:0; background:transparent; color:rgba(28,27,26,.70); cursor:pointer;
+  font:inherit; font-size:.84rem; text-decoration:none; text-align:left; transition:color .18s,transform .18s;
+}
+.sf-link:hover { color:var(--hp-red,#930205); transform:translateX(2px); }
+body:not(.light) .sf-link { color:rgba(240,228,208,.70); }
+body:not(.light) .sf-link:hover { color:#e3c06c; }
+.sf-trust {
+  display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
+  border:1px solid rgba(201,154,60,.26); border-radius:8px;
+  margin: 24px 0; background:rgba(255,255,255,.34);
+}
+body:not(.light) .sf-trust { background:rgba(255,255,255,.025); border-color:rgba(201,154,60,.20); }
+.sf-trust-item {
+  display:flex; align-items:center; justify-content:center; gap:8px; min-height:54px;
+  padding:10px 12px; color:rgba(28,27,26,.68); font-size:.78rem; font-weight:700; text-align:center;
+}
+.sf-trust-item + .sf-trust-item { border-left:1px solid rgba(201,154,60,.22); }
+.sf-trust-icon { width:18px; height:18px; color:#257b55; flex:none; }
+body:not(.light) .sf-trust-item { color:rgba(240,228,208,.72); }
+body:not(.light) .sf-trust-icon { color:#78c89e; }
+.sf-newsletter { padding: 22px 0; border-block:1px solid var(--hp-line,rgba(28,27,26,.12)); }
+body:not(.light) .sf-newsletter { border-color:rgba(212,180,140,.12); }
+.sf-newsletter-inner { display:flex; align-items:center; justify-content:space-between; gap:24px; }
+.sf-newsletter-text h3 { margin:0 0 4px; font-family:var(--hp-font-display,Georgia,serif); font-size:1rem; color:inherit; }
+.sf-newsletter-text p { margin:0; color:rgba(28,27,26,.58); font-size:.8rem; line-height:1.5; }
+body:not(.light) .sf-newsletter-text p { color:rgba(240,228,208,.56); }
+.sf-newsletter-form { flex:1; max-width:520px; display:grid; gap:8px; }
+.sf-newsletter-fields { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .sf-newsletter-input {
-  flex: 1;
-  padding: 11px 16px;
-  border-radius: 6px;
-  border: 1px solid var(--hp-line, rgba(28,27,26,0.12));
-  background: #ffffff;
-  color: var(--hp-ink, #1c1b1a);
-  font-family: var(--hp-font-body, -apple-system, sans-serif);
-  font-size: .85rem;
-  outline: none;
-  transition: border-color .2s, box-shadow .2s;
+  width:100%; min-width:0; min-height:42px; padding:10px 12px; color:var(--hp-ink,#1c1b1a);
+  background:#fff; border:1px solid var(--hp-line,rgba(28,27,26,.14)); border-radius:6px;
+  font:inherit; font-size:.82rem; outline:none;
 }
-.sf-newsletter-input::placeholder { color: rgba(28,27,26,0.35); }
-.sf-newsletter-input:focus {
-  border-color: var(--hp-red, #930205);
-  box-shadow: 0 0 0 3px rgba(147,2,5,0.08);
-}
-body:not(.light) .sf-newsletter-input {
-  background: rgba(255,255,255,0.04);
-  border-color: rgba(212,180,140,0.15);
-  color: #f0e4d0;
-}
-body:not(.light) .sf-newsletter-input::placeholder { color: rgba(240,228,208,0.35); }
-body:not(.light) .sf-newsletter-input:focus {
-  border-color: #b83348;
-  box-shadow: 0 0 0 3px rgba(184,51,72,0.15);
-}
+.sf-newsletter-input:focus { border-color:var(--hp-red,#930205); box-shadow:0 0 0 3px rgba(147,2,5,.08); }
+body:not(.light) .sf-newsletter-input { color:#f0e4d0; background:rgba(255,255,255,.04); border-color:rgba(212,180,140,.18); }
+.sf-newsletter-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.sf-newsletter-check { display:flex; align-items:center; gap:6px; color:rgba(28,27,26,.60); font-size:.76rem; cursor:pointer; }
+body:not(.light) .sf-newsletter-check { color:rgba(240,228,208,.58); }
 .sf-newsletter-btn {
-  padding: 11px 22px;
-  border-radius: 6px;
-  border: none;
-  background: var(--hp-red, #930205);
-  color: #fff;
-  font-family: var(--hp-font-body, -apple-system, sans-serif);
-  font-size: .85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background .2s, transform .15s;
-  white-space: nowrap;
+  min-height:40px; margin-left:auto; padding:9px 20px; border:0; border-radius:6px;
+  background:var(--hp-red,#930205); color:#fff; font:inherit; font-size:.82rem; font-weight:750; cursor:pointer;
 }
-.sf-newsletter-btn:hover {
-  background: var(--hp-red-deep, #7d1122);
-  transform: translateY(-1px);
+.sf-newsletter-btn:hover { background:var(--hp-red-deep,#761014); }
+.sf-credit { padding:28px 0 20px; text-align:center; }
+.sf-credit-name { font-family:var(--hp-font-display,Georgia,serif); font-size:1.12rem; font-weight:800; color:var(--hp-red,#930205); }
+body:not(.light) .sf-credit-name { color:#e3c06c; }
+.sf-credit-motto { margin-top:5px; color:var(--hp-gold,#a87a1e); font-size:.64rem; font-weight:800; letter-spacing:.15em; }
+.sf-credit-maker { margin-top:13px; color:rgba(28,27,26,.56); font-size:.77rem; }
+.sf-credit-maker strong { color:var(--hp-ink,#1c1b1a); font-size:.82rem; font-weight:850; }
+body:not(.light) .sf-credit-maker { color:rgba(240,228,208,.50); }
+body:not(.light) .sf-credit-maker strong { color:#f0e4d0; }
+.sf-credit-copy { margin-top:6px; color:rgba(28,27,26,.50); font-size:.74rem; }
+body:not(.light) .sf-credit-copy { color:rgba(240,228,208,.46); }
+.sf-legal { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:7px 12px; padding-top:16px; margin-top:18px; border-top:1px solid rgba(201,154,60,.25); }
+.sf-legal a,.sf-legal button { padding:6px 2px; border:0; background:transparent; color:rgba(28,27,26,.62); font:inherit; font-size:.76rem; text-decoration:none; cursor:pointer; }
+.sf-legal a:hover,.sf-legal button:hover { color:var(--hp-red,#930205); }
+body:not(.light) .sf-legal a,body:not(.light) .sf-legal button { color:rgba(240,228,208,.58); }
+body:not(.light) .sf-legal a:hover,body:not(.light) .sf-legal button:hover { color:#e3c06c; }
+.sf-legal-sep { color:rgba(201,154,60,.66); }
+@media (min-width:769px) {
+  .sf-nav-group > .sf-nav-list { display:grid !important; }
 }
-body:not(.light) .sf-newsletter-btn {
-  background: #b83348;
+@media (max-width:900px) {
+  .sf-brand-block { grid-template-columns:1fr; gap:30px; }
+  .sf-brand { text-align:center; }
+  .sf-brand-home { text-align:left; }
+  .sf-brand-support { margin-inline:auto; }
+  .sf-socials { justify-content:center; }
+  .sf-nav-grid { gap:18px; }
 }
-body:not(.light) .sf-newsletter-btn:hover {
-  background: #a02838;
+@media (max-width:768px) {
+  .sf-top-bar { margin-top:20px; }
+  .sf-main { padding:30px 0 18px; }
+  .sf-brand-home { flex-direction:column; text-align:center; }
+  .sf-brand-logo-img { width:64px; height:64px; }
+  .sf-brand-name { font-size:1.55rem; }
+  .sf-nav-grid { display:grid; grid-template-columns:1fr; gap:8px; }
+  .sf-nav-group { border:1px solid var(--hp-line,rgba(28,27,26,.13)); border-radius:7px; background:rgba(255,255,255,.25); }
+  body:not(.light) .sf-nav-group { border-color:rgba(212,180,140,.14); background:rgba(255,255,255,.02); }
+  .sf-nav-group summary {
+    display:flex; align-items:center; justify-content:space-between; min-height:48px;
+    padding:12px 15px; border:0; cursor:pointer; color:var(--hp-ink,#1c1b1a); font-size:.78rem;
+  }
+  body:not(.light) .sf-nav-group summary { color:#f0e4d0; }
+  .sf-nav-chevron { display:block; color:var(--hp-red,#930205); font-size:1rem; transition:transform .18s; }
+  .sf-nav-group[open] .sf-nav-chevron { transform:rotate(180deg); }
+  .sf-nav-list { padding:0 15px 10px; border-top:1px solid rgba(201,154,60,.22); }
+  .sf-link { min-height:44px; padding:9px 2px; }
+  .sf-trust { grid-template-columns:1fr 1fr; }
+  .sf-trust-item { justify-content:flex-start; text-align:left; min-height:50px; }
+  .sf-trust-item + .sf-trust-item { border-left:0; }
+  .sf-trust-item:nth-child(even) { border-left:1px solid rgba(201,154,60,.22); }
+  .sf-trust-item:nth-child(n+3) { border-top:1px solid rgba(201,154,60,.22); }
+  .sf-newsletter-inner { align-items:stretch; flex-direction:column; }
+  .sf-newsletter-form { max-width:none; }
 }
-
-/* ── Main Footer Grid ── */
-.sf-main {
-  position: relative;
-  padding: 40px 0 20px;
-}
-.sf-grid {
-  display: grid;
-  grid-template-columns: 1.6fr 1fr 1fr 1fr;
-  gap: 40px;
-}
-
-/* ── Brand Column ── */
-.sf-brand { display: flex; flex-direction: column; gap: 16px; }
-.sf-brand-logo {
-  font-family: var(--hp-font-display, Georgia, serif);
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -.02em;
-}
-.sf-brand-stud { color: var(--hp-ink, #1c1b1a); }
-.sf-brand-yria { color: var(--hp-red, #930205); }
-body:not(.light) .sf-brand-stud { color: #f0e4d0; }
-body:not(.light) .sf-brand-yria { color: #f0e4d0; }
-.sf-brand-tagline {
-  font-size: .85rem;
-  line-height: 1.65;
-  color: rgba(28,27,26,0.60);
-  max-width: 280px;
-}
-body:not(.light) .sf-brand-tagline { color: rgba(240,228,208,0.55); }
-
-/* ── Exam Chips ── */
-.sf-exams { display: flex; flex-wrap: wrap; gap: 6px; }
-.sf-exam-chip {
-  display: inline-block;
-  padding: 4px 10px;
-  font-size: .68rem;
-  font-weight: 600;
-  border-radius: 4px;
-  background: var(--hp-paper-dim, #f1ece3);
-  color: var(--hp-red, #930205);
-  border: 1px solid var(--hp-line, rgba(28,27,26,0.10));
-  letter-spacing: .02em;
-}
-body:not(.light) .sf-exam-chip {
-  background: rgba(212,180,140,0.06);
-  color: #d4af5e;
-  border-color: rgba(212,180,140,0.12);
+@media (max-width:420px) {
+  .sf-main { padding-top:26px; }
+  .sf-brand-support { font-size:.83rem; }
+  .sf-social-link { min-height:42px; }
+  .sf-newsletter-fields { grid-template-columns:1fr; }
+  .sf-newsletter-actions { gap:8px 12px; }
+  .sf-newsletter-btn { width:100%; margin-left:0; }
+  .sf-trust { grid-template-columns:1fr; }
+  .sf-trust-item { justify-content:flex-start; border-left:0 !important; border-top:1px solid rgba(201,154,60,.22); }
+  .sf-trust-item:first-child { border-top:0; }
+  .sf-credit { padding-top:24px; }
 }
 
-/* ── Stats ── */
-.sf-stats { display: flex; gap: 16px; }
-.sf-stat { display: flex; align-items: center; gap: 8px; }
-.sf-stat-icon {
-  width: 32px; height: 32px;
-  border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1rem;
-}
-.sf-stat-label { display: flex; flex-direction: column; }
-.sf-stat-val { font-size: .76rem; font-weight: 700; color: var(--hp-ink, #1c1b1a); }
-body:not(.light) .sf-stat-val { color: #f0e4d0; }
-.sf-stat-sub { font-size: .65rem; color: rgba(28,27,26,0.45); }
-body:not(.light) .sf-stat-sub { color: rgba(240,228,208,0.40); }
-
-/* ── Social Cards ── */
-.sf-socials { display: flex; flex-wrap: wrap; gap: 8px; }
-.sf-social {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--hp-line, rgba(28,27,26,0.10));
-  background: transparent;
-  text-decoration: none;
-  cursor: pointer;
-  transition: border-color .2s, transform .15s;
-  position: relative;
-  overflow: hidden;
-}
-.sf-social:hover {
-  border-color: var(--hp-red, #930205);
-  transform: translateY(-1px);
-}
-body:not(.light) .sf-social {
-  border-color: rgba(212,180,140,0.12);
-}
-body:not(.light) .sf-social:hover {
-  border-color: #b83348;
-}
-.sf-social-icon {
-  width: 28px; height: 28px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
-.sf-social-icon svg { width: 18px; height: 18px; }
-.sf-social-text { display: flex; flex-direction: column; }
-.sf-social-label { font-size: .76rem; font-weight: 600; color: var(--hp-ink, #1c1b1a); }
-body:not(.light) .sf-social-label { color: #f0e4d0; }
-.sf-social-sub { font-size: .62rem; color: rgba(28,27,26,0.45); }
-body:not(.light) .sf-social-sub { color: rgba(240,228,208,0.40); }
-.sf-ripple { display: none; }
-
-/* ── PWA App Card ── */
-.sf-app-card-v2 {
-  padding: 14px;
-  border-radius: 8px;
-  border: 1px solid var(--hp-line, rgba(28,27,26,0.10));
-  background: var(--hp-paper-dim, #f1ece3);
-}
-body:not(.light) .sf-app-card-v2 {
-  background: rgba(212,180,140,0.04);
-  border-color: rgba(212,180,140,0.12);
-}
-.sf-app-card-v2-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.sf-app-card-v2-icon { font-size: 1.4rem; }
-.sf-app-card-v2-name { font-size: .82rem; font-weight: 700; color: var(--hp-ink, #1c1b1a); }
-body:not(.light) .sf-app-card-v2-name { color: #f0e4d0; }
-.sf-app-card-v2-sub { font-size: .68rem; color: rgba(28,27,26,0.50); }
-body:not(.light) .sf-app-card-v2-sub { color: rgba(240,228,208,0.45); }
-.sf-app-card-v2-meta { display: flex; gap: 12px; margin-bottom: 10px; }
-.sf-app-meta-item { display: flex; flex-direction: column; }
-.sf-app-meta-val { font-size: .72rem; font-weight: 700; color: var(--hp-ink, #1c1b1a); }
-body:not(.light) .sf-app-meta-val { color: #f0e4d0; }
-.sf-app-meta-lbl { font-size: .58rem; color: rgba(28,27,26,0.40); }
-body:not(.light) .sf-app-meta-lbl { color: rgba(240,228,208,0.35); }
-.sf-app-card-v2-btn {
-  display: block;
-  text-align: center;
-  padding: 8px;
-  border-radius: 6px;
-  background: var(--hp-red, #930205);
-  color: #fff;
-  font-size: .76rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background .2s;
-  text-decoration: none;
-}
-.sf-app-card-v2-btn:hover { background: var(--hp-red-deep, #7d1122); }
-body:not(.light) .sf-app-card-v2-btn { background: #b83348; }
-body:not(.light) .sf-app-card-v2-btn:hover { background: #a02838; }
-
-/* ── Platform Info Badges ── */
-.sf-platform-info { display: flex; flex-wrap: wrap; gap: 6px; }
-.sf-platform-info-badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 4px 10px;
-  font-size: .65rem;
-  font-weight: 500;
-  border-radius: 4px;
-  background: var(--hp-paper-dim, #f1ece3);
-  color: rgba(28,27,26,0.60);
-  border: 1px solid var(--hp-line, rgba(28,27,26,0.08));
-}
-body:not(.light) .sf-platform-info-badge {
-  background: rgba(212,180,140,0.04);
-  color: rgba(240,228,208,0.50);
-  border-color: rgba(212,180,140,0.10);
-}
-
-/* ── Link Columns ── */
-.sf-col {}
-.sf-col-title {
-  font-size: .76rem;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  margin-bottom: 16px;
-  color: var(--hp-ink, #1c1b1a);
-  opacity: .60;
-}
-body:not(.light) .sf-col-title { color: #f0e4d0; opacity: .55; }
-.sf-col-title::after {
-  content: '';
-  display: block;
-  width: 20px;
-  height: 2px;
-  margin-top: 6px;
-  background: var(--hp-gold, #c99a3c);
-}
-.sf-col-links { list-style: none; padding: 0; margin: 0; }
-.sf-col-links li { margin-bottom: 10px; }
-.sf-col-links li a,
-.sf-col-links li span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: .85rem;
-  color: rgba(28,27,26,0.75);
-  cursor: pointer;
-  transition: color .2s;
-  text-decoration: none;
-}
-body:not(.light) .sf-col-links li a,
-body:not(.light) .sf-col-links li span {
-  color: rgba(240,228,208,0.70);
-}
-.sf-col-links li a:hover,
-.sf-col-links li span:hover {
-  color: var(--hp-red, #930205);
-}
-body:not(.light) .sf-col-links li a:hover,
-body:not(.light) .sf-col-links li span:hover {
-  color: #d4af5e;
-}
-.sf-link-arrow {
-  opacity: 0;
-  font-size: .7rem;
-  transition: opacity .2s;
-}
-.sf-col-links li a:hover .sf-link-arrow,
-.sf-col-links li span:hover .sf-link-arrow {
-  opacity: 1;
-  color: var(--hp-gold, #c99a3c);
-}
-
-/* ── Security Card ── */
-.sf-security-v2 {
-  margin-top: 16px;
-  padding: 14px;
-  border-radius: 8px;
-  border: 1px solid var(--hp-line, rgba(28,27,26,0.10));
-  background: var(--hp-paper-dim, #f1ece3);
-}
-body:not(.light) .sf-security-v2 {
-  background: rgba(212,180,140,0.04);
-  border-color: rgba(212,180,140,0.12);
-}
-.sf-security-v2-title {
-  display: flex; align-items: center; gap: 6px;
-  font-size: .76rem; font-weight: 700;
-  color: var(--hp-ink, #1c1b1a);
-  margin-bottom: 8px;
-}
-body:not(.light) .sf-security-v2-title { color: #f0e4d0; }
-.sf-security-v2-list { display: flex; flex-direction: column; gap: 4px; }
-.sf-security-v2-item {
-  font-size: .68rem;
-  color: rgba(28,27,26,0.55);
-  display: flex; align-items: center; gap: 4px;
-}
-body:not(.light) .sf-security-v2-item { color: rgba(240,228,208,0.50); }
-.sf-security-v2-check {
-  color: #2f6f4f;
-  font-size: .65rem;
-  font-weight: 700;
-}
-body:not(.light) .sf-security-v2-check { color: #6dba8e; }
-
-/* ── Bottom Bar ── */
-.sf-bottom {
-  border-top: 1px solid var(--hp-line, rgba(28,27,26,0.12));
-  padding: 24px 0;
-}
-body:not(.light) .sf-bottom { border-top-color: rgba(212,180,140,0.10); }
-.sf-bottom-inner {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.sf-copy {
-  font-size: .78rem;
-  color: rgba(28,27,26,0.55);
-}
-body:not(.light) .sf-copy { color: rgba(240,228,208,0.50); }
-.sf-copy strong { color: var(--hp-red, #930205); font-weight: 700; }
-body:not(.light) .sf-copy strong { color: #d4af5e; }
-.sf-legal { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-.sf-legal a,
-.sf-legal span[onclick] {
-  font-size: .76rem;
-  color: rgba(28,27,26,0.55);
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
-  transition: color .2s, background .2s;
-  text-decoration: none;
-}
-body:not(.light) .sf-legal a,
-body:not(.light) .sf-legal span[onclick] {
-  color: rgba(240,228,208,0.50);
-}
-.sf-legal a:hover,
-.sf-legal span[onclick]:hover {
-  color: var(--hp-red, #930205);
-  background: rgba(147,2,5,0.06);
-}
-body:not(.light) .sf-legal a:hover,
-body:not(.light) .sf-legal span[onclick]:hover {
-  color: #d4af5e;
-  background: rgba(212,180,140,0.08);
-}
-.sf-legal-sep { color: rgba(28,27,26,0.30); font-size: .7rem; }
-body:not(.light) .sf-legal-sep { color: rgba(240,228,208,0.25); }
 
 /* ═══════════════════════════════════════════════════════════════
    FAQ SECTION — replaces "Why Students Trust Studyria"
@@ -20309,314 +20053,169 @@ body:not(.light) .sf-stories .srv-star-btn { color:rgba(255,255,255,0.2) !import
   </div>
 </section>
 
-<footer class="studyria-footer" id="siteFooter">
+<footer class="studyria-footer" id="siteFooter" aria-labelledby="sfFooterBrand">
+  <div class="container" aria-hidden="true"><div class="sf-top-bar"></div></div>
 
-  <!-- Ambient orbs -->
-  <div class="sf-orb sf-orb-1"></div>
-  <div class="sf-orb sf-orb-2"></div>
-  <div class="sf-orb sf-orb-3"></div>
-
-  <!-- Maroon-gold accent divider — BUG FIX: wrapped in .container so it
-       matches the narrower, centered, responsive divider shown in the
-       homepage.html reference instead of a full-width edge-to-edge bar -->
-  <div class="container">
-    <div class="sf-top-bar"></div>
-  </div>
-
-  <!-- Main link grid -->
   <div class="sf-main">
     <div class="container">
-      <div class="sf-grid">
-
-        <!-- Brand col -->
-        <div class="sf-brand">
-          <div class="sf-brand-logo"><span class="sf-brand-stud">Stud</span><span class="sf-brand-yria">yria</span></div>
-          <p class="sf-brand-tagline">Assam's #1 PDF Study Platform for ADRE, APSC, Assam Police & all Assam state exams. Built for students who study smarter.</p>
-
-          <!-- Exams Covered -->
-          <div class="sf-exams">
-            <span class="sf-exam-chip">APSC</span>
-            <span class="sf-exam-chip">ADRE</span>
-            <span class="sf-exam-chip">Assam Police</span>
-            <span class="sf-exam-chip">SSC</span>
-            <span class="sf-exam-chip">Railway</span>
-            <span class="sf-exam-chip">Banking</span>
-            <span class="sf-exam-chip">TET</span>
-            <span class="sf-exam-chip">Grade III</span>
-            <span class="sf-exam-chip">Grade IV</span>
-          </div>
-
-          <!-- Quick stats -->
-          <div class="sf-stats">
-            <div class="sf-stat">
-              <div class="sf-stat-icon" style="background:rgba(147,2,5,0.08);">📚</div>
-              <div class="sf-stat-label">
-                <span class="sf-stat-val">558+ Downloads</span>
-                <span class="sf-stat-sub">Free &amp; Pass</span>
-              </div>
-            </div>
-            <div class="sf-stat">
-              <div class="sf-stat-icon" style="background:rgba(245,158,11,0.12);">🎯</div>
-              <div class="sf-stat-label">
-                <span class="sf-stat-val">Assam Focused</span>
-                <span class="sf-stat-sub">ADRE · APSC · Board</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Socials -->
-          <div class="sf-socials" id="sfSocials">
-            <!-- Telegram -->
-            <a class="sf-social" data-brand="telegram"
-               href="https://t.me/studyria" title="Studyria Telegram — Daily Updates"
-               target="_blank" rel="noopener noreferrer"
-               aria-label="Studyria Telegram channel — Daily Updates">
-              <div class="sf-social-icon">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-              </div>
-              <div class="sf-social-text">
-                <span class="sf-social-label">Telegram</span>
-                <span class="sf-social-sub">Daily Updates</span>
-              </div>
-            </a>
-            <!-- Instagram -->
-            <a class="sf-social" data-brand="instagram"
-               href="https://www.instagram.com/studyria.official?igsh=MWx5ZzY2cGdxZWF1MA==" title="Studyria Instagram — Study Reels"
-               target="_blank" rel="noopener noreferrer"
-               aria-label="Studyria Instagram — Study Reels">
-              <div class="sf-social-icon">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="sfIgGrad" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#FED576"/><stop offset="26%" stop-color="#F47133"/><stop offset="61%" stop-color="#BC3081"/><stop offset="100%" stop-color="#4C63D2"/></linearGradient></defs><path fill="url(#sfIgGrad)" d="M7.0301.084c-1.2768.0602-2.1487.264-2.911.5634-.7888.3075-1.4575.72-2.1228 1.3877-.6652.6677-1.075 1.3368-1.3802 2.127-.2954.7638-.4956 1.6365-.552 2.914-.0564 1.2775-.0689 1.6882-.0626 4.947.0062 3.2586.0206 3.6671.0825 4.9473.061 1.2765.264 2.1482.5635 2.9107.308.7889.72 1.4573 1.388 2.1228.6679.6655 1.3365 1.0743 2.1285 1.38.7632.295 1.6361.4961 2.9134.552 1.2773.056 1.6884.069 4.9462.0627 3.2578-.0062 3.668-.0207 4.9478-.0814 1.28-.0607 2.147-.2652 2.9098-.5633.7889-.3086 1.4578-.72 2.1228-1.3881.665-.6682 1.0745-1.3378 1.3795-2.1284.2957-.7632.4966-1.636.552-2.9124.056-1.2809.0692-1.6898.063-4.948-.0063-3.2583-.021-3.6668-.0817-4.9465-.0607-1.2797-.264-2.1487-.5633-2.9117-.3084-.7889-.72-1.4568-1.3876-2.1228C21.2982 1.33 20.628.9208 19.8378.6165 19.074.321 18.2017.1197 16.9244.0645 15.6471.0093 15.236-.005 11.977.0014 8.718.0076 8.31.0215 7.0301.0839m.1402 21.6932c-1.17-.0509-1.8053-.2453-2.2287-.408-.5606-.216-.96-.4771-1.3819-.895-.422-.4178-.6811-.8186-.9-1.378-.1644-.4234-.3624-1.058-.4171-2.228-.0595-1.2645-.072-1.6442-.079-4.848-.007-3.2037.0053-3.583.0607-4.848.05-1.169.2456-1.805.408-2.2282.216-.5613.4762-.96.895-1.3816.4188-.4217.8184-.6814 1.3783-.9003.423-.1651 1.0575-.3614 2.227-.4171 1.2655-.06 1.6447-.072 4.848-.079 3.2033-.007 3.5835.005 4.8495.0608 1.169.0508 1.8053.2445 2.228.408.5608.216.96.4754 1.3816.895.4217.4194.6816.8176.9005 1.3787.1653.4217.3617 1.056.4169 2.2263.0602 1.2655.0739 1.645.0796 4.848.0058 3.203-.0055 3.5834-.061 4.848-.051 1.17-.245 1.8055-.408 2.2294-.216.5604-.4763.96-.8954 1.3814-.419.4215-.8181.6811-1.3783.9-.4224.1649-1.0577.3617-2.2262.4174-1.2656.0595-1.6448.072-4.8493.079-3.2045.007-3.5825-.006-4.848-.0608M16.953 5.5864A1.44 1.44 0 1 0 18.39 4.144a1.44 1.44 0 0 0-1.437 1.4424M5.8385 12.012c.0067 3.4032 2.7706 6.1557 6.173 6.1493 3.4026-.0065 6.157-2.7701 6.1506-6.1733-.0065-3.4032-2.771-6.1565-6.174-6.1498-3.403.0067-6.156 2.771-6.1496 6.1738M8 12.0077a4 4 0 1 1 4.008 3.9921A3.9996 3.9996 0 0 1 8 12.0077"/></svg>
-              </div>
-              <div class="sf-social-text">
-                <span class="sf-social-label">Instagram</span>
-                <span class="sf-social-sub">Study Reels</span>
-              </div>
-            </a>
-            <!-- YouTube -->
-            <a class="sf-social" data-brand="youtube"
-               href="https://youtube.com/@studyriaofficial?si=YE4Lx8DXFA2TmKqA" title="Studyria YouTube — 1,500+ Students Learning"
-               target="_blank" rel="noopener noreferrer"
-               aria-label="Studyria YouTube channel — 1,500+ Students Learning">
-              <div class="sf-social-icon">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-              </div>
-              <div class="sf-social-text">
-                <span class="sf-social-label">YouTube</span>
-                <span class="sf-social-sub">1,500+ Students Learning</span>
-              </div>
-            </a>
-            <!-- WhatsApp Community -->
-            <a class="sf-social" data-brand="wa-community"
-               href="https://chat.whatsapp.com/EpuIk7lT0gE86dCTDjWE5R" title="Studyria WhatsApp Community — Join Community"
-               target="_blank" rel="noopener noreferrer"
-               aria-label="Studyria WhatsApp Community — Join Community">
-              <div class="sf-social-icon">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
-              </div>
-              <div class="sf-social-text">
-                <span class="sf-social-label">WhatsApp</span>
-                <span class="sf-social-sub">Join Community</span>
-              </div>
-            </a>
-            <!-- Pinterest -->
-            <a class="sf-social" data-brand="pinterest"
-               href="https://pin.it/3f4ctNDO7" title="Studyria Pinterest — Pinterest Inspiration"
-               target="_blank" rel="noopener noreferrer"
-               aria-label="Studyria Pinterest — Pinterest Inspiration">
-              <div class="sf-social-icon">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.162-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.401.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.354-.629-2.758-1.379l-.749 2.848c-.269 1.045-1.004 2.352-1.498 3.146 1.123.345 2.306.535 3.55.535 6.607 0 11.985-5.365 11.985-11.987C23.97 5.39 18.592.026 11.985.026L12.017 0z"/></svg>
-              </div>
-              <div class="sf-social-text">
-                <span class="sf-social-label">Pinterest</span>
-                <span class="sf-social-sub">Pinterest Inspiration</span>
-              </div>
-            </a>
-            <!-- WhatsApp 24/7 Support -->
-            <a class="sf-social" data-brand="wa-support"
-               href="https://wa.me/918011267054" title="Studyria 24/7 Support — WhatsApp"
-               target="_blank" rel="noopener noreferrer"
-               aria-label="Studyria 24/7 Support on WhatsApp">
-              <div class="sf-social-icon">
-                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
-              </div>
-              <div class="sf-social-text">
-                <span class="sf-social-label">WhatsApp</span>
-                <span class="sf-social-sub">24/7 Support</span>
-              </div>
-            </a>
-          </div>
-          <script>
-          /* Ripple effect for footer social cards */
-          (function() {
-            var socials = document.querySelectorAll('.sf-social');
-            socials.forEach(function(btn) {
-              btn.addEventListener('click', function(e) {
-                var ripple = document.createElement('span');
-                ripple.className = 'sf-ripple';
-                var rect = btn.getBoundingClientRect();
-                var size = Math.max(rect.width, rect.height);
-                ripple.style.width = ripple.style.height = size + 'px';
-                ripple.style.left = (e.clientX - rect.left - size/2) + 'px';
-                ripple.style.top = (e.clientY - rect.top - size/2) + 'px';
-                btn.appendChild(ripple);
-                setTimeout(function() { ripple.remove(); }, 600);
-              });
-            });
-          })();
-          </script>
-
-          <!-- Upgraded PWA App Card -->
-          <div class="sf-app-card-v2">
-            <div class="sf-app-card-v2-header">
-              <div class="sf-app-card-v2-icon">📱</div>
-              <div>
-                <div class="sf-app-card-v2-name">Studyria PWA</div>
-                <div class="sf-app-card-v2-sub">Install Free App</div>
-              </div>
-            </div>
-            <div class="sf-app-card-v2-meta">
-              <div class="sf-app-meta-item">
-                <div class="sf-app-meta-val">v2.0</div>
-                <div class="sf-app-meta-lbl">Version</div>
-              </div>
-              <div class="sf-app-meta-item">
-                <div class="sf-app-meta-val">Jul 2026</div>
-                <div class="sf-app-meta-lbl">Updated</div>
-              </div>
-              <div class="sf-app-meta-item">
-                <div class="sf-app-meta-val">✨</div>
-                <div class="sf-app-meta-lbl">Future Ready</div>
-              </div>
-            </div>
-            <a class="sf-app-card-v2-btn" onclick="if(typeof navigate==='function')navigate('pwa')" id="sfAppBadgeBtn">
-              Install Now — Free
-            </a>
-          </div>
-
-          <!-- Platform Info -->
-          <div class="sf-platform-info">
-            <span class="sf-platform-info-badge">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-              Made in Assam 🇮🇳
+      <div class="sf-brand-block">
+        <section class="sf-brand" aria-label="Studyria">
+          <button class="sf-brand-home" type="button" onclick="if(typeof navigate==='function')navigate('home')" aria-label="Studyria home">
+            <img class="sf-brand-logo-img" src="/logo-header.png" alt="" width="58" height="58" loading="lazy" decoding="async">
+            <span>
+              <span class="sf-brand-name" id="sfFooterBrand">Studyria</span>
+              <span class="sf-brand-motto">LEARN • GROW • ACHIEVE</span>
             </span>
-            <span class="sf-platform-info-badge">Serving Assam Students</span>
-            <span class="sf-platform-info-badge">Modern Education Platform</span>
-          </div>
-        </div>
+          </button>
+          <p class="sf-brand-support">Notes • Exams • Career • BrainLab for Assam Students</p>
 
-        <!-- Quick Links col -->
-        <div class="sf-col">
-          <div class="sf-col-title">Explore</div>
-          <ul class="sf-col-links">
-            <li><span onclick="if(typeof navigate==='function')navigate('home')">🏠 Home <span class="sf-link-arrow">›</span></span></li>
-            <li><span onclick="if(typeof navigate==='function')navigate('library')">📚 Library <span class="sf-link-arrow">›</span></span></li>
-            <li><span onclick="if(typeof navigate==='function')navigate('career-hub')">💼 Career Hub <span class="sf-link-arrow">›</span></span></li>
-            <li><span onclick="if(typeof navigate==='function')navigate('wishlist')">❤️ Wishlist <span class="sf-link-arrow">›</span></span></li>
-            <li><span onclick="if(typeof navigate==='function')navigate('dashboard')">📊 Dashboard <span class="sf-link-arrow">›</span></span></li>
-          </ul>
-        </div>
+          <nav class="sf-socials" id="sfSocials" aria-label="Studyria social and community links">
+            <a class="sf-social-link" href="https://t.me/studyria" target="_blank" rel="noopener noreferrer">Telegram</a>
+            <a class="sf-social-link" href="https://chat.whatsapp.com/EpuIk7lT0gE86dCTDjWE5R" target="_blank" rel="noopener noreferrer">WhatsApp Community</a>
+            <a class="sf-social-link" href="https://www.instagram.com/studyria.official?igsh=MWx5ZzY2cGdxZWF1MA==" target="_blank" rel="noopener noreferrer">Instagram</a>
+            <a class="sf-social-link" href="https://youtube.com/@studyriaofficial?si=YE4Lx8DXFA2TmKqA" target="_blank" rel="noopener noreferrer">YouTube</a>
+            <a class="sf-social-link" href="https://pin.it/3f4ctNDO7" target="_blank" rel="noopener noreferrer">Pinterest</a>
+            <a class="sf-social-link" href="https://wa.me/918011267054" target="_blank" rel="noopener noreferrer">WhatsApp Support</a>
+          </nav>
+        </section>
 
-        <!-- Platform col -->
-        <div class="sf-col">
-          <div class="sf-col-title">Platform</div>
-          <ul class="sf-col-links">
-            <li><span onclick="if(typeof navigate==='function')navigate('creator-register')">✨ Become a Creator <span class="sf-link-arrow">›</span></span></li>
-            <li><span onclick="if(typeof navigate==='function')navigate('about')">ℹ️ About Us <span class="sf-link-arrow">›</span></span></li>
-            <li><span onclick="if(typeof navigate==='function')navigate('pwa')">📱 App & Updates <span class="sf-link-arrow">›</span></span></li>
-            <li><span onclick="if(typeof navigate==='function')navigate('contact')">📩 Contact <span class="sf-link-arrow">›</span></span></li>
-            <li><span onclick="if(typeof navigate==='function')navigate('contact')">🛟 Support <span class="sf-link-arrow">›</span></span></li>
-            <li>
-              <a href="https://t.me/studyria" target="_blank" rel="noopener noreferrer">
-                💬 Telegram Community <span class="sf-link-arrow">›</span>
-              </a>
-            </li>
-          </ul>
-        </div>
-
-        <!-- Legal col -->
-        <div class="sf-col">
-          <div class="sf-col-title">Legal</div>
-          <ul class="sf-col-links">
-            <li><span onclick="if(typeof navigate==='function')navigate('privacy')">🔒 Privacy Policy <span class="sf-link-arrow">›</span></span></li>
-            <li><span onclick="if(typeof navigate==='function')navigate('terms')">📜 Terms of Service <span class="sf-link-arrow">›</span></span></li>
-            <li><span onclick="if(typeof navigate==='function')navigate('refund')">↩️ Refund Policy <span class="sf-link-arrow">›</span></span></li>
-            <li><span onclick="if(typeof navigate==='function')navigate('privacy')">🍪 Cookie Policy <span class="sf-link-arrow">›</span></span></li>
-          </ul>
-
-          <!-- Upgraded Security Card -->
-          <div class="sf-security-v2">
-            <div class="sf-security-v2-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10d98e" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              Enterprise Security
+        <nav class="sf-nav-grid" aria-label="Footer navigation">
+          <details class="sf-nav-group">
+            <summary><span>Study</span><span class="sf-nav-chevron" aria-hidden="true">⌄</span></summary>
+            <div class="sf-nav-list">
+              <button class="sf-link" type="button" onclick="navigate('library')">Library</button>
+              <button class="sf-link" type="button" onclick="navigate('brainlab')">BrainLab</button>
+              <button class="sf-link" type="button" onclick="navigate('brainlab/mock-tests')">Mock Tests</button>
+              <button class="sf-link" type="button" onclick="navigate('brainlab/quizzes')">Quizzes</button>
+              <button class="sf-link" type="button" onclick="navigate('brainlab/pyq')">PYQs</button>
             </div>
-            <div class="sf-security-v2-list">
-              <div class="sf-security-v2-item"><span class="sf-security-v2-check">✓</span> Supabase RLS</div>
-              <div class="sf-security-v2-item"><span class="sf-security-v2-check">✓</span> SSL Encrypted</div>
-              <div class="sf-security-v2-item"><span class="sf-security-v2-check">✓</span> Razorpay Verified</div>
-              <div class="sf-security-v2-item"><span class="sf-security-v2-check">✓</span> Secure Authentication</div>
-              <div class="sf-security-v2-item"><span class="sf-security-v2-check">✓</span> Privacy Protected</div>
-            </div>
-          </div>
-        </div>
+          </details>
 
+          <details class="sf-nav-group">
+            <summary><span>Career</span><span class="sf-nav-chevron" aria-hidden="true">⌄</span></summary>
+            <div class="sf-nav-list">
+              <button class="sf-link" type="button" onclick="navigate('career-hub')">Career Hub</button>
+              <button class="sf-link" type="button" onclick="navigate('career-hub')">Jobs</button>
+              <button class="sf-link" type="button" onclick="navigate('brainlab');if(typeof __blReady==='function')__blReady(function(){if(window.BrainLab)BrainLab.switchTab('affairs')})">Current Affairs</button>
+            </div>
+          </details>
+
+          <details class="sf-nav-group">
+            <summary><span>Account</span><span class="sf-nav-chevron" aria-hidden="true">⌄</span></summary>
+            <div class="sf-nav-list">
+              <button class="sf-link" type="button" onclick="navigate('my-library')">My Library</button>
+              <button class="sf-link" type="button" onclick="navigate('wishlist')">Wishlist</button>
+              <button class="sf-link" type="button" onclick="navigate('dashboard')">Dashboard</button>
+              <button class="sf-link" type="button" onclick="navigate('premium')">Studyria Pass</button>
+              <button class="sf-link" type="button" id="sfAppBadgeBtn" onclick="navigate('pwa')">Install App</button>
+            </div>
+          </details>
+
+          <details class="sf-nav-group">
+            <summary><span>Help &amp; Community</span><span class="sf-nav-chevron" aria-hidden="true">⌄</span></summary>
+            <div class="sf-nav-list">
+              <button class="sf-link" type="button" onclick="navigate('contact')">Support</button>
+              <button class="sf-link" type="button" onclick="navigate('contact')">Contact</button>
+              <button class="sf-link" type="button" onclick="navigate('home');setTimeout(function(){var el=document.getElementById('sfFaqSection');if(el)el.scrollIntoView({behavior:'smooth',block:'start'})},350)">FAQ</button>
+              <a class="sf-link" href="https://chat.whatsapp.com/EpuIk7lT0gE86dCTDjWE5R" target="_blank" rel="noopener noreferrer">WhatsApp Community</a>
+              <a class="sf-link" href="https://t.me/studyria" target="_blank" rel="noopener noreferrer">Telegram Community</a>
+              <button class="sf-link" type="button" onclick="navigate('about')">About Studyria</button>
+              <button class="sf-link" type="button" onclick="navigate('creator-register')">Become a Creator</button>
+              <a class="sf-link" href="/zubeen-da">Zubeen Da Legacy</a>
+            </div>
+          </details>
+        </nav>
       </div>
+
+      <section class="sf-trust" aria-label="Platform trust information">
+        <div class="sf-trust-item">
+          <svg class="sf-trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+          <span>Privacy First</span>
+        </div>
+        <div class="sf-trust-item">
+          <svg class="sf-trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          <span>Secure Authentication</span>
+        </div>
+        <div class="sf-trust-item">
+          <svg class="sf-trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/></svg>
+          <span>PWA Ready</span>
+        </div>
+        <div class="sf-trust-item">
+          <svg class="sf-trust-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+          <span>Secure Checkout</span>
+        </div>
+      </section>
     </div>
   </div>
 
-  <!-- Newsletter strip -->
-  <div class="sf-newsletter">
+  <section class="sf-newsletter" aria-labelledby="sfNewsletterTitle">
     <div class="container">
       <div class="sf-newsletter-inner">
         <div class="sf-newsletter-text">
-          <h3>📬 Get New PDF Alerts</h3>
-          <p>Be the first to know when a new PDF drops — by Email &amp; WhatsApp.</p>
+          <h3 id="sfNewsletterTitle">Get New PDF Alerts</h3>
+          <p>Receive new study-material updates by email and optional WhatsApp alerts.</p>
         </div>
-        <div class="sf-newsletter-form" style="flex-direction:column;gap:8px;align-items:stretch;">
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <input class="sf-newsletter-input" id="sfSubEmail" type="email" placeholder="your@email.com" aria-label="Email for PDF alerts" style="flex:1;min-width:0;" />
-            <input class="sf-newsletter-input" id="sfSubWhatsApp" type="tel" placeholder="WhatsApp (optional, e.g. +91…)" aria-label="WhatsApp number (optional)" style="flex:1;min-width:0;" />
+        <div class="sf-newsletter-form">
+          <div class="sf-newsletter-fields">
+            <input class="sf-newsletter-input" id="sfSubEmail" type="email" autocomplete="email" placeholder="your@email.com" aria-label="Email for PDF alerts">
+            <input class="sf-newsletter-input" id="sfSubWhatsApp" type="tel" autocomplete="tel" placeholder="WhatsApp (optional, +91…)" aria-label="WhatsApp number for optional alerts">
           </div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            <label style="display:flex;align-items:center;gap:5px;font-size:.77rem;color:rgba(28,27,26,0.55);cursor:pointer;">
-              <input type="checkbox" id="sfSubEmail_chk" checked style="accent-color:var(--hp-red, #930205);" /> Email alerts
-            </label>
-            <label style="display:flex;align-items:center;gap:5px;font-size:.77rem;color:rgba(28,27,26,0.55);cursor:pointer;">
-              <input type="checkbox" id="sfSubWa_chk" style="accent-color:#25d366;" /> WhatsApp alerts
-            </label>
-            <button class="sf-newsletter-btn" onclick="handleNewsletterSubscribe(this)" style="margin-left:auto;">Subscribe</button>
+          <div class="sf-newsletter-actions">
+            <label class="sf-newsletter-check"><input type="checkbox" id="sfSubEmail_chk" checked> Email alerts</label>
+            <label class="sf-newsletter-check"><input type="checkbox" id="sfSubWa_chk"> WhatsApp alerts</label>
+            <button class="sf-newsletter-btn" type="button" onclick="handleNewsletterSubscribe(this)">Subscribe</button>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Bottom bar -->
-  <div class="sf-bottom">
-    <div class="container">
-      <div class="sf-bottom-inner">
-        <div class="sf-copy">
-          © 2026 <strong>Studyria</strong> · Made with
-          <svg style="display:inline;vertical-align:-2px" width="12" height="12" viewBox="0 0 24 24" fill="#ff4d6d" stroke="none"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z"/></svg>
-          for Students of Assam, India
-        </div>
-        <div class="sf-legal">
-          <span onclick="if(typeof navigate==='function')navigate('privacy')">Privacy</span>
-          <span class="sf-legal-sep">·</span>
-          <span onclick="if(typeof navigate==='function')navigate('terms')">Terms</span>
-          <span class="sf-legal-sep">·</span>
-          <span onclick="if(typeof navigate==='function')navigate('refund')">Refund</span>
-          <span class="sf-legal-sep">·</span>
-          <span onclick="if(typeof navigate==='function')navigate('contact')">Contact</span>
-          <span class="sf-legal-sep">·</span>
-          <a href="/zubeen-da" title="জুবিন দা — The Legacy">জুবিন দা · স্মৃতিত</a>
-        </div>
-      </div>
+  <div class="container">
+    <div class="sf-credit">
+      <div class="sf-credit-name">Studyria</div>
+      <div class="sf-credit-motto">LEARN • GROW • ACHIEVE</div>
+      <div class="sf-credit-maker">Crafted &amp; Developed by <strong>PKD</strong></div>
+      <div class="sf-credit-copy">© 2026 Studyria. All rights reserved.</div>
+      <nav class="sf-legal" aria-label="Legal links">
+        <button type="button" onclick="navigate('privacy')">Privacy</button><span class="sf-legal-sep" aria-hidden="true">·</span>
+        <button type="button" onclick="navigate('terms')">Terms</button><span class="sf-legal-sep" aria-hidden="true">·</span>
+        <button type="button" onclick="navigate('refund')">Refund</button><span class="sf-legal-sep" aria-hidden="true">·</span>
+        <button type="button" onclick="navigate('contact')">Contact</button><span class="sf-legal-sep" aria-hidden="true">·</span>
+        <button type="button" onclick="navigate('privacy')">Cookie Policy</button>
+      </nav>
     </div>
   </div>
-
 </footer>
 
 <script>
+/* Footer navigation: expanded columns on desktop; compact accessible
+   disclosure groups on mobile. Native <details> keeps keyboard behavior. */
+(function () {
+  var groups = Array.prototype.slice.call(document.querySelectorAll('#siteFooter .sf-nav-group'));
+  if (!groups.length) return;
+  var mq = window.matchMedia('(max-width: 768px)');
+  function setAria(group) {
+    var summary = group.querySelector('summary');
+    if (summary) summary.setAttribute('aria-expanded', group.open ? 'true' : 'false');
+  }
+  function syncFooterNav() {
+    groups.forEach(function (group) {
+      if (!mq.matches) group.open = true;
+      else if (!group.dataset.mobileInitialised) {
+        group.open = false;
+        group.dataset.mobileInitialised = '1';
+      }
+      setAria(group);
+    });
+  }
+  groups.forEach(function (group) {
+    group.addEventListener('toggle', function () { setAria(group); });
+  });
+  if (mq.addEventListener) mq.addEventListener('change', syncFooterNav);
+  else if (mq.addListener) mq.addListener(syncFooterNav);
+  syncFooterNav();
+})();
+
 /* ── Newsletter / PDF alert subscribe handler ── */
 async function handleNewsletterSubscribe(btn) {
   var emailInput = document.getElementById('sfSubEmail');
