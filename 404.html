@@ -114,15 +114,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     font-size: 1.35rem;
     font-weight: 800;
     margin-bottom: 44px;
-    background: linear-gradient(135deg, #930205, #c99a3c);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #111111;
     display: inline-block;
     text-decoration: none;
     letter-spacing: -.01em;
   }
-  .logo span { font-weight: 300; }
+  .logo .wordmark-stud, .logo .wordmark-yria { font: inherit; font-weight: inherit; letter-spacing: inherit; }
+  .logo .wordmark-stud { color: #111111; }
+  .logo .wordmark-yria { color: #930205; }
 
   /* ── 404 number ──────────────────────────────────────────────── */
   .num {
@@ -310,7 +309,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <div class="wrap">
 
   <!-- Logo -->
-  <a href="/" class="logo">Study<span>ria</span></a>
+  <a href="/" class="logo" aria-label="Studyria"><span class="wordmark-stud" aria-hidden="true">Stud</span><span class="wordmark-yria" aria-hidden="true">yria</span></a>
 
   <!-- Hero -->
   <div class="num">404</div>

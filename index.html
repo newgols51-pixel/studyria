@@ -856,7 +856,7 @@ body.light .ott-row-track .pdf-cover-scrim {
     <div class="pwa-splash-icon">
       <img src="icon-192.png" alt="Studyria" loading="eager" decoding="sync" width="64" height="64">
     </div>
-    <div class="pwa-splash-brand">Study<span>ria</span></div>
+    <div class="pwa-splash-brand studyria-wordmark" aria-label="Studyria"><span class="studyria-wordmark__stud" aria-hidden="true">Stud</span><span class="studyria-wordmark__yria" aria-hidden="true">yria</span></div>
     <div class="pwa-splash-tagline">Assam's #1 PDF Study Platform</div>
     <div class="pwa-splash-ring-wrap">
       <div class="pwa-splash-ring"></div>
@@ -11012,7 +11012,7 @@ body.light .sc-tag-new { background: rgba(147,2,5,0.12); }
     <span id="heroCta2Text" style="display:none">Start Free</span>
     <span id="heroStatPdfs" style="display:none">⚡</span>
     <span id="heroStatStudents" style="display:none">🔒</span>
-    <div id="heroSiteName" style="display:none">Studyria</div>
+    <div id="heroSiteName" class="studyria-wordmark" style="display:none" aria-label="Studyria"><span class="studyria-wordmark__stud" aria-hidden="true">Stud</span><span class="studyria-wordmark__yria" aria-hidden="true">yria</span></div>
     <input type="search" id="homeSearch" style="display:none" placeholder="Search notes, exams..." autocomplete="off"
       oninput="(function(v){var ls=document.getElementById('libSearch');if(ls)ls.value=v;var ds=document.getElementById('discoverSearch');if(ds){ds.value=v;if(typeof onDiscoverInput==='function')onDiscoverInput();}})(this.value)"
       onkeydown="if(event.key==='Enter'){var v=this.value.trim();if(v&&typeof navigate==='function'){navigate('library');var ls=document.getElementById('libSearch');if(ls){ls.value=v;if(typeof renderLibrary==='function')renderLibrary();}}}" />
@@ -14526,7 +14526,7 @@ body.light .auth-card {
   letter-spacing: -.02em;
   display: block; text-align: center; margin-bottom: 24px;
 }
-.auth-logo-text span { font-weight: 300; }
+.auth-logo-text .studyria-wordmark__stud, .auth-logo-text .studyria-wordmark__yria { font-weight: inherit; }
 .auth-icon-ring {
   width: 56px; height: 56px; border-radius: 50%;
   background: linear-gradient(135deg, rgba(147,2,5,0.15), rgba(201,154,60,0.08));
@@ -14664,7 +14664,7 @@ body.light .user-dropdown { background: rgba(255,255,255,0.97); box-shadow: 0 16
   <div class="auth-wrap">
     <div class="auth-card">
 
-      <span class="auth-logo-text">Study<span>ria</span></span>
+      <span class="auth-logo-text studyria-wordmark" aria-label="Studyria"><span class="studyria-wordmark__stud" aria-hidden="true">Stud</span><span class="studyria-wordmark__yria" aria-hidden="true">yria</span></span>
 
       <div id="auth-login">
         <div class="auth-tab-row">
@@ -16004,7 +16004,7 @@ body.light .me-stat-val { filter:none; }
       <div class="admin-login-shield">
         <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
       </div>
-      <div class="admin-login-brand">Studyria <span>Admin</span></div>
+      <div class="admin-login-brand"><span class="studyria-wordmark" aria-label="Studyria"><span class="studyria-wordmark__stud" aria-hidden="true">Stud</span><span class="studyria-wordmark__yria" aria-hidden="true">yria</span></span> <span class="admin-login-suffix">Admin</span></div>
       <div class="admin-login-title">Secure Admin Access</div>
       <div class="admin-login-sub">Only authorized admin accounts can proceed. Your access is logged.</div>
       <div id="adminLoginError" class="admin-login-error" style="display:none">
@@ -17650,7 +17650,7 @@ body.light .crp-input{background:rgba(255,255,255,0.85);border-color:rgba(0,0,0,
     </div>
     <div class="ch-menu-foot">
       <div class="ch-menu-foot-row">
-        <span class="ch-menu-foot-brand">Career Hub by <b>Studyria</b></span>
+        <span class="ch-menu-foot-brand">Career Hub by <b class="studyria-wordmark" aria-label="Studyria"><span class="studyria-wordmark__stud" aria-hidden="true">Stud</span><span class="studyria-wordmark__yria" aria-hidden="true">yria</span></b></span>
         <span>v5.0</span>
       </div>
       <div class="ch-menu-foot-row">
@@ -20063,7 +20063,7 @@ body:not(.light) .sf-stories .srv-star-btn { color:rgba(255,255,255,0.2) !import
           <button class="sf-brand-home" type="button" onclick="if(typeof navigate==='function')navigate('home')" aria-label="Studyria home">
             <img class="sf-brand-logo-img" src="/logo-header.png" alt="" width="58" height="58" loading="lazy" decoding="async">
             <span>
-              <span class="sf-brand-name" id="sfFooterBrand">Studyria</span>
+              <span class="sf-brand-name studyria-wordmark" id="sfFooterBrand" aria-label="Studyria"><span class="studyria-wordmark__stud" aria-hidden="true">Stud</span><span class="studyria-wordmark__yria" aria-hidden="true">yria</span></span>
               <span class="sf-brand-motto">LEARN • GROW • ACHIEVE</span>
             </span>
           </button>
@@ -20172,7 +20172,7 @@ body:not(.light) .sf-stories .srv-star-btn { color:rgba(255,255,255,0.2) !import
 
   <div class="container">
     <div class="sf-credit">
-      <div class="sf-credit-name">Studyria</div>
+      <div class="sf-credit-name studyria-wordmark" aria-label="Studyria"><span class="studyria-wordmark__stud" aria-hidden="true">Stud</span><span class="studyria-wordmark__yria" aria-hidden="true">yria</span></div>
       <div class="sf-credit-motto">LEARN • GROW • ACHIEVE</div>
       <div class="sf-credit-maker">Crafted &amp; Developed by <strong>PKD</strong></div>
       <div class="sf-credit-copy">© 2026 Studyria. All rights reserved.</div>
@@ -36522,7 +36522,7 @@ function tsPreviewTab(name, el) {
 function tsRenderPreviewNavbar(t) {
   t = t || tsGetActiveTheme() || TS_BUILTIN_PRESETS[0];
   return `<div class="ts-preview-navbar" style="background:${t.navbar||'rgba(8,12,20,0.95)'};border:1px solid rgba(255,255,255,0.08)">
-    <div style="font-weight:800;background:linear-gradient(135deg,${t.primary},${t.secondary});-webkit-background-clip:text;-webkit-text-fill-color:transparent">Studyria</div>
+    <div class="studyria-wordmark" style="font-weight:800" aria-label="Studyria"><span class="studyria-wordmark__stud" aria-hidden="true">Stud</span><span class="studyria-wordmark__yria" aria-hidden="true">yria</span></div>
     <div style="display:flex;gap:14px;font-size:.83rem;color:${t.text||'#eef2ff'}">
       <span>Home</span><span>Library</span><span>Wishlist</span>
     </div>
@@ -36573,7 +36573,7 @@ function tsRenderPreviewFooter(t) {
   return `<div style="background:${t.bg||'#080c14'};border-radius:12px;padding:20px;border:1px solid rgba(255,255,255,0.06)">
     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:16px">
       <div>
-        <div style="font-weight:800;font-size:1rem;background:linear-gradient(135deg,${t.primary},${t.secondary});-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px">Studyria</div>
+        <div class="studyria-wordmark" style="font-weight:800;font-size:1rem;margin-bottom:6px" aria-label="Studyria"><span class="studyria-wordmark__stud" aria-hidden="true">Stud</span><span class="studyria-wordmark__yria" aria-hidden="true">yria</span></div>
         <div style="font-size:.75rem;color:${t.text||'#eef2ff'};opacity:.5">Assam's #1 PDF Study Platform</div>
       </div>
       <div style="display:flex;gap:20px;flex-wrap:wrap">
@@ -41560,6 +41560,7 @@ document.addEventListener('keydown', e => {
 <!-- ══════════════════════════════════════════════════════════════════════
      PDF CLASSIFICATION SYSTEM — COMPLETE REFACTOR PATCH
      STUDYRIA PHASE 1 — OMNI SEARCH + MULTI-LANGUAGE
+
 </body> — fully backward compatible
   ══════════════════════════════════════════════════════════════════════ -->
 <style>
@@ -46008,5 +46009,66 @@ window.addEventListener('load', function() {
 })();
 </script>
 
+
+<style id="studyriaWordmarkColorRefinement">
+/* Brand color refinement only: one wordmark, split exactly Stud | yria. */
+:root {
+  --studyria-wordmark-ink: #111111;
+  --studyria-wordmark-maroon: var(--color-accent, #930205);
+}
+.studyria-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  max-width: 100%;
+  color: var(--studyria-wordmark-ink);
+  font: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  vertical-align: baseline;
+}
+.studyria-wordmark__stud,
+.studyria-wordmark__yria {
+  display: inline;
+  flex: 0 0 auto;
+  font: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  -webkit-text-fill-color: currentColor;
+}
+.studyria-wordmark__stud { color: var(--studyria-wordmark-ink); }
+.studyria-wordmark__yria { color: var(--studyria-wordmark-maroon); }
+/* Existing header keeps its exact letter markup, dimensions and spacing. */
+.logo .logo-letter,
+.mh-center span.logo-letter {
+  font-family: "Playfair Display", Georgia, serif !important;
+  color: var(--studyria-wordmark-ink) !important;
+  background: none !important;
+  -webkit-background-clip: border-box !important;
+  background-clip: border-box !important;
+  -webkit-text-fill-color: var(--studyria-wordmark-ink) !important;
+  font-weight: 800 !important;
+}
+.logo .logo-letter.logo-light,
+.mh-center span.logo-letter.logo-light {
+  font-family: "Playfair Display", Georgia, serif !important;
+  color: var(--studyria-wordmark-maroon) !important;
+  background: none !important;
+  -webkit-background-clip: border-box !important;
+  background-clip: border-box !important;
+  -webkit-text-fill-color: var(--studyria-wordmark-maroon) !important;
+  font-weight: 800 !important;
+}
+.admin-login-brand {
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+}
+.admin-login-brand .admin-login-suffix { color: var(--text2); font-weight: 400; -webkit-text-fill-color: currentColor; }
+</style>
 </body>
 </html>

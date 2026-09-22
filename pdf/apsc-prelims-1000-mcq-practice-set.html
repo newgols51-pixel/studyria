@@ -56,7 +56,10 @@
 * { box-sizing: border-box; }
 body { margin:0; font-family:var(--font-body); background:var(--bg); color:var(--text); min-height:100vh; }
 .mpa-header { display:flex; align-items:center; justify-content:space-between; padding:16px 24px; border-bottom:1px solid var(--glass-border); position:sticky; top:0; z-index:100; background:var(--bg); }
-.mpa-logo { font-family:var(--font-display); font-size:1.4rem; font-weight:700; background:var(--grad-primary); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-decoration:none; }
+.mpa-logo { display:inline-flex; align-items:baseline; flex-wrap:nowrap; white-space:nowrap; font-family:var(--font-display); font-size:1.4rem; font-weight:700; letter-spacing:inherit; line-height:inherit; text-decoration:none; }
+.mpa-logo-stud,.mpa-logo-yria { font:inherit; font-weight:inherit; letter-spacing:inherit; line-height:inherit; }
+.mpa-logo-stud { color:#111111; }
+.mpa-logo-yria { color:var(--color-accent,#930205); }
 .mpa-back { color:var(--text2); text-decoration:none; font-size:.9rem; }
 #pdpWrap { max-width: 960px; margin: 0 auto; padding: 24px; min-height: 60vh; }
 #page-detail { max-width: 960px; margin: 0 auto; padding: 24px; min-height: 60vh; }
@@ -84,7 +87,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 
 <header class="mpa-header">
-  <a class="mpa-logo" href="/">Studyria</a>
+  <a class="mpa-logo" href="/" aria-label="Studyria"><span class="mpa-logo-stud" aria-hidden="true">Stud</span><span class="mpa-logo-yria" aria-hidden="true">yria</span></a>
   <a class="mpa-back" href="/#library">← Back to Library</a>
 </header>
 

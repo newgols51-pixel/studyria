@@ -3287,11 +3287,14 @@ body.light .admin-login-card {
 }
 .admin-login-brand {
   font-family: var(--font-display); font-size: 1.7rem; font-weight: 700;
-  background: var(--grad-primary); -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent; background-clip: text;
+  color: var(--text);
   text-align: center; margin-bottom: 6px;
 }
-.admin-login-brand span { font-weight: 400; }
+.admin-brand-wordmark { display:inline-flex; align-items:baseline; flex-wrap:nowrap; white-space:nowrap; font:inherit; font-weight:inherit; letter-spacing:inherit; line-height:inherit; }
+.admin-brand-stud,.admin-brand-yria { font:inherit; font-weight:inherit; letter-spacing:inherit; line-height:inherit; }
+.admin-brand-stud { color:#111111; }
+.admin-brand-yria { color:var(--accent,#930205); }
+.admin-login-suffix { color:var(--text2); font-weight:400; }
 .admin-login-title {
   font-family: var(--font-display); font-size: 1.3rem; font-weight: 700;
   text-align: center; margin-bottom: 8px;

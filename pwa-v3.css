@@ -124,10 +124,11 @@
 }
 
 .pwa-splash-brand span {
-  background: linear-gradient(135deg, #930205, #93c5fd);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  background: none;
+  -webkit-background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+  background-clip: border-box;
+  font-weight: inherit;
 }
 
 /* Tagline */

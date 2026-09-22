@@ -55,13 +55,13 @@
   }
   .hpr-header-bar .mh-logo-img { height: 26px; width: auto; }
   .hpr-header-bar .logo-letter {
-    color: var(--hpr-maroon) !important;
+    color: #111111 !important;
     font-family: var(--font-display, inherit);
     font-weight: 800;
     font-size: 1.15rem;
   }
   .hpr-header-bar .logo-letter.logo-light {
-    color: var(--hpr-ink) !important;
+    color: var(--hpr-maroon, #930205) !important;
   }
 
   .hpr-header-actions {

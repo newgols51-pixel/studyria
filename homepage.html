@@ -12,6 +12,7 @@
     --red:#a6192e;
     --red-deep:#7d1122;
     --gold:#c99a3c;
+    --studyria-wordmark-ink:#111111; --studyria-wordmark-maroon:#930205;
     --line: rgba(28,27,26,0.12);
     --font-display: 'Georgia', 'Iowan Old Style', serif;
     --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
@@ -90,7 +91,8 @@
     letter-spacing:0.5px;
     display:flex; align-items:baseline; gap:6px;
   }
-  .logo .mark{color:var(--red);}
+  .logo .wordmark-stud{color:var(--studyria-wordmark-ink);}
+  .logo .wordmark-yria{color:var(--studyria-wordmark-maroon);}
   .navlinks{display:flex; gap:32px; font-size:14.5px; letter-spacing:0.2px;}
   .navlinks a{opacity:0.75; transition:opacity .15s;}
   .navlinks a:hover{opacity:1;}
@@ -546,7 +548,7 @@
 <header>
   <div class="stripe"></div>
   <div class="nav wrap">
-    <div class="logo"><span class="mark">Study</span>ria</div>
+    <div class="logo" aria-label="Studyria"><span class="wordmark-stud" aria-hidden="true">Stud</span><span class="wordmark-yria" aria-hidden="true">yria</span></div>
     <nav class="navlinks">
       <a href="#">Home</a>
       <a href="#products">APSC</a>
@@ -867,7 +869,7 @@
     <div class="stripe" style="margin-bottom:40px;"></div>
     <div class="foot-grid">
       <div class="foot-col">
-        <div class="logo" style="font-size:22px; margin-bottom:12px;"><span class="mark">Study</span>ria</div>
+        <div class="logo" style="font-size:22px; margin-bottom:12px;" aria-label="Studyria"><span class="wordmark-stud" aria-hidden="true">Stud</span><span class="wordmark-yria" aria-hidden="true">yria</span></div>
         <p style="font-size:14px; opacity:0.65; max-width:260px;">Assam's smart education platform for ADRE, APSC, Assam Police, TET and every state exam that matters.</p>
       </div>
       <div class="foot-col">
