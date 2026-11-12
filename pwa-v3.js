@@ -29,6 +29,11 @@
 
   // ── SPLASH SCREEN ─────────────────────────────────────────────
   function initSplash() {
+    // Native APK (AppMintly 2.0.3+): the launch splash is drawn by the app, so the
+    // website splash is never mounted there - not even for one frame. The inline
+    // gate in index.html decides this before this script runs; an absent, false
+    // or throwing bridge keeps the website splash exactly as it was.
+    if (window.__studyriaNativeApp === true) return;
     // Only show splash on standalone (installed) launch or first visit
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches
                       || window.matchMedia('(display-mode: fullscreen)').matches
