@@ -784,3 +784,6 @@
 @media (prefers-reduced-motion: reduce) {
   #pwaSplashVideo { display: none !important; }
 }
+
+/* Native APK: the app owns the launch splash (see the bridge gate in index.html). */
+html[data-native-app] #pwaV3Splash{display:none!important}
