@@ -868,6 +868,30 @@ body.light .ott-row-track .pdf-cover-scrim {
     </div>
   </div>
 </div>
+<!-- NATIVE APP (AppMintly 2.0.3+): the APK draws the launch splash itself, so the
+     website splash must never appear there. The bridge is injected before the
+     first load, so this is decided before anything paints. Fails OPEN: a
+     missing, false or throwing bridge leaves the website splash exactly as it
+     was for browsers, installed PWAs and every older APK. -->
+<script>
+(function () {
+  var native = false;
+  try {
+    native = !!(window.AppMintlyNative &&
+                typeof window.AppMintlyNative.isNativeApp === 'function' &&
+                window.AppMintlyNative.isNativeApp() === true);
+  } catch (_) { native = false; }
+  window.__studyriaNativeApp = native;
+  if (!native) return;
+  document.documentElement.setAttribute('data-native-app', '1');
+  var el = document.getElementById('pwaV3Splash');
+  if (!el) return;
+  var v = el.querySelector('video');
+  if (v) { try { v.pause(); v.removeAttribute('src'); v.load(); } catch (_) {} }
+  if (el.parentNode) el.parentNode.removeChild(el);
+})();
+</script>
+
 <!-- V5 (2026-09-18) BOOT-ORDER FAILSAFE — runs immediately (no defer),
      right after the splash markup, long before pwa-v3.js executes at
      the bottom of this document. pwa-v3.css already makes #pwaV3Splash
